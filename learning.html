@@ -1,0 +1,483 @@
+<title>Zero to Next.js</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#EDF0F3; --surface:#F8FAFB; --surface-2:#E4E9ED;
+  --ink:#141A21; --ink-2:#3D4956; --muted:#657483;
+  --line:#D5DCE3; --line-2:#C2CCD5;
+  --accent:#2B4A6F; --accent-soft:#DCE5EE;
+  --alt:#6B4A86; --alt-soft:#E7DEEF;
+  --done:#3F7D53; --done-soft:#DDEBE1;
+  --doing:#A9741C; --doing-soft:#F3E8D2;
+  --cut:#8A93A0;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0F141A; --surface:#161D25; --surface-2:#1D262F;
+  --ink:#E5EAEF; --ink-2:#B7C2CD; --muted:#8593A1;
+  --line:#232D37; --line-2:#313E4A;
+  --accent:#88ADD8; --accent-soft:#1B2836;
+  --alt:#B79AD0; --alt-soft:#241C2E;
+  --done:#67B67F; --done-soft:#16281C;
+  --doing:#D8A94E; --doing-soft:#2A2214;
+  --cut:#6B7683;
+}}
+:root[data-theme="dark"]{
+  --ground:#0F141A; --surface:#161D25; --surface-2:#1D262F;
+  --ink:#E5EAEF; --ink-2:#B7C2CD; --muted:#8593A1;
+  --line:#232D37; --line-2:#313E4A;
+  --accent:#88ADD8; --accent-soft:#1B2836;
+  --alt:#B79AD0; --alt-soft:#241C2E;
+  --done:#67B67F; --done-soft:#16281C;
+  --doing:#D8A94E; --doing-soft:#2A2214;
+  --cut:#6B7683;
+}
+*{box-sizing:border-box}
+body{background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased}
+.wrap{max-width:900px; margin:0 auto; padding-inline:20px; padding-block:0 72px}
+h1,h2{font-family:Archivo,sans-serif; text-wrap:balance; margin:0}
+.mono{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+
+header.top{padding-block:36px 18px}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted)}
+h1{font-size:clamp(28px,5vw,40px); font-weight:700; letter-spacing:-.02em; margin-top:8px}
+.sub{color:var(--ink-2); margin-top:10px; max-width:60ch}
+.rule{padding:13px 16px; margin-top:18px; background:var(--surface); border:1px solid var(--line);
+  border-left:3px solid var(--doing); border-radius:0 8px 8px 0}
+.rule b{font-family:Archivo,sans-serif; display:block; margin-bottom:3px}
+.rule span{color:var(--ink-2); font-size:14px}
+
+table.res{width:100%; border-collapse:collapse; margin-top:20px; font-size:14px}
+table.res th{text-align:left; font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:500;
+  padding:0 10px 6px 0; border-bottom:1px solid var(--line)}
+table.res td{padding:9px 10px 9px 0; border-bottom:1px solid var(--line); color:var(--ink-2);
+  vertical-align:top}
+table.res a{color:var(--accent)}
+
+.bar{position:sticky; top:0; z-index:20; background:var(--ground);
+  border-bottom:1px solid var(--line); padding-block:12px; margin-top:22px}
+.people{display:flex; gap:14px; flex-wrap:wrap}
+.person{flex:1 1 200px; padding:10px 12px; border:1px solid var(--line); border-radius:9px;
+  background:var(--surface); cursor:pointer; text-align:left; font:inherit; color:inherit}
+.person[aria-pressed="true"]{border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent)}
+.person.b[aria-pressed="true"]{border-color:var(--alt); box-shadow:inset 0 0 0 1px var(--alt)}
+.p-top{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.p-name{font-family:Archivo,sans-serif; font-weight:600; font-size:15px}
+.p-pct{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.track{height:5px; background:var(--surface-2); border-radius:99px; overflow:hidden; margin-top:8px}
+.fill{height:100%; background:var(--accent); border-radius:99px; transition:width .28s ease}
+.person.b .fill{background:var(--alt)}
+.p-hint{font-size:11.5px; color:var(--muted); margin-top:6px}
+.editrow{display:flex; gap:8px; align-items:center; margin-top:10px; font-size:12.5px;
+  color:var(--muted); flex-wrap:wrap}
+input.rename{font:inherit; font-size:12.5px; padding:4px 8px; border-radius:6px;
+  border:1px solid var(--line-2); background:var(--ground); color:var(--ink); width:150px}
+button.chip{font:inherit; font-size:12.5px; padding:4px 10px; border-radius:99px; cursor:pointer;
+  background:transparent; color:var(--ink-2); border:1px solid var(--line-2)}
+button.chip:hover{border-color:var(--accent); color:var(--accent)}
+.note{margin-top:12px; padding:10px 13px; background:var(--surface); border:1px solid var(--line);
+  border-radius:8px; font-size:13px; color:var(--ink-2)}
+
+section.ph{border-bottom:1px solid var(--line); padding-block:26px}
+.ph-head{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:baseline}
+h2{font-size:20px; font-weight:600; letter-spacing:-.01em; flex:1 1 auto}
+.tag{font-family:"IBM Plex Mono",monospace; font-size:11px; padding:2px 7px; border-radius:4px;
+  background:var(--surface-2); color:var(--ink-2); white-space:nowrap}
+.count{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.why{color:var(--ink-2); font-size:14px; margin-top:8px; max-width:62ch}
+.warn{border-left:3px solid var(--doing); padding-left:12px}
+.grp{margin-top:16px}
+.grp-lab{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:5px}
+.grp-lab.build{color:var(--done)}
+ul.items{list-style:none; margin:0; padding:0}
+li.item{display:flex; gap:10px; align-items:flex-start; padding:4px 6px 4px 0; border-radius:6px}
+li.item:hover{background:var(--surface)}
+button.box{flex:none; font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:500;
+  width:30px; padding:1px 0; margin-top:1px; text-align:center; cursor:pointer;
+  background:transparent; border:1px solid transparent; border-radius:5px; color:var(--muted)}
+button.box:hover{border-color:var(--line-2)}
+button.box:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.txt{flex:1 1 auto; font-size:14.5px; color:var(--ink-2)}
+li.item[data-s="done"] button.box{color:var(--done)}
+li.item[data-s="done"] .txt{color:var(--muted); text-decoration:line-through;
+  text-decoration-color:var(--line-2)}
+li.item[data-s="doing"] button.box{color:var(--doing)}
+li.item[data-s="doing"] .txt{color:var(--ink); font-weight:500}
+.donewhen{margin-top:16px; padding:11px 14px 11px 15px; background:var(--surface);
+  border-left:3px solid var(--done); border-radius:0 7px 7px 0; font-size:14px; color:var(--ink-2)}
+.donewhen b{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--done); display:block; margin-bottom:3px; font-weight:600}
+footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font-size:13px;
+  color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Thread · the learning track · React → TypeScript → Next.js</div>
+    <h1>Zero to Next.js</h1>
+    <p class="sub">Seven weeks, six phases, three courses. No backend in this path — adding
+    it now would slow you down and teach neither thing properly.</p>
+    <div class="rule">
+      <b>Video progress is not skill</b>
+      <span>A phase is not done when the video ends. It is done when you can build the
+      thing with the video <strong>closed</strong>. Nine hours of watching produces someone
+      who recognises code. Two hours of building produces someone who writes it.</span>
+    </div>
+    <table class="res">
+      <tr><th>Course</th><th>When</th></tr>
+      <tr><td><a href="https://youtu.be/qnwFpjIqsrA" target="_blank" rel="noopener">The Biggest React.js Course</a></td>
+          <td>Phase 2 — watch to <span class="mono">6:45:00</span> and stop</td></tr>
+      <tr><td><a href="https://youtu.be/kvP6hDXWy88" target="_blank" rel="noopener">TypeScript course</a></td>
+          <td>Phase 3 — all of it</td></tr>
+      <tr><td>The React course again</td>
+          <td>Phase 4 — <span class="mono">6:45:00</span> to the end, now in TypeScript</td></tr>
+      <tr><td><a href="https://youtu.be/QIDkK0FbXDc" target="_blank" rel="noopener">The Biggest Next.js Course</a></td>
+          <td>Phase 5 — all of it</td></tr>
+    </table>
+  </header>
+
+  <div class="bar">
+    <div class="people">
+      <button class="person a" id="pa" aria-pressed="true">
+        <span class="p-top"><span class="p-name" id="na">Learner A</span><span class="p-pct" id="qa">0%</span></span>
+        <span class="track"><span class="fill" id="fa" style="width:0%"></span></span>
+        <span class="p-hint" id="ha">no phase started</span>
+      </button>
+      <button class="person b" id="pb" aria-pressed="false">
+        <span class="p-top"><span class="p-name" id="nb">Learner B</span><span class="p-pct" id="qb">0%</span></span>
+        <span class="track"><span class="fill" id="fb" style="width:0%"></span></span>
+        <span class="p-hint" id="hb">no phase started</span>
+      </button>
+    </div>
+    <div class="editrow">
+      <span>Ticking as <strong id="who">Learner A</strong> · click to advance
+      <span class="mono">[ ] → [~] → [x]</span></span>
+      <input class="rename" id="rn" placeholder="rename" aria-label="Rename the selected person">
+      <button class="chip" id="save">Save name</button>
+    </div>
+  </div>
+
+  <div id="status" class="note" style="display:none"></div>
+  <main id="body"></main>
+
+  <footer>
+    Companion to <span class="mono">docs/learners.md</span> and
+    <span class="mono">docs/learning-path.md</span>. Nitesh reviews the build, never the
+    video progress — “where are you in the video” is the wrong question, “show me the thing
+    you made” is the right one.
+  </footer>
+</div>
+
+<script>
+const P = [
+ {id:"p0", n:0, title:"Setup", time:"one evening",
+  why:"Do it properly once and never think about it again.",
+  doneWhen:"You can create a project, change a file and push it, without looking anything up.",
+  groups:[{items:[
+   "Node installed — node -v and npm -v both print a version",
+   "VS Code installed",
+   "Extensions: ES7 React snippets, Prettier, ESLint",
+   "Prettier set to format on save",
+   "A practice/ folder, with git init and a first commit",
+   "A GitHub account, and that first commit pushed",
+   "Devtools: you can open the Console and the Elements tab",
+   "You can read a red error — file, line, message"]}]},
+
+ {id:"p1", n:1, title:"The JavaScript you need first", time:"4–6 days", warn:true,
+  why:"Do not skip this. It is the most common reason people bounce off React. React IS JavaScript — if the JavaScript is unfamiliar, React feels like magic, and magic cannot be debugged. You do not need all of JavaScript. You need exactly this list.",
+  doneWhen:"Each “prove it” takes under ten minutes, with nothing open but the editor.",
+  groups:[
+  {lab:"Learn", items:[
+   "let and const, and why var is not used any more",
+   "Arrow functions, and how they differ from function",
+   "Template literals — backticks and ${ }",
+   "Destructuring, on objects and arrays",
+   "Spread ... and rest, on objects and arrays",
+   "Array methods: map, filter, find, reduce, includes, sort",
+   "Optional chaining ?. and nullish coalescing ??",
+   "Ternaries, and short-circuit && / ||",
+   "Object.keys, Object.values, Object.entries",
+   "Truthy and falsy — and which values are falsy",
+   "Promises, async / await, try / catch",
+   "fetch, and turning a response into JSON",
+   "ES modules: import / export, default versus named",
+   "Copying instead of mutating — why [...arr, x] and not arr.push(x). React re-renders when a value changes IDENTITY, so mutating in place does nothing and you will blame React for an hour"]},
+  {lab:"Prove it — video closed", items:[
+   "From an array of objects, produce a new array of one field",
+   "Filter that array and count what is left",
+   "Add to an array without changing the original",
+   "Update one field of an object without changing the original",
+   "An async function that fetches JSON and handles a failure",
+   "Explain why const still lets you change an object's fields"]}]},
+
+ {id:"p2", n:2, title:"React, to 6:45:00", time:"2 weeks",
+  why:"Watch the React course up to 6:45:00, then stop and come back here.",
+  doneWhen:"You can rebuild the waypoint row from nothing, in under twenty minutes, video closed.",
+  groups:[
+  {lab:"Learn", items:[
+   "What React is for: the screen is a function of your data",
+   "JSX: one root element, className, { } for expressions, self-closing tags",
+   "Components, and why their names start with a capital letter",
+   "Props — passing data down",
+   "props.children",
+   "useState: reading, setting, and the functional form setX(prev => …)",
+   "Never mutate state. Copy, change the copy, set it",
+   "Rendering a list with map",
+   "Keys, and why an array index is usually a bad key",
+   "Conditional rendering: &&, a ternary, or an early return",
+   "Events: onClick, onChange, passing arguments to a handler",
+   "Controlled inputs, and a form that does not reload the page",
+   "Lifting state up — when two components need the same value",
+   "useEffect: when it runs, the dependency array, the cleanup function",
+   "Fetching in an effect, with loading and error states",
+   "useRef, for reaching a DOM node",
+   "Pulling repeated logic into a custom hook",
+   "Breaking a design into components — where the seams go"]},
+  {lab:"Prove it — video closed", items:[
+   "A counter with plus, minus and reset",
+   "A list you can add to and delete from, with sensible keys",
+   "A search box that filters that list as you type",
+   "A component showing loading, error and empty states from fake data",
+   "Explain props versus state, out loud, in two sentences"]},
+  {lab:"Build — for Thread's ui-lab", build:true, items:[
+   "A waypoint row in three states: learn, check, skippable",
+   "The route list, from a fake array",
+   "The three-number summary: “7 to learn, 4 you can skip, 3 quick checks”",
+   "An empty state for a brand-new account",
+   "All four work at phone width",
+   "None break when the array is empty"]}]},
+
+ {id:"p3", n:3, title:"TypeScript", time:"1 week",
+  why:"You are adding types to code you already wrote and already understand. That is why this comes now and not first — learning types and React at once means learning neither.",
+  doneWhen:"Someone can pass a wrong prop to your component and the editor stops them before the browser does.",
+  groups:[
+  {lab:"Learn", items:[
+   "What a type buys you: the error you catch before you run it",
+   "Primitives, arrays, tuples",
+   "type aliases and interface, and when each is normal",
+   "Union types A | B, and literal types “learn” | “check” | “skippable”",
+   "Optional properties ? and readonly",
+   "Typing a function's parameters and its return",
+   "Generics, just enough: <T> on a function, and on a component",
+   "Narrowing: typeof, in, truthiness, discriminated unions",
+   "unknown versus any — and why any is a promise you are lying about",
+   "Utility types: Partial, Pick, Omit, Record",
+   "Typing React props",
+   "ReactNode, for children",
+   "useState<T>() when the type cannot be inferred",
+   "Event types: ChangeEvent, MouseEvent, FormEvent",
+   "tsconfig.json: turn strict on and leave it on"]},
+  {lab:"Prove it — video closed", items:[
+   "Type a function taking an array of objects and returning a filtered array",
+   "Model a waypoint as a type with a literal union for its state",
+   "Use Omit or Pick to derive one type from another rather than retyping it",
+   "Say what red squiggle appears if you pass the wrong prop"]},
+  {lab:"Build", build:true, items:[
+   "Convert every Phase 2 component to TypeScript",
+   "A shared types.ts for the shapes they all use",
+   "Zero any in your own code",
+   "Strict mode on, and no errors"]}]},
+
+ {id:"p4", n:4, title:"React, 6:45:00 to the end", time:"1.5 weeks",
+  why:"Finish the React course — now writing everything in TypeScript rather than plain JavaScript.",
+  doneWhen:"You can add a new component to ui-lab without asking where anything goes.",
+  groups:[
+  {lab:"Learn", items:[
+   "useContext — and when it is overkill compared with passing a prop",
+   "useReducer, for state with several moving parts",
+   "useMemo and useCallback — and when NOT to use them",
+   "What actually causes a re-render",
+   "React Router: routes, links, URL parameters, nested layouts",
+   "Data fetching patterns, always handling loading / error / empty",
+   "Forms with several fields and validation",
+   "Anything else the course covers — Redux or Tailwind are optional extras"]},
+  {lab:"Prove it — video closed", items:[
+   "A small app with three routes and a shared layout",
+   "State shared across two routes without prop-drilling through five files",
+   "Explain why a component re-rendered, using the devtools"]},
+  {lab:"Build — for Thread's ui-lab", build:true, items:[
+   "The know / shaky / never-seen sorting card from onboarding",
+   "A Kero message card showing a prompt, with a copy button that works on a phone",
+   "Both fully typed",
+   "Both work with keyboard only — tab to them, activate with Enter"]}]},
+
+ {id:"p5", n:5, title:"Next.js", time:"1.5 weeks",
+  doneWhen:"Someone who has never heard of Thread reads your landing page and can say what it does.",
+  groups:[
+  {lab:"Learn", items:[
+   "What Next gives you that plain React does not",
+   "The App Router: folders are routes",
+   "page.tsx, layout.tsx, loading.tsx, error.tsx, not-found.tsx",
+   "Server components by default — and what that actually means",
+   "“use client”, and the signs you need it: state, effects, event handlers",
+   "<Link> and client-side navigation",
+   "Dynamic routes [slug], and reading params",
+   "Metadata: page title and description",
+   "next/image and next/font",
+   "Static files in public/",
+   "Deploying to Vercel"]},
+  {lab:"Prove it — video closed", items:[
+   "Create a new route by making a folder, with no reference",
+   "Say which of your components need “use client”, and why",
+   "Explain server versus client components to the other learner"]},
+  {lab:"Build — real, and shipped", build:true, items:[
+   "The Thread landing page: the problem, the four features, one screenshot",
+   "An about page explaining what Thread deliberately does not do",
+   "Correct page titles and descriptions",
+   "Works on a phone",
+   "Deployed to a public URL, and the link sent to Nitesh"]}]},
+
+ {id:"p6", n:6, title:"Ready", time:"not a phase",
+  why:"Not something to work through. A list of things that are now true.",
+  doneWhen:"The last one is the real graduation, and it is the sentence you put in a CV.",
+  groups:[{items:[
+   "You can read an error message and know which file to open",
+   "You can build a page from a written description, with no tutorial open",
+   "You can explain props versus state, and server versus client components",
+   "You can type a component's props without copying an example",
+   "You have a deployed URL with your name on it",
+   "Something you built is running in the real project"]}]},
+
+ {id:"hab", title:"The habits that decide whether this works", time:"every week",
+  why:"More important than any list above. Every one of these is the difference between finishing and quietly stopping in week three.",
+  groups:[{items:[
+   "Type every line. Never copy-paste from the video — typing it wrong and fixing it IS the learning",
+   "Pause and predict. Say what you think the answer is before he shows it",
+   "Close the video and rebuild one thing at the end of every phase",
+   "45 minutes most days beats five hours on Sunday. Every time",
+   "Commit every session, even broken code. Push at the end",
+   "Stuck 20 minutes? Read the error aloud, check the line it names, then ask. Not before twenty, not after forty",
+   "Teach it to the other one — the fastest way to find out you do not know something",
+   "Write down what confused you. That list is worth more to the project than the code"]}]}
+];
+
+const ORDER=["todo","doing","done"], GLYPH={todo:"[ ]",doing:"[~]",done:"[x]"};
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,44);
+P.forEach(ph=>ph.groups.forEach(g=>{ g.rows=g.items.map(t=>({id:ph.id+"-"+slug(t),text:t})); }));
+
+let who="a", state={a:{},b:{}}, names={a:"Learner A",b:"Learner B"}, db=null;
+const LS="thread-learning-v1";
+try{ const r=localStorage.getItem(LS); if(r){const o=JSON.parse(r); state=o.state||state; names=o.names||names; who=o.who||"a";} }catch(e){}
+const saveLocal=()=>{ try{ localStorage.setItem(LS, JSON.stringify({state,names,who})); }catch(e){} };
+const st=id=>(state[who][id]&&state[who][id].s)||"todo";
+const stFor=(p,id)=>(state[p][id]&&state[p][id].s)||"todo";
+
+function note(m){ const e=document.getElementById("status"); e.textContent=m; e.style.display="block"; }
+
+async function push(phaseId,itemId,rec){
+  saveLocal();
+  if(!db) return;
+  const ref=db.doc("progress/"+who+"-"+phaseId);
+  try{ await ref.update({items:{[itemId]:rec}}); }
+  catch(e){
+    if(e&&e.code==="invalid_argument"){
+      const all={};
+      P.find(x=>x.id===phaseId).groups.forEach(g=>g.rows.forEach(r=>{ if(state[who][r.id]) all[r.id]=state[who][r.id]; }));
+      try{ await ref.set({items:all}); }catch(e2){ note("Could not save to the shared list — this change is on this device only."); }
+    } else if(e&&e.code==="revoked"){ db=null; note("Shared saving stopped. Changes are on this device only."); }
+  }
+}
+
+function render(){
+  const host=document.getElementById("body"); host.textContent="";
+  P.forEach(ph=>{
+    const sec=document.createElement("section"); sec.className="ph";
+    const head=document.createElement("div"); head.className="ph-head";
+    const h=document.createElement("h2");
+    h.textContent=(ph.n!==undefined?ph.n+". ":"")+ph.title;
+    const t=document.createElement("span"); t.className="tag"; t.textContent=ph.time;
+    const c=document.createElement("span"); c.className="count"; c.dataset.c=ph.id;
+    head.append(h,t,c); sec.append(head);
+    if(ph.why){ const w=document.createElement("p"); w.className="why"+(ph.warn?" warn":""); w.textContent=ph.why; sec.append(w); }
+    ph.groups.forEach(g=>{
+      const d=document.createElement("div"); d.className="grp";
+      if(g.lab){ const l=document.createElement("div"); l.className="grp-lab"+(g.build?" build":""); l.textContent=g.lab; d.append(l); }
+      const ul=document.createElement("ul"); ul.className="items";
+      g.rows.forEach(r=>{
+        const li=document.createElement("li"); li.className="item"; li.dataset.id=r.id; li.dataset.s=st(r.id);
+        const b=document.createElement("button"); b.type="button"; b.className="box mono";
+        b.textContent=GLYPH[st(r.id)]; b.setAttribute("aria-label",r.text+" — "+st(r.id));
+        b.addEventListener("click",()=>{
+          const cur=st(r.id), next=ORDER[(ORDER.indexOf(cur)+1)%3];
+          const rec={s:next,at:new Date().toISOString()};
+          state[who][r.id]=rec; refresh(); push(ph.id,r.id,rec);
+        });
+        const x=document.createElement("span"); x.className="txt"; x.textContent=r.text;
+        li.append(b,x); ul.append(li);
+      });
+      d.append(ul); sec.append(d);
+    });
+    if(ph.doneWhen){
+      const dw=document.createElement("div"); dw.className="donewhen";
+      const b=document.createElement("b"); b.textContent="Done when";
+      dw.append(b,document.createTextNode(ph.doneWhen)); sec.append(dw);
+    }
+    host.append(sec);
+  });
+}
+
+function refresh(){
+  ["a","b"].forEach(p=>{
+    let d=0,t=0,cur=null;
+    P.forEach(ph=>{ let pd=0,pt=0;
+      ph.groups.forEach(g=>g.rows.forEach(r=>{ t++; pt++; if(stFor(p,r.id)==="done"){d++; pd++;} }));
+      if(!cur && pd<pt) cur=ph;
+    });
+    const pct=t?Math.round(d/t*100):0;
+    document.getElementById("q"+p).textContent=pct+"%";
+    document.getElementById("f"+p).style.width=pct+"%";
+    document.getElementById("h"+p).textContent = cur? ("on: "+(cur.n!==undefined?cur.n+". ":"")+cur.title) : "finished";
+    document.getElementById("n"+p).textContent=names[p];
+  });
+  document.getElementById("who").textContent=names[who];
+  document.getElementById("pa").setAttribute("aria-pressed",String(who==="a"));
+  document.getElementById("pb").setAttribute("aria-pressed",String(who==="b"));
+  P.forEach(ph=>{
+    let d=0,t=0; ph.groups.forEach(g=>g.rows.forEach(r=>{t++; if(st(r.id)==="done")d++;}));
+    const el=document.querySelector('[data-c="'+ph.id+'"]'); if(el) el.textContent=d+"/"+t;
+  });
+  document.querySelectorAll("li.item").forEach(li=>{
+    const s=st(li.dataset.id); li.dataset.s=s;
+    li.querySelector("button.box").textContent=GLYPH[s];
+  });
+  saveLocal();
+}
+
+document.getElementById("pa").addEventListener("click",()=>{who="a"; refresh();});
+document.getElementById("pb").addEventListener("click",()=>{who="b"; refresh();});
+document.getElementById("save").addEventListener("click",async()=>{
+  const v=document.getElementById("rn").value.trim();
+  if(!v) return;
+  names[who]=v.slice(0,24); document.getElementById("rn").value=""; refresh();
+  if(db){ try{ await db.doc("people/roster").set(names); }catch(e){} }
+});
+
+render(); refresh();
+
+(async()=>{
+  const d=await window.claude?.use?.("db");
+  if(!d){ note("Shared saving is not available here — ticks are kept on this device only."); return; }
+  db=d;
+  db.doc("people/roster").onSnapshot(s=>{ if(s.exists){ const n=s.data(); if(n.a)names.a=n.a; if(n.b)names.b=n.b; refresh(); } });
+  db.collection("progress").onSnapshot(snap=>{
+    snap.docs.forEach(doc=>{
+      const p=doc.id.slice(0,1); if(p!=="a"&&p!=="b") return;
+      const items=(doc.data()||{}).items||{};
+      Object.keys(items).forEach(k=>{
+        const inc=items[k], cur=state[p][k];
+        if(!cur||!cur.at||(inc.at&&inc.at>=cur.at)) state[p][k]=inc;
+      });
+    });
+    refresh();
+  }, e=>{ if(e.code!=="unavailable") note("Shared saving stopped ("+e.code+")."); });
+})();
+</script>

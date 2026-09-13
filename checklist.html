@@ -1,0 +1,853 @@
+<title>Thread Build Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#EDF0F3; --surface:#F8FAFB; --surface-2:#E4E9ED;
+  --ink:#141A21; --ink-2:#3D4956; --muted:#657483;
+  --line:#D5DCE3; --line-2:#C2CCD5;
+  --accent:#2B4A6F; --accent-soft:#DCE5EE;
+  --done:#3F7D53; --done-soft:#DDEBE1;
+  --doing:#A9741C; --doing-soft:#F3E8D2;
+  --cut:#8A93A0;
+  --shadow:0 1px 2px rgba(20,26,33,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F141A; --surface:#161D25; --surface-2:#1D262F;
+    --ink:#E5EAEF; --ink-2:#B7C2CD; --muted:#8593A1;
+    --line:#232D37; --line-2:#313E4A;
+    --accent:#88ADD8; --accent-soft:#1B2836;
+    --done:#67B67F; --done-soft:#16281C;
+    --doing:#D8A94E; --doing-soft:#2A2214;
+    --cut:#6B7683;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F141A; --surface:#161D25; --surface-2:#1D262F;
+  --ink:#E5EAEF; --ink-2:#B7C2CD; --muted:#8593A1;
+  --line:#232D37; --line-2:#313E4A;
+  --accent:#88ADD8; --accent-soft:#1B2836;
+  --done:#67B67F; --done-soft:#16281C;
+  --doing:#D8A94E; --doing-soft:#2A2214;
+  --cut:#6B7683;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:920px; margin:0 auto; padding-inline:20px; padding-block:0 72px}
+h1,h2,h3{font-family:Archivo,"IBM Plex Sans",sans-serif; text-wrap:balance; margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+
+/* ---------- masthead ---------- */
+header.top{padding-block:36px 20px; border-bottom:1px solid var(--line)}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted)}
+h1{font-size:clamp(28px,5vw,40px); font-weight:700; letter-spacing:-.02em; margin-top:8px}
+.sub{color:var(--ink-2); margin-top:10px; max-width:62ch}
+
+/* ---------- sticky bar ---------- */
+.bar{position:sticky; top:0; z-index:20; background:var(--ground);
+  border-bottom:1px solid var(--line); padding-block:12px; margin-bottom:8px}
+.bar-in{display:flex; flex-wrap:wrap; gap:14px 20px; align-items:center}
+.meter{flex:1 1 240px; min-width:200px}
+.meter-top{display:flex; justify-content:space-between; align-items:baseline; gap:12px}
+.meter-num{font-family:Archivo,sans-serif; font-weight:700; font-size:19px; letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums}
+.meter-lab{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--muted)}
+.track{height:6px; background:var(--surface-2); border-radius:99px; overflow:hidden; margin-top:7px}
+.fill{height:100%; background:var(--accent); border-radius:99px; transition:width .28s ease}
+.controls{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+button.chip{font:inherit; font-size:12.5px; padding:5px 11px; border-radius:99px; cursor:pointer;
+  background:transparent; color:var(--ink-2); border:1px solid var(--line-2)}
+button.chip:hover{border-color:var(--accent); color:var(--accent)}
+button.chip[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ground)}
+.who{display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted)}
+
+/* ---------- legend ---------- */
+.legend{display:flex; flex-wrap:wrap; gap:6px 18px; padding-block:14px 0; font-size:12.5px;
+  color:var(--muted)}
+.legend b{font-family:"IBM Plex Mono",monospace; font-weight:500; color:var(--ink-2)}
+.note{margin-top:14px; padding:11px 14px; background:var(--surface); border:1px solid var(--line);
+  border-radius:8px; font-size:13px; color:var(--ink-2)}
+
+/* ---------- sections ---------- */
+.part{margin-top:44px}
+.part-head{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--accent); padding-bottom:8px;
+  border-bottom:2px solid var(--accent)}
+section.sec{border-bottom:1px solid var(--line); padding-block:22px}
+.sec-head{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:baseline}
+h2{font-size:19px; font-weight:600; letter-spacing:-.01em; flex:1 1 auto}
+.star{color:var(--doing)}
+.tag{font-family:"IBM Plex Mono",monospace; font-size:11px; padding:2px 7px; border-radius:4px;
+  background:var(--surface-2); color:var(--ink-2); white-space:nowrap}
+.tag.k{background:var(--accent-soft); color:var(--accent)}
+.tag.c{background:var(--doing-soft); color:var(--doing)}
+.sec-count{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.why{color:var(--ink-2); font-size:14px; margin-top:7px; max-width:64ch}
+.meta{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted); margin-top:9px}
+
+.grp{margin-top:16px}
+.grp-lab{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:5px}
+ul.items{list-style:none; margin:0; padding:0; display:flex; flex-direction:column}
+li.item{display:flex; gap:10px; align-items:flex-start; padding:4px 6px 4px 0; border-radius:6px}
+li.item:hover{background:var(--surface)}
+button.box{flex:none; font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:500;
+  width:30px; padding:1px 0; margin-top:1px; text-align:center; cursor:pointer;
+  background:transparent; border:1px solid transparent; border-radius:5px; color:var(--muted)}
+button.box:hover{border-color:var(--line-2)}
+button.box:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.txt{flex:1 1 auto; font-size:14.5px; color:var(--ink-2)}
+li.item[data-s="done"] button.box{color:var(--done)}
+li.item[data-s="done"] .txt{color:var(--muted)}
+li.item[data-s="doing"] button.box{color:var(--doing)}
+li.item[data-s="doing"] .txt{color:var(--ink); font-weight:500}
+li.item[data-s="cut"] button.box{color:var(--cut)}
+li.item[data-s="cut"] .txt{color:var(--cut); text-decoration:line-through}
+.by{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--muted); flex:none;
+  padding-top:3px}
+
+.donewhen{margin-top:16px; padding:11px 14px 11px 15px; background:var(--surface);
+  border-left:3px solid var(--done); border-radius:0 7px 7px 0; font-size:14px; color:var(--ink-2)}
+.donewhen b{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--done); display:block; margin-bottom:3px; font-weight:600}
+
+/* ---------- weekly gate ---------- */
+.gate{margin-top:40px}
+.weeks{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:14px}
+.week{display:flex; gap:10px; align-items:flex-start; padding:12px; background:var(--surface);
+  border:1px solid var(--line); border-radius:8px}
+.week[data-s="done"]{border-color:var(--done); background:var(--done-soft)}
+.week[data-s="doing"]{border-color:var(--doing); background:var(--doing-soft)}
+.wk{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:12px; color:var(--accent); flex:none}
+.week .txt{font-size:13px}
+.spine{margin-top:22px; padding:14px 16px; border:1px dashed var(--line-2); border-radius:8px;
+  font-size:14px; color:var(--ink-2)}
+.spine b{font-family:Archivo,sans-serif; color:var(--ink); display:block; margin-bottom:4px}
+footer{margin-top:44px; padding-top:18px; border-top:1px solid var(--line); font-size:12.5px;
+  color:var(--muted)}
+.hidden{display:none !important}
+@media (prefers-reduced-motion:reduce){*{transition:none !important; animation:none !important}}
+@media (max-width:520px){
+  .bar-in{gap:10px}
+  button.box{width:26px}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Thread · two builders · eight weeks</div>
+    <h1>Build checklist</h1>
+    <p class="sub">The v1 features, the foundations under them, and the edge cases that
+    otherwise get discovered in week&nbsp;7. Ticks are shared — whoever opens this next sees
+    them.</p>
+    <div class="legend">
+      <span><b>[ ]</b> not started</span>
+      <span><b>[~]</b> in progress</span>
+      <span><b>[x]</b> done</span>
+      <span><b>[-]</b> cut</span>
+      <span>Click to advance · Shift-click to cut</span>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="bar-in">
+      <div class="meter">
+        <div class="meter-top">
+          <span class="meter-num" id="pct">0%</span>
+          <span class="meter-lab" id="counts">0 of 0 done</span>
+        </div>
+        <div class="track"><div class="fill" id="fill" style="width:0%"></div></div>
+      </div>
+      <div class="controls" id="filters"></div>
+      <div class="who">
+        <span>I am</span>
+        <button class="chip" id="whoK" aria-pressed="false">K · Nitesh</button>
+        <button class="chip" id="whoC" aria-pressed="false">C</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="status" class="note hidden"></div>
+  <main id="body"></main>
+
+  <section class="gate">
+    <div class="part-head">Weekly gate</div>
+    <p class="why" style="margin-top:12px">One line a week. An unticked week means cutting
+    scope, not extending the timeline.</p>
+    <div class="weeks" id="weeks"></div>
+    <div class="spine">
+      <b>The spine, never cut</b>
+      ask → understand → update mastery → decide next → notice the stall → respond → give a prompt
+    </div>
+    <p class="why" style="margin-top:16px"><strong>Cut in this order if behind:</strong> the
+    holdout · ladder step 4 · check waypoints in onboarding · off-map handling · fading.
+    <strong>Never cut 7b</strong> — a product that punishes someone for coming back is
+    worse than no product.</p>
+  </section>
+
+  <footer>
+    Spec: <span class="mono">docs/design.md</span> · numbers in
+    <span class="mono">docs/knowledge.md</span> and <span class="mono">docs/continuity.md</span>.
+    §4 of the spec is the list of what we are <em>not</em> building — nothing joins this
+    checklist without something else leaving it.
+  </footer>
+</div>
+
+<script>
+const DATA = [
+ {part:"Foundations", note:"Not features. Nothing runs without them."},
+
+ {id:"db", title:"Database and deployment", owner:"K+C", week:1, groups:[{items:[
+  "Postgres running locally in Docker, and in production",
+  "pgvector extension enabled and confirmed on both",
+  "Migration runner: ordered files, applied once, recorded in a table",
+  "reset script — drop, migrate, seed, in one command",
+  "seed script — Canon plus one demo account with a believable history",
+  "Config module: every secret from the environment, nothing hard-coded",
+  "Deployed and reachable from the internet in week 1, not week 8",
+  "Migrations run automatically on deploy",
+  "One backup taken by hand and restored once, before week 8"]}]},
+
+ {id:"auth", title:"Accounts", owner:"C", week:1, groups:[{items:[
+  "Sign up, log in, log out",
+  "Passwords hashed properly",
+  "Access token plus refresh token, refresh rotated on use",
+  "Rate limit on login",
+  "Delete account: every personal row gone, in one transaction",
+  "Deletion screen says plainly what stays (anonymous counts only)"]}]},
+
+ {id:"clock", title:"The clock", owner:"K+C", week:1,
+  why:"If this slips, feature 7 becomes untestable and the project dies quietly in week 6.",
+  groups:[{items:[
+  "Every engine function takes time as a parameter",
+  "A grep or lint rule for new Date() / Date.now() inside engine folders",
+  "That check runs in CI and fails the build"]}]},
+
+ {id:"freeze", title:"Fakes and the freeze", owner:"K+C", week:1, groups:[{items:[
+  "A fake implementation of every function in both interfaces",
+  "A switch to run the whole app on fakes",
+  "Both halves demonstrably work standalone on fakes",
+  "Interfaces frozen and written into design.md §6 — end of week 1"]}]},
+
+ {id:"canon", title:"Canon seed data", owner:"K", week:"1–2", groups:[{items:[
+  "Page format agreed and written down",
+  "Offline generation script — runs on our machine, never in the product",
+  "~60 pages across two subjects: computer networking, and React / frontend",
+  "The second subject is React on purpose — it is what the learners study, so all four of us dogfood",
+  "Every page: scope, where the topic ends, 1–3 specific sticking points",
+  "Sticking points are specific — “people confuse X with Y”, never “this is hard”",
+  "4+ aliases per topic: formal name, abbreviation, how someone types it at 11pm, and how our users actually type — Hinglish and code-mixed included",
+  "Prerequisite links marked hard or soft",
+  "Every link justified in one sentence; reject the rest",
+  "No cycles — a checked, automated assertion",
+  "Embeddings computed for every page (feature 5 needs these in week 4)",
+  "A vector index that is actually used — check the query plan",
+  "Count how many generated pages you rejected, and why (this goes in the report)"]}]},
+
+ {id:"push", title:"Notifications", owner:"C", week:4, groups:[{items:[
+  "VAPID keys generated and stored",
+  "Service worker registered",
+  "Subscribe endpoint, one subscription per device",
+  "Send, with retry on transient failure",
+  "Dead subscriptions pruned on permanent failure",
+  "Works on desktop Chrome and Android; iPhone out of scope — say so in the UI"]}]},
+
+ {id:"screens", title:"Basic screens", owner:"C", week:"2–4", groups:[{items:[
+  "Settings: check-in time, quiet hours, timezone",
+  "History: everything studied, newest first, with what they typed",
+  "Every screen works on a phone",
+  "Every screen works with no data at all — a new account never looks broken"]}]},
+
+ {id:"sim", title:"The simulator", owner:"C", week:3,
+  why:"Build it in week 3, not week 7. It is the only way to test feature 7 without waiting real days, and it is half the demo.",
+  groups:[{items:[
+  "Personas: diligent, avoider, busy, sporadic",
+  "Generates study events already attached to topics — does not wait on feature 5",
+  "Replays six weeks against an injected clock, in under a second",
+  "Asserts on outcomes, not just runs",
+  "A command that replays one persona and prints what Kero did, day by day"]}]},
+
+ {part:"The features"},
+
+ {id:"f1", n:1, title:"Goal and route", owner:"K", week:2,
+  why:"The spine. Everything hangs off having an ordered path.",
+  meta:"Tables: goals, routes, route_waypoints · Provides: routeFor, nextStep",
+  doneWhen:"A goal produces a correctly ordered route on generated graphs.",
+  groups:[
+  {lab:"Build", items:[
+   "Create a goal: one topic, or a named set of topics",
+   "Prerequisite closure — walk back from the goal, as a recursive query",
+   "Topological order — nothing before what it depends on",
+   "Tie-break: fewest remaining prerequisites, then smaller topic",
+   "Waypoint kind: learn, check or skippable",
+   "Waypoint state: waiting, active, stalled, done, skipped",
+   "Only the next three unfinished waypoints are active",
+   "Changing a goal recomputes from scratch; the old route is superseded, not deleted",
+   "Route screen: learn, check and skippable visibly separated"]},
+  {lab:"Edge cases", items:[
+   "A cycle in the graph — detect and refuse, do not loop forever",
+   "A goal with no path to it from anywhere",
+   "A goal already mastered — route is empty, and the screen says so well",
+   "A required set larger than 40 topics — does the screen still make sense?",
+   "A goal that is a set: the required set is the union, deduplicated"]},
+  {lab:"Tests", items:[
+   "Randomly generated DAGs, not just the seed data",
+   "Order validity asserted on every generated case",
+   "Cycle detection has its own test",
+   "Recompute preserves the old route"]}]},
+
+ {id:"f2", n:2, title:"Onboarding — what you already know", owner:"K", week:6,
+  why:"Every one of your first users is already mid-subject. Without this, Thread tells someone three weeks into networking to go and learn what an IP address is, and they leave.",
+  doneWhen:"Somebody who already knows half the subject is not handed it as work.",
+  groups:[
+  {lab:"Build", items:[
+   "Signup names the subjects we cover before anyone sorts anything",
+   "Show the goal's required topics, 15 at a time",
+   "Three-way sort: know it / shaky / never seen",
+   "Store as declared: know it → 0.55, shaky → 0.30, never seen → 0",
+   "Declared knowledge is flagged, and fades at half the normal half-life",
+   "A declared-known topic becomes a check placed late — never work placed early",
+   "Three numbers: “7 to learn, 4 you can skip, 3 quick checks”",
+   "Only “to learn” is the headline number",
+   "Ends with one thing to do and a prompt in hand",
+   "Progress saved — someone can close it halfway and come back"]},
+  {lab:"Edge cases", items:[
+   "They mark everything as known → route is empty. What does the screen say?",
+   "They mark nothing and skip the whole step",
+   "They abandon halfway and return two days later",
+   "They change goal later — re-ask only about new topics, never ones already sorted"]},
+  {lab:"Tests", items:[
+   "Timed end to end on someone who has never seen it: under five minutes",
+   "A user who declares half the subject gets a route that respects it"]}]},
+
+ {id:"f3", n:3, title:"Skip analysis", owner:"K", week:6, star:true,
+  why:"The one nobody else does. Subjects feel unbounded, so stopping costs nothing. A number that goes down is the fix.",
+  meta:"Provides: skipAnalysis, explainWaypoint",
+  doneWhen:"You can pick any skippable topic and justify it in one sentence.",
+  groups:[
+  {lab:"Build", items:[
+   "Required — reachable from the goal through hard links only",
+   "Optional — in the set, but every path to it crosses at least one soft link",
+   "Skippable — in the subject, not needed for this goal at all",
+   "An explanation for every classification, naming real topics",
+   "Labelled “not required for this goal”, never “not important”",
+   "Skipping marks the waypoint, and it can return if the goal changes"]},
+  {lab:"Edge cases", items:[
+   "A topic reachable by both a hard and a soft path → hard wins",
+   "Long chains of soft links — still optional, however deep",
+   "A goal that is a set of topics: required is the union",
+   "Everything is required — the screen must not look broken saying “0 you can skip”"]},
+  {lab:"Tests", items:[
+   "A hand-built graph with a known correct answer, written into the test",
+   "Every skippable topic in the seed data, explained out loud by you, once"]}]},
+
+ {id:"f4", n:4, title:"The daily question", owner:"C", week:2,
+  meta:"Tables: checkins, user_prefs, push_subscriptions",
+  doneWhen:"It arrives at the right local time for a user in another timezone.",
+  groups:[
+  {lab:"Build", items:[
+   "Scheduler job finds who is due, at their local time",
+   "Quiet hours respected (default 22:00–08:00)",
+   "Not sent during a pause",
+   "Not sent if they already logged something today",
+   "The wording: “What did you get through today? Anything you bounced off?”",
+   "Delivered as a push notification",
+   "Also a card on the home screen — Thread must work for someone who refused permission",
+   "checkins row records sent, answered, and current conversation state"]},
+  {lab:"Edge cases", items:[
+   "A user in a different timezone from the server",
+   "A user who changes timezone mid-week",
+   "The server was down over their window — send late, or skip? Decide and write it down",
+   "Two devices subscribed — one notification, not two",
+   "Permission never granted — the card must carry the whole experience"]},
+  {lab:"Tests", items:[
+   "Job run twice produces one check-in, not two",
+   "Nothing sent across a pause boundary",
+   "Correct local hour for a user twelve hours away"]}]},
+
+ {id:"f5", n:5, title:"Understanding the reply", owner:"K+C", week:4, star:true,
+  meta:"K owns the matcher, C owns the conversation · Provides: resolveTopic · Tables: study_events",
+  doneWhen:"45 of 50 test sentences land correctly and the other five ask instead of guessing.",
+  groups:[
+  {lab:"Build", items:[
+   "Embed the reply, search the vector index",
+   "Exact alias matching first — cheaper and more certain",
+   "≥ 0.80 accept · 0.55–0.79 offer up to three choices · < 0.55 off-map",
+   "Off-map is honest — “I do not know that topic yet” — and the text is kept",
+   "One clarifying question maximum, expiring after 60 minutes",
+   "Unanswered after 90 minutes, and nothing is lost",
+   "Capture minutes and how it felt, including bounced",
+   "Unresolved text can be re-resolved later in batch",
+   "A file of 50 real sentences written the way our users actually write — messy, abbreviated, some Hinglish — with the topic you meant"]},
+  {lab:"Edge cases", items:[
+   "A reply naming two topics — record both, or ask? Decide and write it down",
+   "“nothing today” — a valid, unpunished answer, and an input to feature 7",
+   "Nonsense, or an empty reply",
+   "A reply arriving three days after the question",
+   "A reply to a clarification that has already expired",
+   "Minutes not mentioned — assume nothing, ask nothing, store null"]},
+  {lab:"Tests", items:[
+   "The 50-sentence corpus, scored, with the score written down",
+   "Deliberately ambiguous sentences produce choices, never a silent guess"]}]},
+
+ {id:"f6", n:6, title:"Mastery and next step", owner:"K", week:3,
+  meta:"Tables: study_events (append-only), topic_mastery (projection)",
+  doneWhen:"The rebuild is proved on a large random log.",
+  groups:[
+  {lab:"Build", items:[
+   "Gain by feeling — applied 0.30, easy 0.25, ok 0.18, hard 0.10, bounced 0.00",
+   "Mastery from reading alone capped at 0.60 until an applied event or a recall check exists",
+   "Scaled by min(minutes, 60) / 60",
+   "Second and later events on a topic the same day count at 25%",
+   "Cap of 0.30 per topic per day — cramming does not make an expert",
+   "bounced adds nothing but records the difficulty for feature 7",
+   "Fading: half-life 14 days × distinct study days, capped at 180",
+   "Declared-only mastery fades at half that, until real evidence arrives",
+   "Rebuild command — delete the table, replay the log, identical numbers",
+   "Nothing outside Knowledge writes to topic_mastery",
+   "nextStep returns a topic and a reason"]},
+  {lab:"Edge cases", items:[
+   "Events arriving out of order, or backdated",
+   "An event on a topic that is on no route",
+   "Mastery crossing 0.70 mid-route — the topic leaves the route cleanly",
+   "A topic with no events, only decay"]},
+  {lab:"Tests", items:[
+   "Rebuild determinism proved on a large random log",
+   "The daily cap enforced under many events",
+   "Decay maths, on its own, with no database"]}]},
+
+ {id:"f7", n:7, title:"Noticing, and knowing why", owner:"C", week:6, star:true,
+  meta:"Tables: stalls, pauses",
+  doneWhen:"The simulator produces the right classification for all four personas.",
+  groups:[
+  {lab:"Build", items:[
+   "Stalls open only on active topics, after 4 days with no event",
+   "Absence — nothing studied at all. Shrink the plan and go quiet",
+   "Avoidance — 3+ events on other topics, and this one rated hard or bounced, or opened 3+ times with under 10 minutes",
+   "Otherwise unknown — do nothing",
+   "Confidence stored; below 0.5, never escalate past step 1",
+   "The signals that produced the classification are stored with it",
+   "Never say the classification out loud — check every string",
+   "Pause: two taps from anywhere, total silence, no new stalls, clocks frozen",
+   "Returning from a pause triggers nothing",
+   "A stall closes the moment the topic is studied",
+   "After 21 silent days it closes as lapsed",
+   "After 21 days of total absence, exactly one short message, then silence — someone can stop hearing from us by doing nothing"]},
+  {lab:"Edge cases", items:[
+   "A pause beginning mid-stall — the clock freezes and resumes, it does not reset",
+   "A topic falling out of the active three while stalled",
+   "The goal changing while a stall is open",
+   "An account deleted with stalls open",
+   "A stall on a topic they then mark skipped"]},
+  {lab:"Tests", items:[
+   "Avoider persona → avoidance. Busy persona → absence. Neither by accident",
+   "Nothing fires across a pause boundary",
+   "Job run twice → one stall"]}]},
+
+ {id:"back", n:"7b", title:"Coming back", owner:"C", week:6, star:true,
+  why:"The most important moment in the product, and the easiest to get wrong. Six weeks away, then one evening they open Thread again.",
+  meta:"Binding rule: design.md §5b",
+  doneWhen:"A six-week absence produces a screen with one step on it and no backlog.",
+  groups:[
+  {lab:"Build", items:[
+   "One thing on return, chosen from whatever they were closest to",
+   "Every open stall closes quietly as lapsed before the screen renders",
+   "No accounting — we never show what decayed while they were away",
+   "No comment on the gap — no “welcome back”, no “it has been 43 days”",
+   "The route is not silently rearranged into something unrecognisable",
+   "The daily question resumes as if the conversation paused mid-sentence"]},
+  {lab:"Edge cases", items:[
+   "They return during a pause that has already expired",
+   "They return to a goal that no longer makes sense — changing it must be easy",
+   "They return and everything has decayed below “known” — do not present that as loss",
+   "They return after the 21-day absence message and never answered it"]},
+  {lab:"Tests", items:[
+   "A simulated learner absent six weeks: one message at day 21, then silence",
+   "On return, one thing is offered and no stall is left open"]}]},
+
+ {id:"f8", n:8, title:"The shrinking ladder", owner:"C", week:7, star:true,
+  meta:"Tables: interventions",
+  doneWhen:"The five-stall cap test passes.",
+  groups:[
+  {lab:"Build", items:[
+   "Step 1, at open — “fifteen minutes, nothing more”",
+   "Step 2, +48h — one small idea inside the topic, with a prompt",
+   "Step 3, +72h — the reroute (feature 9), with a prompt",
+   "Step 4, +96h — offer the skip, and say what it costs",
+   "Then silence, then lapse at 21 days",
+   "Cap: 1 message per topic per 48h",
+   "Cap: 2 messages per person per week, across all topics",
+   "Quiet hours respected by interventions too",
+   "Any reply, study event, or app open → back to zero immediately",
+   "Outcome recorded: resumed, ignored, dismissed, skipped",
+   "Accepting the skip marks the waypoint skipped",
+   "Read every message aloud. None may sound like an accusation"]},
+  {lab:"Edge cases", items:[
+   "Two stalls escalating the same day — the weekly cap decides, not the timer",
+   "A reply arriving between sending and recording",
+   "Step 3 with no weak prerequisite found → skip to step 4",
+   "A pause beginning between two steps"]},
+  {lab:"Tests", items:[
+   "A user with five stalls gets at most two messages in a week",
+   "De-escalation tested from every step",
+   "The whole ladder replayed in the simulator in under a second"]}]},
+
+ {id:"f9", n:9, title:"The reroute", owner:"K", week:7, star:true,
+  why:"The graph's payoff, and the thing no other tool can do.",
+  meta:"Provides: weakPrerequisite",
+  doneWhen:"It names the right prerequisite on your constructed case.",
+  groups:[
+  {lab:"Build", items:[
+   "Walk the stalled topic's prerequisites, one level, then two",
+   "Filter to those with weak mastery",
+   "Rank: hard links before soft, then lowest mastery",
+   "Return one candidate, with a reason in words",
+   "Feeds step 3 with a prompt aimed at that prerequisite"]},
+  {lab:"Edge cases", items:[
+   "No weak prerequisite found — say so, and let the ladder go to step 4",
+   "Several equally weak candidates — pick one, deterministically",
+   "The prerequisite is itself stalled — do not reroute into a second stall",
+   "The prerequisite was marked skippable — do not send them to it"]},
+  {lab:"Tests", items:[
+   "A hand-constructed case with a known right answer",
+   "The “no candidate” path reaches step 4 without crashing"]}]},
+
+ {id:"f10", n:10, title:"The prompt", owner:"K", week:4, star:true,
+  why:"Without this, Thread tells you what to do and hands you nothing to do it with.",
+  meta:"Tables: prompt_templates, compiled_prompts",
+  doneWhen:"A compiled prompt never claims the user knows something they do not.",
+  groups:[
+  {lab:"Build", items:[
+   "Three intents: first pass, unstuck, decompose",
+   "Assembled from the page's scope and sticking points",
+   "Plus what this user has covered, and what they bounced off",
+   "Includes the boundary — tell the other AI where to stop",
+   "No AI call on the live path. Template rendering only",
+   "Context snapshot stored, so the prompt stays explainable months later",
+   "Copy button that works on a phone",
+   "Shown at the end of onboarding, and at ladder steps 2 and 3"]},
+  {lab:"Edge cases", items:[
+   "A user who has covered nothing yet — first-pass intent, no false claims",
+   "A topic with no sticking points recorded — the prompt must still be useful",
+   "Very long context — trim by relevance, not by truncation",
+   "A topic whose prerequisites are all unmastered"]},
+  {lab:"Tests", items:[
+   "An assertion that no network call to an AI happens while serving a request",
+   "A prompt names only prerequisites the user has actually covered"]}]},
+
+ {part:"Beyond the features"},
+
+ {id:"measure", title:"Measurement", owner:"C", week:7,
+  why:"Not a feature. The thing that turns a claim into a result.",
+  groups:[{items:[
+  "catches — stalls where they returned within 14 days",
+  "lapsed — 21 silent days",
+  "Check-in answer rate",
+  "Intervention ignore rate",
+  "Holdout: 20% of stalls, assigned the moment the stall opens, never re-rolled",
+  "The whole ladder is delayed 48h for the holdout, not only step 1",
+  "Compared on one fixed measure: studied within 14 days of the stall opening",
+  "A single command that prints the comparison",
+  "Written up honestly, including if the answer is “no difference”"]}]},
+
+ {id:"learn", title:"The two learners", owner:"K", week:"1–8",
+  why:"Nitesh runs it. Their work never merges into a core file.",
+  groups:[{items:[
+  "Stage 1, React — waypoint row in three states, route list, three-number summary, empty state",
+  "Stage 2, Next.js — landing page, about page",
+  "Stage 3, TypeScript — types on their own components",
+  "Stage 4, data — Canon pages and prerequisite checking, the highest-value task",
+  "From week 5 — using Thread for real, reporting everything confusing",
+  "Told, out loud, which of their work shipped and where it is running"]}]}
+];
+
+const WEEKS = [
+ [1,"Foundations, fakes, deployed, clock check in CI, interfaces frozen, Canon started"],
+ [2,"A route computes; the daily question sends at the right local time"],
+ [3,"Mastery rebuild proved; the simulator replays six weeks"],
+ [4,"Text matching works; prompts compile; push and pause work"],
+ [5,"The spine works end to end for one real user. Both of us start using it daily"],
+ [6,"Skip analysis; avoidance versus absence"],
+ [7,"The ladder, the reroute, the holdout"],
+ [8,"Stop building. Fix, document, rehearse the demo on a real account"]
+];
+
+const ORDER = ["todo","doing","done"];
+const GLYPH = {todo:"[ ]", doing:"[~]", done:"[x]", cut:"[-]"};
+
+function slug(s){
+  return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,48);
+}
+const secs = DATA.filter(d=>d.id);
+secs.forEach(sec=>{
+  sec.groups.forEach(g=>{
+    g.rows = g.items.map(t=>({id: sec.id+"-"+slug(t), text:t}));
+  });
+});
+const WEEKSEC = {id:"gate", groups:[{rows: WEEKS.map(w=>({id:"gate-w"+w[0], text:w[1], wk:w[0]}))}]};
+
+let state = {};
+let me = null;
+let filter = "all";
+let db = null;
+
+/* ---------- persistence ---------- */
+const LS = "thread-checklist-v1";
+function loadLocal(){
+  try{ const r = localStorage.getItem(LS); if(r) state = JSON.parse(r) || {}; }catch(e){}
+  try{ me = localStorage.getItem(LS+"-who") || null; }catch(e){}
+}
+function saveLocal(){
+  try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
+}
+function secOf(itemId){ return itemId.slice(0, itemId.indexOf("-")===-1?itemId.length:itemId.indexOf("-")); }
+
+async function writeItem(itemId, rec){
+  saveLocal();
+  if(!db) return;
+  const sid = secOf(itemId);
+  const ref = db.doc("progress/"+sid);
+  const body = {items:{[itemId]: rec}};
+  try{ await ref.update(body); }
+  catch(e){
+    if(e && (e.code==="invalid_argument")){
+      const all = {};
+      Object.keys(state).forEach(k=>{ if(secOf(k)===sid) all[k]=state[k]; });
+      try{ await ref.set({items:all}); }catch(e2){ note("Could not save to the shared list — this change is only on this device."); }
+    } else if(e && e.code==="revoked"){
+      db = null; note("Shared saving stopped. Changes are only on this device now.");
+    }
+  }
+}
+
+function note(msg){
+  const el = document.getElementById("status");
+  el.textContent = msg; el.classList.remove("hidden");
+}
+
+/* ---------- rendering ---------- */
+function stateOf(id){ return (state[id] && state[id].s) || "todo"; }
+
+function renderItem(row){
+  const li = document.createElement("li");
+  li.className = "item"; li.dataset.s = stateOf(row.id); li.dataset.id = row.id;
+  const b = document.createElement("button");
+  b.className = "box mono"; b.type = "button";
+  b.textContent = GLYPH[stateOf(row.id)];
+  b.setAttribute("aria-label", row.text + " — " + stateOf(row.id));
+  b.addEventListener("click", ev=>advance(row.id, ev.shiftKey));
+  const t = document.createElement("span");
+  t.className = "txt"; t.textContent = row.text;
+  li.append(b, t);
+  const rec = state[row.id];
+  if(rec && rec.by && rec.s!=="todo"){
+    const by = document.createElement("span");
+    by.className = "by"; by.textContent = rec.by;
+    li.append(by);
+  }
+  return li;
+}
+
+function build(){
+  const host = document.getElementById("body");
+  host.textContent = "";
+  DATA.forEach(d=>{
+    if(!d.id){
+      const p = document.createElement("div");
+      p.className = "part";
+      const h = document.createElement("div");
+      h.className = "part-head"; h.textContent = d.part;
+      p.append(h);
+      if(d.note){ const n=document.createElement("p"); n.className="why";
+        n.style.marginTop="12px"; n.textContent=d.note; p.append(n); }
+      host.append(p);
+      return;
+    }
+    const sec = document.createElement("section");
+    sec.className = "sec"; sec.dataset.owner = d.owner; sec.dataset.sec = d.id;
+    const head = document.createElement("div");
+    head.className = "sec-head";
+    const h2 = document.createElement("h2");
+    h2.textContent = (d.n? d.n+". " : "") + d.title;
+    if(d.star){ const s=document.createElement("span"); s.className="star"; s.textContent=" ★"; h2.append(s); }
+    const own = document.createElement("span");
+    own.className = "tag " + (d.owner==="K"?"k":d.owner==="C"?"c":"");
+    own.textContent = d.owner;
+    const wk = document.createElement("span");
+    wk.className = "tag"; wk.textContent = "week " + d.week;
+    const cnt = document.createElement("span");
+    cnt.className = "sec-count"; cnt.dataset.count = d.id;
+    head.append(h2, own, wk, cnt);
+    sec.append(head);
+    if(d.why){ const w=document.createElement("p"); w.className="why"; w.textContent=d.why; sec.append(w); }
+    if(d.meta){ const m=document.createElement("p"); m.className="meta"; m.textContent=d.meta; sec.append(m); }
+    d.groups.forEach(g=>{
+      const gd = document.createElement("div");
+      gd.className = "grp";
+      if(g.lab){ const l=document.createElement("div"); l.className="grp-lab"; l.textContent=g.lab; gd.append(l); }
+      const ul = document.createElement("ul");
+      ul.className = "items";
+      g.rows.forEach(r=>ul.append(renderItem(r)));
+      gd.append(ul); sec.append(gd);
+    });
+    if(d.doneWhen){
+      const dw = document.createElement("div");
+      dw.className = "donewhen";
+      const b = document.createElement("b"); b.textContent = "Done when";
+      dw.append(b, document.createTextNode(d.doneWhen));
+      sec.append(dw);
+    }
+    host.append(sec);
+  });
+
+  const wh = document.getElementById("weeks");
+  wh.textContent = "";
+  WEEKSEC.groups[0].rows.forEach(r=>{
+    const d = document.createElement("div");
+    d.className = "week"; d.dataset.s = stateOf(r.id); d.dataset.id = r.id;
+    const b = document.createElement("button");
+    b.className = "box mono"; b.type="button"; b.textContent = GLYPH[stateOf(r.id)];
+    b.setAttribute("aria-label","Week "+r.wk+" — "+stateOf(r.id));
+    b.addEventListener("click", ev=>advance(r.id, ev.shiftKey));
+    const w = document.createElement("span");
+    w.className = "wk"; w.textContent = "W"+r.wk;
+    const t = document.createElement("span");
+    t.className = "txt"; t.textContent = r.text;
+    d.append(b, w, t);
+    wh.append(d);
+  });
+}
+
+function refresh(){
+  let done=0, total=0;
+  const allRows = [];
+  secs.forEach(s=>s.groups.forEach(g=>g.rows.forEach(r=>allRows.push([s,r]))));
+  allRows.forEach(([s,r])=>{
+    const st = stateOf(r.id);
+    if(st!=="cut"){ total++; if(st==="done") done++; }
+  });
+  const pct = total? Math.round(done/total*100) : 0;
+  document.getElementById("pct").textContent = pct + "%";
+  document.getElementById("counts").textContent = done + " of " + total + " done";
+  document.getElementById("fill").style.width = pct + "%";
+
+  secs.forEach(s=>{
+    let d=0,t=0;
+    s.groups.forEach(g=>g.rows.forEach(r=>{
+      const st=stateOf(r.id); if(st!=="cut"){ t++; if(st==="done") d++; }
+    }));
+    const el = document.querySelector('[data-count="'+s.id+'"]');
+    if(el) el.textContent = d + "/" + t;
+  });
+
+  document.querySelectorAll("li.item").forEach(li=>{
+    const st = stateOf(li.dataset.id);
+    li.dataset.s = st;
+    li.querySelector("button.box").textContent = GLYPH[st];
+    let by = li.querySelector(".by");
+    const rec = state[li.dataset.id];
+    if(rec && rec.by && st!=="todo"){
+      if(!by){ by=document.createElement("span"); by.className="by"; li.append(by); }
+      by.textContent = rec.by;
+    } else if(by){ by.remove(); }
+  });
+  document.querySelectorAll(".week").forEach(w=>{
+    const st = stateOf(w.dataset.id);
+    w.dataset.s = st;
+    w.querySelector("button.box").textContent = GLYPH[st];
+  });
+  applyFilter();
+}
+
+function advance(id, cut){
+  const cur = stateOf(id);
+  const next = cut ? (cur==="cut" ? "todo" : "cut")
+                   : ORDER[(ORDER.indexOf(cur)+1) % ORDER.length] || "todo";
+  const rec = {s:next, by: me || null, at: new Date().toISOString()};
+  state[id] = rec;
+  refresh();
+  writeItem(id, rec);
+}
+
+/* ---------- filters ---------- */
+const FILTERS = [["all","Everything"],["open","Not done"],["K","Knowledge"],["C","Continuity"]];
+function applyFilter(){
+  document.querySelectorAll("section.sec").forEach(sec=>{
+    const owner = sec.dataset.owner;
+    let show = true;
+    if(filter==="K") show = owner.includes("K");
+    else if(filter==="C") show = owner.includes("C");
+    sec.classList.toggle("hidden", !show);
+  });
+  document.querySelectorAll("li.item").forEach(li=>{
+    const hide = (filter==="open") && (stateOf(li.dataset.id)==="done");
+    li.classList.toggle("hidden", hide);
+  });
+  if(filter==="open"){
+    document.querySelectorAll("section.sec").forEach(sec=>{
+      const any = [...sec.querySelectorAll("li.item")].some(li=>!li.classList.contains("hidden"));
+      if(!any) sec.classList.add("hidden");
+    });
+  }
+}
+function buildFilters(){
+  const host = document.getElementById("filters");
+  FILTERS.forEach(([k,label])=>{
+    const b = document.createElement("button");
+    b.className="chip"; b.type="button"; b.textContent=label;
+    b.setAttribute("aria-pressed", String(filter===k));
+    b.addEventListener("click", ()=>{
+      filter = k;
+      host.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b)));
+      applyFilter();
+    });
+    host.append(b);
+  });
+}
+function buildWho(){
+  const bk = document.getElementById("whoK"), bc = document.getElementById("whoC");
+  function paint(){
+    bk.setAttribute("aria-pressed", String(me==="K"));
+    bc.setAttribute("aria-pressed", String(me==="C"));
+  }
+  bk.addEventListener("click", ()=>{ me = me==="K"?null:"K"; try{localStorage.setItem(LS+"-who", me||"");}catch(e){} paint(); });
+  bc.addEventListener("click", ()=>{ me = me==="C"?null:"C"; try{localStorage.setItem(LS+"-who", me||"");}catch(e){} paint(); });
+  paint();
+}
+
+/* ---------- boot ---------- */
+loadLocal();
+buildFilters(); buildWho(); build(); refresh();
+
+(async ()=>{
+  const d = await window.claude?.use?.("db");
+  if(!d){ note("Shared saving is not available here — ticks are kept on this device only."); return; }
+  db = d;
+  db.collection("progress").onSnapshot(snap=>{
+    snap.docs.forEach(doc=>{
+      const items = (doc.data() || {}).items || {};
+      Object.keys(items).forEach(k=>{
+        const inc = items[k];
+        const cur = state[k];
+        if(!cur || !cur.at || (inc.at && inc.at >= cur.at)) state[k] = inc;
+      });
+    });
+    saveLocal();
+    refresh();
+  }, err=>{
+    if(err.code!=="unavailable") note("Shared saving stopped ("+err.code+"). Changes are on this device only.");
+  });
+})();
+</script>
