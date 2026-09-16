@@ -3,6 +3,7 @@
 ## Frontend (Riya and Nihamika)
 - Nextjs
 - TailwindCSS
+- Cytoscape.js
 
 ## Backend
 - Nodejs + Expressjs (all)
@@ -12,6 +13,7 @@
 ## Database
 - Postgresql (all)
 - Redis (Mansha and Nitesh)
+- Neo4j (Nitesh)
 
 ## Auth (all)
 - JWT access tokens + database-backed refresh tokens
@@ -34,7 +36,7 @@
 - AWS SES
 - Telegram (Bot API)
 - Discord (Bot API)
-- Whatsapp
+- Whatsapp (Evolution API)
 
 ## DevOps (Nitesh and Mansha)
 - Docker
