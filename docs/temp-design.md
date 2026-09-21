@@ -1,7 +1,7 @@
-# Thread — design
+# Trellis — design
 
 > You do not quit because the topic was too hard.
-> You quit because you lost the thread and never found it again.
+> You quit because you lost the Trellis and never found it again.
 
 **Status:** designed. Nothing built yet.
 **Version:** 5 — 10 September 2026. Two builders, four features, eight weeks.
@@ -12,7 +12,7 @@ This document is the truth. If the code disagrees with it, fix one of them the s
 
 ---
 
-## 1. What Thread is
+## 1. What Trellis is
 
 A website that keeps a self-taught learner from abandoning a subject.
 
@@ -33,7 +33,7 @@ tries to explain better. Nobody works on the link.
 
 ## 3. The one rule
 
-**Thread never teaches. It never explains a concept.** When you are stuck it writes a
+**Trellis never teaches. It never explains a concept.** When you are stuck it writes a
 precise prompt and you take it to whichever AI you already use.
 
 This is not a limitation. It is what keeps the product small enough for two people to
@@ -41,12 +41,12 @@ build, and it is why it costs almost nothing to run.
 
 ---
 
-## 3b. Who Thread is for — and who it is not for
+## 3b. Who Trellis is for — and who it is not for
 
 Written down because it is a real limit, and a limit you have chosen and stated is a
 design decision rather than a gap someone else finds for you.
 
-**Thread assumes a subject has genuine dependency structure** — that topic B stays hard
+**Trellis assumes a subject has genuine dependency structure** — that topic B stays hard
 until topic A is solid, and that a person can be stuck on one thing while the rest waits.
 Everything rests on that: the route, the skip analysis, the reroute.
 
@@ -79,7 +79,7 @@ not get built — not in a smaller form, not "quickly", not at all.
 
 ## Feature 1 — It makes a subject finite
 
-You state a goal. Thread shows the topics between you and it, as a graph rather than a
+You state a goal. Trellis shows the topics between you and it, as a graph rather than a
 list, and tells you **which ones you can skip**.
 
 > 7 topics to learn. 4 you can skip.
@@ -105,7 +105,7 @@ Every evening Kero asks one question:
 > What did you get through today? Anything you bounced off?
 
 You reply in plain English — *"tried congestion control, didn't get it at all"* — and
-Thread lands it on the right topic and records how it felt.
+Trellis lands it on the right topic and records how it felt.
 
 **Why this exists.** It is the only intake, and the other three features are blind
 without it. It is one line, in whatever words you use, with no form to fill and no timer
@@ -116,7 +116,7 @@ not study*, and it is the single most valuable thing anyone ever tells us.
 
 ## Feature 3 — It knows the difference between busy and avoiding
 
-You have not touched congestion control for four days. Thread checks one thing: **have
+You have not touched congestion control for four days. Trellis checks one thing: **have
 you been studying other topics in those four days?**
 
 If nothing at all: you are busy. Life happened. It shrinks the plan and goes quiet.
@@ -179,7 +179,7 @@ subjects.
 another person's record. Anything that gives someone a reason to lie to us about what
 they studied.
 
-## 5. A week with Thread
+## 5. A week with Trellis
 
 **Day 1.** Ravi is three weeks into networking. He picks a goal, spends two minutes
 sorting the topics into know / shaky / never seen, and gets *"7 topics to learn, 4 you
@@ -200,7 +200,7 @@ minutes on congestion control. Nothing more."* Ignored.
 **Day 9.** *"Forget the topic. Just one idea: why a sender slows down when packets are
 lost. Here is a prompt."* Ignored.
 
-**Day 12.** Thread checks what congestion control depends on and finds he never really
+**Day 12.** Trellis checks what congestion control depends on and finds he never really
 did retransmission timeouts. *"You may be stuck for a reason that is not this topic. Try
 this instead."*
 
@@ -209,7 +209,7 @@ abandon networking.
 
 **Day 20.** Exams. Pause until the 3rd. Silence, no stalls, no guilt on return.
 
-Thread never explained congestion control, never mentioned a streak, and never told him
+Trellis never explained congestion control, never mentioned a streak, and never told him
 what kind of person it thought he was.
 
 ## 5b. Coming back
@@ -217,7 +217,7 @@ what kind of person it thought he was.
 The most important moment in the product, and the easiest one to get wrong.
 
 Someone stops for six weeks. Exams, a job, illness, or nothing in particular. Then one
-evening they open Thread again.
+evening they open Trellis again.
 
 What must **not** happen: a wall of decayed mastery, a list of everything they have
 forgotten, a count of days missed, four stalls shouting at once, or a route that has
@@ -234,7 +234,7 @@ What happens instead:
 - **No comment on the gap.** Not "welcome back!", not "it has been 43 days". Kero picks
   up as though the conversation paused mid-sentence — because for them, it did.
 
-This is the whole thesis of the product in one screen. If Thread only ever does this one
+This is the whole thesis of the product in one screen. If Trellis only ever does this one
 thing well, it has done its job.
 
 ## 6. The two halves
@@ -272,7 +272,7 @@ in our database. Matching a sentence uses stored numbers.
 
 **The teaching is the user's own AI**, outside our system.
 
-So if every AI provider went down, Thread keeps working. Nothing on demo day can break
+So if every AI provider went down, Trellis keeps working. Nothing on demo day can break
 because of an outage, an expired key or an empty balance.
 
 ## 8. What we promise the user
@@ -417,7 +417,7 @@ honest about who built what.
 | Decision | Why |
 |---|---|
 | Four features, nothing else | Two people, eight weeks. A small product that works beats a large one that half-works |
-| Thread never explains anything | Keeps it small, keeps it cheap, and is the only thing that makes us different |
+| Trellis never explains anything | Keeps it small, keeps it cheap, and is the only thing that makes us different |
 | Nothing on the live path calls an AI | No outage or dead key can break the running product |
 | Canon ships as seed data | Removes generation, review console and versioning from a short project |
 | Topics form a graph, not a list | Features 1 and the third step of 4 are impossible without it |
@@ -429,7 +429,7 @@ honest about who built what.
 | Nobody can supervise anybody | Supervision turns an honest record into a performance |
 | We hold back some messages on purpose | Otherwise we never learn whether any of this works |
 | The two subjects are networking and React | So all four of us — builders and learners — can use it on our own real studying from week 5. A product nobody on the team can use never gets dogfooded |
-| We state who Thread does not suit | A stated limit is a decision. An unstated one is a product that quietly fails half its users |
+| We state who Trellis does not suit | A stated limit is a decision. An unstated one is a product that quietly fails half its users |
 | v1 mastery measures exposure, not competence | Honest, and cheap to say. Reading about a topic is not knowing it, so reading alone is capped — see `knowledge.md` |
 | Coming back is a designed screen, not a side effect | It is the moment the entire product exists for |
 
@@ -439,5 +439,5 @@ honest about who built what.
 |---|---|
 | 2026-09-08 | First version, a full review, then a consistency pass across five documents. |
 | 2026-09-10 | Rewritten for two builders; four parts merged into two full-stack halves. |
-| 2026-09-10 | **Version 6 — reviewed from outside computer science.** Added §3b, who Thread is for and who it is not for, after testing the design against medical, law, design and exam-driven students: it assumes dependency structure, and now says so instead of quietly failing people it does not suit. Added §5b, coming back after a long absence — the product's most important moment, which no document covered. Changed the seed subjects to **networking and React**, so the two learners can dogfood their own studying and `learners.md` stops contradicting the spec. Stated that v1 mastery measures exposure rather than competence, and capped reading-only mastery. Added code-mixed and shorthand input to Canon aliases and the test set, a signup gate for subjects we do not cover, and a one-line answer on the ethics of the holdout. |
+| 2026-09-10 | **Version 6 — reviewed from outside computer science.** Added §3b, who Trellis is for and who it is not for, after testing the design against medical, law, design and exam-driven students: it assumes dependency structure, and now says so instead of quietly failing people it does not suit. Added §5b, coming back after a long absence — the product's most important moment, which no document covered. Changed the seed subjects to **networking and React**, so the two learners can dogfood their own studying and `learners.md` stops contradicting the spec. Stated that v1 mastery measures exposure rather than competence, and capped reading-only mastery. Added code-mixed and shorthand input to Canon aliases and the test set, a signup gate for subjects we do not cover, and a one-line answer on the ethics of the holdout. |
 | 2026-09-10 | **Version 5 — cut to four features.** The product is now: make a subject finite, one line a day, tell avoiding from busy, and shrink the step when stuck. Everything else moved into §4, which is now a permanent list of what we are not building. Removed the topic page, notes, history as a feature, progress, the continuity record, finishing a goal, adaptive frequency and explore mode. Removed the beginner glossary — both builders know the stack. |
