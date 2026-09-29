@@ -27,13 +27,22 @@ function getServerSnapshot(): boolean {
   return false;
 }
 
+function applyThemeClass(isDark: boolean) {
+  document.documentElement.classList.toggle("dark-mode", isDark);
+  document.documentElement.dataset.theme = isDark ? "dark" : "light";
+}
+
 export function useTheme() {
-  const darkMode = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const darkMode = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
 
   const toggleTheme = useCallback(() => {
-    const next =
-      window.localStorage.getItem(THEME_STORAGE_KEY) !== "dark";
+    const next = window.localStorage.getItem(THEME_STORAGE_KEY) !== "dark";
     window.localStorage.setItem(THEME_STORAGE_KEY, next ? "dark" : "light");
+    applyThemeClass(next);
     emit();
   }, []);
 

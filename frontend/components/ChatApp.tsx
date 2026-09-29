@@ -267,8 +267,12 @@ export default function ChatApp() {
 
   return (
     <main
-      className={`app-shell ${darkMode ? "dark-mode" : ""} ${
-        sidebarOpen ? "" : "sidebar-hidden"
+      className={`app-shell h-svh min-h-svh flex overflow-hidden text-[#252321] dark:text-[#e8e3de] bg-[#fbfaf8] dark:bg-[#1b1a19] ${
+        darkMode ? "dark-mode" : ""
+      } ${
+        sidebarOpen
+          ? ""
+          : "sidebar-hidden [&_.sidebar]:!w-0 [&_.sidebar]:!flex-[0_0_0px] [&_.sidebar]:!px-0 [&_.sidebar]:!border-r-transparent [&_.sidebar]:!opacity-0 [&_.sidebar]:!pointer-events-none"
       }`}
     >
       <Sidebar
@@ -283,7 +287,7 @@ export default function ChatApp() {
         onNewChat={startNewChat}
       />
 
-      <section className="chat-panel">
+      <section className="chat-panel relative min-w-0 min-h-0 h-svh flex-1 flex flex-col bg-[#fbfaf8] dark:bg-[#1b1a19]">
         <ChatHeader
           title={activeTitle}
           sidebarOpen={sidebarOpen}
@@ -292,7 +296,7 @@ export default function ChatApp() {
           onToggleTheme={toggleTheme}
         />
 
-        <div className="chat-content">
+        <div className="chat-content w-[min(760px,100%)] min-h-0 flex-1 mx-auto px-8 flex flex-col overflow-hidden">
           <MessageThread
             messages={messages}
             isLoading={isLoading}
@@ -304,9 +308,9 @@ export default function ChatApp() {
           />
 
           {messages.length > 0 && (
-            <div className="composer-wrap">
+            <div className="composer-wrap pt-2.5 px-0 pb-4.5">
               {error && (
-                <p className="chat-error" role="alert">
+                <p className="chat-error mb-[9px] text-[#a25e50] dark:text-[#d89180] text-[11px] leading-[1.4] text-center" role="alert">
                   {error}
                 </p>
               )}
@@ -316,8 +320,8 @@ export default function ChatApp() {
                 sendMessage={sendMessage}
                 isLoading={isLoading}
               />
-              <p className="composer-hint">
-                Kero is here to help you think things through.
+              <p className="composer-hint mt-2.5 text-[#7a736c] dark:text-[#817a73] text-[11px] text-center">
+                Tell Kero what you studied, what bounced, or ask what&apos;s next.
               </p>
             </div>
           )}
