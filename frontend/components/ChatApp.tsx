@@ -3,13 +3,13 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
   type UIEventHandler,
 } from "react";
+import { useRouter } from "next/navigation";
 import type { ChatMessage, Conversation, WireMessage } from "@/lib/types";
 import { createFallbackTitle, requestChat, requestTitle } from "@/lib/api";
 import { loadChats, saveChats } from "@/lib/storage";
@@ -24,15 +24,24 @@ type SendEvent =
   | FormEvent<HTMLFormElement>
   | KeyboardEvent<HTMLTextAreaElement>;
 
-export default function ChatApp() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+const EMPTY_MESSAGES: ChatMessage[] = [];
+
+interface ChatAppProps {
+  initialMessages?: ChatMessage[];
+  initialTitle?: string;
+}
+
+export default function ChatApp({
+  initialMessages = EMPTY_MESSAGES,
+  initialTitle,
+}: ChatAppProps = {}) {
+  const router = useRouter();
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     number | null
   >(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -52,12 +61,9 @@ export default function ChatApp() {
       try {
         const savedConversations = await loadChats();
         if (!isMounted || !Array.isArray(savedConversations)) return;
+        // Load the list so new conversations are persisted correctly,
+        // but never auto-open a previous chat — '/' is always a blank slate.
         setConversations(savedConversations);
-        if (savedConversations.length > 0) {
-          const latestConversation = savedConversations[0];
-          setActiveConversationId(latestConversation.id);
-          setMessages(latestConversation.messages);
-        }
       } catch (restoreError) {
         if (isMounted) {
           setError(
@@ -221,49 +227,27 @@ export default function ChatApp() {
     }
   };
 
-  const startNewChat = useCallback(() => {
-    setMessages([]);
-    setActiveConversationId(null);
-    setDraft("");
-    setError("");
-    setIsLoading(false);
-    requestId.current += 1;
-  }, []);
-
   useEffect(() => {
     const handleNewChatShortcut = (event: globalThis.KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        startNewChat();
+        router.push("/");
       }
     };
-
     window.addEventListener("keydown", handleNewChatShortcut);
     return () => window.removeEventListener("keydown", handleNewChatShortcut);
-  }, [startNewChat]);
+  }, [router]);
 
-  const selectConversation = (conversation: Conversation) => {
-    requestId.current += 1;
-    setActiveConversationId(conversation.id);
-    setMessages(conversation.messages);
-    setDraft("");
-    setError("");
-    setIsLoading(false);
-  };
-
-  const filteredConversations = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    return conversations.filter((conversation) =>
-      `${conversation.title} ${conversation.preview}`
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [conversations, searchQuery]);
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
 
   const activeTitle =
     conversations.find(
       (conversation) => conversation.id === activeConversationId,
-    )?.title || "Kero";
+    )?.title ||
+    initialTitle ||
+    "Kero";
 
   return (
     <main
@@ -275,17 +259,7 @@ export default function ChatApp() {
           : "sidebar-hidden [&_.sidebar]:!w-0 [&_.sidebar]:!flex-[0_0_0px] [&_.sidebar]:!px-0 [&_.sidebar]:!border-r-transparent [&_.sidebar]:!opacity-0 [&_.sidebar]:!pointer-events-none"
       }`}
     >
-      <Sidebar
-        conversations={filteredConversations}
-        totalConversations={conversations.length}
-        searchQuery={searchQuery}
-        searchOpen={searchOpen}
-        onToggleSearch={() => setSearchOpen((open) => !open)}
-        onSearchChange={setSearchQuery}
-        activeConversationId={activeConversationId}
-        onSelectConversation={selectConversation}
-        onNewChat={startNewChat}
-      />
+      <Sidebar />
 
       <section className="chat-panel relative min-w-0 min-h-0 h-svh flex-1 flex flex-col bg-[#fbfaf8] dark:bg-[#1b1a19]">
         <ChatHeader

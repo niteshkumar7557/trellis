@@ -57,14 +57,7 @@ export default function ChatHeader({
           <Icon name={darkMode ? "sun" : "moon"} size={15} />
         </button>
 
-        {/* Menu — placeholder for future overflow actions */}
-        <button
-          className="icon-button w-[30px] h-[30px] p-0 inline-grid place-items-center border-0 rounded-md text-[#aaa29a] bg-transparent hover:text-[#48423d] dark:hover:text-[#eee9e4] hover:bg-[#ebe8e3] dark:hover:bg-[#35322f] cursor-pointer"
-          type="button"
-          aria-label="More options"
-        >
-          <Icon name="menu" size={17} />
-        </button>
+
       </div>
     </header>
   );

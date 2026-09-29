@@ -66,7 +66,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
       {Array.from({ length: total }, (_, i) => (
         <div
           key={i}
-          className={`h-[3px] flex-1 rounded-full transition-colors duration-300 ${
+          className={`h-0.75 flex-1 rounded-full transition-colors duration-300 ${
             i <= current
               ? "bg-[#ba806e]"
               : "bg-[#e8e3dc] dark:bg-[#302e2c]"
@@ -92,7 +92,7 @@ function StepSubject({
 
   return (
     <div>
-      <p className="m-0 mb-1 text-[11px] font-semibold tracking-[0.1em] uppercase text-[#9d6252] dark:text-[#db9c88]">
+      <p className="m-0 mb-1 text-[11px] font-semibold tracking-widest uppercase text-[#9d6252] dark:text-[#db9c88]">
         Step 1 of 3
       </p>
       <h2 className="mt-0 mb-2 font-manrope text-[26px] font-bold tracking-[-0.04em] text-[#26231f] dark:text-[#eee9e4]">
@@ -108,17 +108,17 @@ function StepSubject({
         placeholder="Search subjects…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="w-full h-[40px] mb-3 px-3 rounded-lg border border-[#ded9d1] dark:border-[#45413d] text-[#373330] dark:text-[#eee9e4] bg-[#faf9f7] dark:bg-[#292826] text-[13px] placeholder-[#8f8881] dark:placeholder-[#77716b] outline-none focus-visible:outline-2 focus-visible:outline-[#bd8875] focus-visible:outline-offset-2"
+        className="w-full h-10 mb-3 px-3 rounded-lg border border-[#ded9d1] dark:border-[#45413d] text-[#373330] dark:text-[#eee9e4] bg-[#faf9f7] dark:bg-[#292826] text-[13px] placeholder-[#8f8881] dark:placeholder-[#77716b] outline-none focus-visible:outline-2 focus-visible:outline-[#bd8875] focus-visible:outline-offset-2"
       />
 
       {/* Subject list */}
-      <div className="flex flex-col gap-1.5 max-h-[300px] overflow-y-auto">
+      <div className="flex flex-col gap-1.5 max-h-75 overflow-y-auto">
         {filtered.map((s) => (
           <button
             key={s.id}
             type="button"
             onClick={() => setSelected(s.id)}
-            className={`w-full text-left flex items-center justify-between px-4 py-3 rounded-xl border text-[13px] transition-[border-color,background-color] duration-[160ms] cursor-pointer ${
+            className={`w-full text-left flex items-center justify-between px-4 py-3 rounded-xl border text-[13px] transition-[border-color,background-color] duration-160 cursor-pointer ${
               selected === s.id
                 ? "border-[#ba806e] bg-[rgba(184,128,111,0.08)] text-[#34302c] dark:text-[#eee9e4]"
                 : "border-[#e8e5df] dark:border-[#302e2c] bg-[#faf9f7] dark:bg-[#232120] text-[#3f3a36] dark:text-[#d7d1cb] hover:border-[#cdbdb5] dark:hover:border-[#4a4541]"
@@ -139,7 +139,7 @@ function StepSubject({
           const subj = MOCK_AVAILABLE_SUBJECTS.find((s) => s.id === selected)!;
           onSelect(subj.id, subj.name);
         }}
-        className="mt-6 w-full h-[44px] rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,opacity] duration-[160ms] cursor-pointer"
+        className="mt-6 w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,opacity] duration-160 cursor-pointer"
       >
         Continue
       </button>
@@ -159,7 +159,7 @@ function StepGoal({
 
   return (
     <div>
-      <p className="m-0 mb-1 text-[11px] font-semibold tracking-[0.1em] uppercase text-[#9d6252] dark:text-[#db9c88]">
+      <p className="m-0 mb-1 text-[11px] font-semibold tracking-widest uppercase text-[#9d6252] dark:text-[#db9c88]">
         Step 2 of 3
       </p>
       <h2 className="mt-0 mb-2 font-manrope text-[26px] font-bold tracking-[-0.04em] text-[#26231f] dark:text-[#eee9e4]">
@@ -185,7 +185,7 @@ function StepGoal({
             key={suggestion}
             type="button"
             onClick={() => setGoal(suggestion)}
-            className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-[border-color,background-color] duration-[160ms] cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-[border-color,background-color] duration-160 cursor-pointer ${
               goal === suggestion
                 ? "border-[#ba806e] bg-[rgba(184,128,111,0.1)] text-[#34302c] dark:text-[#eee9e4]"
                 : "border-[#e2dcd4] dark:border-[#3b3835] text-[#6f6862] dark:text-[#a29a93] bg-[#faf9f7] dark:bg-[#292826] hover:border-[#cdbdb5] dark:hover:border-[#4a4541]"
@@ -208,7 +208,7 @@ function StepGoal({
         type="button"
         disabled={!goal.trim()}
         onClick={() => onContinue(goal.trim())}
-        className="mt-4 w-full h-[44px] rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,opacity] duration-[160ms] cursor-pointer"
+        className="mt-4 w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,opacity] duration-160 cursor-pointer"
       >
         Continue
       </button>
@@ -252,7 +252,7 @@ function StepSortTopics({
 
   return (
     <div>
-      <p className="m-0 mb-1 text-[11px] font-semibold tracking-[0.1em] uppercase text-[#9d6252] dark:text-[#db9c88]">
+      <p className="m-0 mb-1 text-[11px] font-semibold tracking-widest uppercase text-[#9d6252] dark:text-[#db9c88]">
         Step 3 of 3
       </p>
       <h2 className="mt-0 mb-2 font-manrope text-[26px] font-bold tracking-[-0.04em] text-[#26231f] dark:text-[#eee9e4]">
@@ -268,7 +268,7 @@ function StepSortTopics({
       </p>
 
       {/* Topics as a scrollable pill list — click to cycle through states */}
-      <div className="flex flex-col gap-2 max-h-[340px] overflow-y-auto pr-1">
+      <div className="flex flex-col gap-2 max-h-85 overflow-y-auto pr-1">
         {MOCK_TOPICS.map((topic) => {
           const state = sorts[topic];
           const bucket = buckets.find((b) => b.key === state);
@@ -292,7 +292,7 @@ function StepSortTopics({
                         [topic]: prev[topic] === b.key ? null : b.key,
                       }))
                     }
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all duration-[140ms] cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all duration-140 cursor-pointer ${
                       state === b.key
                         ? `${b.bg} ${b.color}`
                         : "border-[#e8e5df] dark:border-[#302e2c] text-[#a29a93] dark:text-[#7a736c] bg-transparent hover:border-[#cdbdb5] dark:hover:border-[#4a4541]"
@@ -311,7 +311,7 @@ function StepSortTopics({
         type="button"
         disabled={sorted < MOCK_TOPICS.length}
         onClick={() => onComplete(sorts)}
-        className="mt-6 w-full h-[44px] rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,opacity] duration-[160ms] cursor-pointer"
+        className="mt-6 w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,opacity] duration-160 cursor-pointer"
       >
         Done — show me my plan
       </button>
@@ -324,7 +324,7 @@ function StepSortTopics({
           ) as Record<string, SortState>;
           onComplete(filled);
         }}
-        className="mt-2 w-full text-[12px] text-[#918a83] dark:text-[#7a736c] hover:text-[#6f6862] dark:hover:text-[#9e9690] bg-transparent border-0 cursor-pointer transition-colors duration-[160ms] py-1"
+        className="mt-2 w-full text-[12px] text-[#918a83] dark:text-[#7a736c] hover:text-[#6f6862] dark:hover:text-[#9e9690] bg-transparent border-0 cursor-pointer transition-colors duration-160 py-1"
       >
         Skip — mark everything I haven&apos;t touched as &ldquo;never seen&rdquo;
       </button>
@@ -336,7 +336,7 @@ function StepSortTopics({
 function StepDone({ router }: { router: ReturnType<typeof useRouter> }) {
   return (
     <div className="text-center">
-      <div className="w-[52px] h-[52px] mx-auto mb-5 grid place-items-center rounded-2xl bg-[#edf5eb] dark:bg-[#1e2e1c] border border-[#b8d4b3] dark:border-[#3a5a37] text-[#4a7a42] dark:text-[#82a57b]">
+      <div className="w-13 h-13 mx-auto mb-5 grid place-items-center rounded-2xl bg-[#edf5eb] dark:bg-[#1e2e1c] border border-[#b8d4b3] dark:border-[#3a5a37] text-[#4a7a42] dark:text-[#82a57b]">
         <Icon name="check" size={24} />
       </div>
       <h2 className="mt-0 mb-3 font-manrope text-[26px] font-bold tracking-[-0.04em] text-[#26231f] dark:text-[#eee9e4]">
@@ -349,7 +349,7 @@ function StepDone({ router }: { router: ReturnType<typeof useRouter> }) {
       <button
         type="button"
         onClick={() => router.push("/dashboard")}
-        className="w-full h-[44px] rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] transition-colors duration-[160ms] cursor-pointer"
+        className="w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] transition-colors duration-160 cursor-pointer"
       >
         Go to my dashboard
       </button>
@@ -370,7 +370,7 @@ export default function OnboardingPage() {
   return (
     // Full-screen, no AppShell — onboarding has its own focused layout
     <div className="min-h-svh flex flex-col items-center justify-center bg-[#f7f6f3] dark:bg-[#1b1a19] px-6 py-12">
-      <div className="w-full max-w-[480px]">
+      <div className="w-full max-w-120">
         {/* Brand */}
         <div className="mb-10 flex justify-center">
           <BrandMark />

@@ -61,7 +61,7 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-[40px] h-[40px] grid place-items-center rounded-xl bg-[#f4f2ee] dark:bg-[#222120] border border-[#e8e5df] dark:border-[#302e2c] text-[#6f6862] dark:text-[#8e8881]">
+        <div className="w-10 h-10 grid place-items-center rounded-xl bg-[#f4f2ee] dark:bg-[#222120] border border-[#e8e5df] dark:border-[#302e2c] text-[#6f6862] dark:text-[#8e8881]">
           <Icon name="pause" size={18} />
         </div>
         <div>
@@ -104,7 +104,7 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
             key={p.value}
             type="button"
             onClick={() => { setResumeDate(p.value); setConfirmed(false); }}
-            className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-[border-color,background-color,color] duration-[140ms] cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-[border-color,background-color,color] duration-140 cursor-pointer ${
               resumeDate === p.value
                 ? "border-[#ba806e] bg-[rgba(184,128,111,0.1)] text-[#34302c] dark:text-[#eee9e4]"
                 : "border-[#e2dcd4] dark:border-[#3b3835] text-[#6f6862] dark:text-[#a29a93] bg-[#faf9f7] dark:bg-[#292826] hover:border-[#cdbdb5] dark:hover:border-[#4a4541]"
@@ -121,7 +121,7 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
         min={minDate}
         value={resumeDate}
         onChange={(e) => { setResumeDate(e.target.value); setConfirmed(false); }}
-        className="w-full h-[40px] px-3 mb-5 rounded-lg border border-[#ded9d1] dark:border-[#45413d] text-[#373330] dark:text-[#eee9e4] bg-[#faf9f7] dark:bg-[#292826] text-[13px] outline-none focus-visible:outline-2 focus-visible:outline-[#bd8875] focus-visible:outline-offset-2 cursor-pointer"
+        className="w-full h-10 px-3 mb-5 rounded-lg border border-[#ded9d1] dark:border-[#45413d] text-[#373330] dark:text-[#eee9e4] bg-[#faf9f7] dark:bg-[#292826] text-[13px] outline-none focus-visible:outline-2 focus-visible:outline-[#bd8875] focus-visible:outline-offset-2 cursor-pointer"
       />
 
       {/* Two-tap confirmation */}
@@ -129,7 +129,7 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
         <button
           type="button"
           onClick={() => setConfirmed(true)}
-          className="w-full h-[44px] rounded-xl text-[14px] font-semibold text-[#34302c] dark:text-[#eee9e4] border border-[#e0d5cf] dark:border-[#3d3531] bg-[#fdf9f7] dark:bg-[#272422] hover:bg-[#f5ede8] dark:hover:bg-[#302926] transition-colors duration-[160ms] cursor-pointer"
+          className="w-full h-11 rounded-xl text-[14px] font-semibold text-[#34302c] dark:text-[#eee9e4] border border-[#e0d5cf] dark:border-[#3d3531] bg-[#fdf9f7] dark:bg-[#272422] hover:bg-[#f5ede8] dark:hover:bg-[#302926] transition-colors duration-160 cursor-pointer"
         >
           Pause until{" "}
           {new Date(resumeDate + "T00:00:00").toLocaleDateString("en-IN", {
@@ -144,7 +144,7 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
         <button
           type="button"
           onClick={() => onPause(resumeDate)}
-          className="w-full h-[44px] rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] transition-colors duration-[160ms] cursor-pointer"
+          className="w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] transition-colors duration-160 cursor-pointer"
         >
           Confirm pause — see you on{" "}
           {new Date(resumeDate + "T00:00:00").toLocaleDateString("en-IN", {
@@ -174,7 +174,7 @@ function PausedState({
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-[40px] h-[40px] grid place-items-center rounded-xl bg-[#f5e6cb] dark:bg-[#3d2e10] border border-[#e8d4a8] dark:border-[#5a4220] text-[#9a6d28] dark:text-[#c9954a]">
+        <div className="w-10 h-10 grid place-items-center rounded-xl bg-[#f5e6cb] dark:bg-[#3d2e10] border border-[#e8d4a8] dark:border-[#5a4220] text-[#9a6d28] dark:text-[#c9954a]">
           <Icon name="pause" size={18} />
         </div>
         <div>
@@ -199,7 +199,7 @@ function PausedState({
       <button
         type="button"
         onClick={onResume}
-        className="w-full h-[44px] rounded-xl text-[14px] font-semibold text-[#34302c] dark:text-[#eee9e4] border border-[#e0d5cf] dark:border-[#3d3531] bg-transparent hover:bg-[#f5ede8] dark:hover:bg-[#302926] transition-colors duration-[160ms] cursor-pointer"
+        className="w-full h-11 rounded-xl text-[14px] font-semibold text-[#34302c] dark:text-[#eee9e4] border border-[#e0d5cf] dark:border-[#3d3531] bg-transparent hover:bg-[#f5ede8] dark:hover:bg-[#302926] transition-colors duration-160 cursor-pointer"
       >
         Resume early
       </button>
@@ -218,10 +218,10 @@ export default function PausePage() {
 
   return (
     <AppShell>
-      <div className="max-w-[480px] mx-auto px-8 py-10">
+      <div className="max-w-120 mx-auto px-8 py-10">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-[12px] text-[#918a83] dark:text-[#7a736c] no-underline hover:text-[#6f6862] dark:hover:text-[#9e9690] mb-8 transition-colors duration-[160ms]"
+          className="inline-flex items-center gap-1.5 text-[12px] text-[#918a83] dark:text-[#7a736c] no-underline hover:text-[#6f6862] dark:hover:text-[#9e9690] mb-8 transition-colors duration-160"
         >
           <Icon name="arrowLeft" size={13} />
           Dashboard
@@ -230,7 +230,7 @@ export default function PausePage() {
         {done ? (
           // Post-action confirmation — brief, no fanfare
           <div className="text-center">
-            <div className="w-[48px] h-[48px] mx-auto mb-5 grid place-items-center rounded-2xl bg-[#f5e6cb] dark:bg-[#3d2e10] border border-[#e8d4a8] dark:border-[#5a4220] text-[#9a6d28] dark:text-[#c9954a]">
+            <div className="w-12 h-12 mx-auto mb-5 grid place-items-center rounded-2xl bg-[#f5e6cb] dark:bg-[#3d2e10] border border-[#e8d4a8] dark:border-[#5a4220] text-[#9a6d28] dark:text-[#c9954a]">
               <Icon name="pause" size={22} />
             </div>
             <h2 className="mt-0 mb-2 font-manrope text-[22px] font-bold tracking-[-0.04em] text-[#26231f] dark:text-[#eee9e4]">
@@ -243,7 +243,7 @@ export default function PausePage() {
             </p>
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] no-underline transition-colors duration-[160ms]"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] no-underline transition-colors duration-160"
             >
               {pauseState.isPaused ? "Go to dashboard" : "See my next step"}
             </Link>
