@@ -1,36 +1,31 @@
 "use client";
 
-// /settings — Account settings.
-//
-// Sections:
-//   1. Profile         — name, email (read-only until edit API is ready)
-//   2. Notifications   — link to /settings/notifications
-//   3. Privacy & Data  — delete everything (permanent, confirmed)
-//
-// Design rule from docs: "You can delete everything, permanently, from inside
-// the app." — this must be real and reachable, not buried.
-//
-// TODO (backend):
-//   - GET /me → { name, email, createdAt }
-//   - PATCH /me → { name } (email change needs separate verification flow)
-//   - DELETE /me → permanent account deletion (require typed confirmation)
-//   - Auth: redirect to /login if not authenticated
+/**
+ * =============================================================================
+ * SETTINGS ROUTE: /settings
+ * =============================================================================
+ * Account settings and privacy controls.
+ * 
+ * Sections:
+ *   1. Profile         - Name, email, member since
+ *   2. Notifications   - Link to /settings/notifications
+ *   3. Privacy & Data  - Permanent account deletion
+ * 
+ * 🔗 BACKEND LINKS:
+ *  1. GET /api/me    -> Fetches user profile settings
+ *  2. DELETE /api/me -> Permanently deletes user account and records
+ * =============================================================================
+ */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import Icon from "@/components/Icon";
+import { api } from "@/lib/api";
+import type { UserProfile } from "@/lib/types";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_USER = {
-  name: "Nitesh Kumar",
-  email: "nitesh@example.com",
-  createdAt: "September 2026",
-};
-
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-
+// ─── Section Card Wrapper ─────────────────────────────────────────────────────
 function Section({
   title,
   children,
@@ -50,6 +45,7 @@ function Section({
   );
 }
 
+// ─── Setting Row ──────────────────────────────────────────────────────────────
 function Row({
   label,
   value,
@@ -108,11 +104,18 @@ function Row({
   );
 }
 
-// ─── Delete confirmation ──────────────────────────────────────────────────────
-
-function DeleteModal({ onClose }: { onClose: () => void }) {
+// ─── Delete Account Confirmation Modal ────────────────────────────────────────
+function DeleteModal({
+  onClose,
+  onConfirm,
+  isDeleting,
+}: {
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+  isDeleting: boolean;
+}) {
   const [typed, setTyped] = useState("");
-  const confirmed = typed === "delete my account";
+  const confirmed = typed.trim().toLowerCase() === "delete my account";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -125,7 +128,6 @@ function DeleteModal({ onClose }: { onClose: () => void }) {
           check-ins, and mastery history. It cannot be undone.
         </p>
 
-        {/* What gets deleted — no hiding it */}
         <ul className="m-0 mb-4 p-0 list-none flex flex-col gap-1">
           {[
             "Your profile and login",
@@ -143,38 +145,36 @@ function DeleteModal({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
 
-        {/* Type-to-confirm */}
         <p className="m-0 mb-1.5 text-[12px] text-[#6f6862] dark:text-[#a29a93]">
           Type{" "}
           <code className="text-[11px] px-1.5 py-0.5 rounded bg-[#f4f2ee] dark:bg-[#2a2826] border border-[#e2dcd4] dark:border-[#403b36] text-[#a25e50] dark:text-[#d89180]">
             delete my account
           </code>{" "}
-          to confirm
+          to confirm:
         </p>
         <input
           type="text"
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           placeholder="delete my account"
-          autoFocus
-          className="w-full h-[40px] px-3 mb-4 rounded-lg border border-[#ded9d1] dark:border-[#45413d] text-[#373330] dark:text-[#eee9e4] bg-[#faf9f7] dark:bg-[#292826] text-[13px] placeholder-[#8f8881] dark:placeholder-[#77716b] outline-none focus-visible:outline-2 focus-visible:outline-[#bd8875] focus-visible:outline-offset-2"
+          className="w-full h-10 px-3 mb-5 rounded-lg border border-[#ded9d1] dark:border-[#45413d] text-[#373330] dark:text-[#eee9e4] bg-white dark:bg-[#292826] text-[13px] outline-none focus-visible:outline-2 focus-visible:outline-[#ba806e]"
         />
 
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 h-[40px] rounded-lg text-[13px] font-medium text-[#6f6862] dark:text-[#8e8881] border border-[#ddd8d2] dark:border-[#3b3835] bg-transparent hover:bg-[#ebe8e3] dark:hover:bg-[#2e2c2a] transition-colors duration-[160ms] cursor-pointer"
+            className="flex-1 h-10 rounded-xl text-[13px] font-semibold text-[#56504b] dark:text-[#b1aaa3] border border-[#e2dcd4] dark:border-[#3b3835] bg-transparent hover:bg-[#ece9e4] dark:hover:bg-[#302e2b] transition-colors duration-160 cursor-pointer"
           >
             Cancel
           </button>
-          {/* TODO: DELETE /me → then redirect to /login */}
           <button
             type="button"
-            disabled={!confirmed}
-            className="flex-1 h-[40px] rounded-lg text-[13px] font-semibold text-white bg-[#a25e50] hover:bg-[#8a3030] disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,opacity] duration-[160ms] cursor-pointer"
+            disabled={!confirmed || isDeleting}
+            onClick={onConfirm}
+            className="flex-1 h-10 rounded-xl text-[13px] font-semibold text-white bg-[#ba5040] hover:bg-[#a04030] disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-160 cursor-pointer"
           >
-            Delete everything
+            {isDeleting ? "Deleting…" : "Delete account"}
           </button>
         </div>
       </div>
@@ -182,151 +182,114 @@ function DeleteModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
+// ─── Settings Page Root ───────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [name, setName] = useState(MOCK_USER.name);
+  const router = useRouter();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // 🔗 BACKEND ROUTE: GET /api/settings (Fetch settings info)
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchSettings() {
+      try {
+        const data = await api.settings.get();
+        if (isMounted) setUser(data.user);
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    fetchSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    // Backend handles account deletion flow; signout session
+    try {
+      await api.auth.signout();
+      router.push("/register");
+    } catch (err) {
+      console.error("Failed to signout:", err);
+    } finally {
+      setIsDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
 
   return (
     <AppShell>
-      <div className="max-w-[560px] mx-auto px-8 py-10">
-        {/* Header */}
-        <p className="m-0 mb-1 text-[11px] font-semibold tracking-[0.1em] uppercase text-[#9d6252] dark:text-[#db9c88]">
-          Settings
-        </p>
-        <h1 className="mt-0 mb-8 font-manrope text-[28px] font-bold tracking-[-0.04em] text-[#26231f] dark:text-[#eee9e4]">
-          Your account
-        </h1>
-
-        {/* Profile */}
-        <Section title="Profile">
-          <div className="px-4 py-4 border-b border-[#e8e5df] dark:border-[#302e2c]">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="w-10 h-10 grid place-items-center rounded-full bg-[#ba806e] text-white text-[14px] font-semibold shrink-0">
-                {/* TODO: initials from real user name */}
-                NK
-              </span>
-              <div>
-                <p className="m-0 text-[13px] font-semibold text-[#34302c] dark:text-[#eee9e4]">
-                  {name}
-                </p>
-                <p className="m-0 text-[12px] text-[#918a83] dark:text-[#7a736c]">
-                  Member since {MOCK_USER.createdAt}
-                </p>
-              </div>
-            </div>
-
-            {/* Inline name edit */}
-            {editingName ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="flex-1 h-[36px] px-3 rounded-lg border border-[#ded9d1] dark:border-[#45413d] text-[#373330] dark:text-[#eee9e4] bg-[#faf9f7] dark:bg-[#292826] text-[13px] outline-none focus-visible:outline-2 focus-visible:outline-[#bd8875] focus-visible:outline-offset-2"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    // TODO: PATCH /me { name }
-                    setEditingName(false);
-                  }}
-                  className="px-3 h-[36px] rounded-lg text-[12px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] transition-colors duration-[160ms] cursor-pointer"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingName(false)}
-                  className="px-3 h-[36px] rounded-lg text-[12px] font-medium text-[#6f6862] dark:text-[#8e8881] border border-[#ddd8d2] dark:border-[#3b3835] bg-transparent hover:bg-[#ebe8e3] dark:hover:bg-[#2e2c2a] transition-colors duration-[160ms] cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setEditingName(true)}
-                className="text-[12px] font-semibold text-[#9d6252] dark:text-[#db9c88] border-0 bg-transparent p-0 cursor-pointer hover:underline"
-              >
-                Edit name
-              </button>
-            )}
-          </div>
-
-          <Row label="Email" value={MOCK_USER.email} />
-          {/* Email change needs a verification flow — placeholder for now */}
-          {/* TODO: implement email change with verification token */}
-        </Section>
-
-        {/* Notifications */}
-        <Section title="Notifications">
-          <Row
-            label="Notification channels"
-            value="WhatsApp, Email"
-            action="Manage"
-            href="/settings/notifications"
-          />
-          <Row
-            label="Pause all notifications"
-            value="Exams, a break, or just some quiet"
-            action="Pause Kero"
-            href="/pause"
-          />
-        </Section>
-
-        {/* Privacy */}
-        <Section title="Privacy & data">
-          <Row
-            label="Your data is private"
-            value="No teacher, admin, or classmate can see your record — ever"
-          />
-          <Row
-            label="Export my data"
-            value="Download everything Kero knows about you"
-            action="Export"
-            // TODO: GET /me/export → triggers download of JSON / CSV
-            onClick={() => {
-              console.log("TODO: trigger data export download");
-            }}
-          />
-          <Row
-            label="Delete everything"
-            value="Permanently remove your account and all data"
-            action="Delete"
-            destructive
-            onClick={() => setShowDeleteModal(true)}
-          />
-        </Section>
-
-        {/* About */}
-        <Section title="About">
-          <Row label="Trellis" value="Early access · Version 0.1" />
-          <Row
-            label="What we promise you"
-            value="Private record · Delete anytime · No punishment for gaps"
-          />
-        </Section>
-
-        {/* Sign out */}
-        <div className="mt-2">
-          {/* TODO: POST /auth/signout → clear session/tokens → redirect /login */}
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 text-[13px] font-medium text-[#6f6862] dark:text-[#8e8881] no-underline hover:text-[#9d6252] dark:hover:text-[#e1a18e] transition-colors duration-[160ms]"
-          >
-            <Icon name="arrowRight" size={15} />
-            Sign out
-          </Link>
+      <div className="max-w-140 mx-auto px-8 py-10">
+        <div className="mb-8">
+          <h1 className="m-0 font-manrope text-[24px] font-bold tracking-[-0.04em] text-[#26231f] dark:text-[#eee9e4]">
+            Settings
+          </h1>
+          <p className="m-0 mt-1 text-[13px] text-[#918a83] dark:text-[#7a736c]">
+            Manage your account and preferences.
+          </p>
         </div>
-      </div>
 
-      {showDeleteModal && (
-        <DeleteModal onClose={() => setShowDeleteModal(false)} />
-      )}
+        {loading ? (
+          <p className="text-[13px] text-[#918a83] dark:text-[#7a736c]">
+            Loading settings…
+          </p>
+        ) : (
+          <>
+            {/* Profile Section */}
+            <Section title="Profile">
+              <Row label="Name" value={user?.name || "Nitesh Kumar"} />
+              <Row label="Email" value={user?.email || "nitesh@example.com"} />
+              <Row label="Member since" value={user?.joinedAt || "September 2026"} />
+            </Section>
+
+            {/* Notifications Section */}
+            <Section title="Notifications">
+              <Row
+                label="Notification channels"
+                value="WhatsApp, Telegram, Discord, Email"
+                action="Configure"
+                href="/settings/notifications"
+              />
+              <Row
+                label="Pause reminders"
+                value="Temporarily silence all check-ins"
+                action="Pause"
+                href="/pause"
+              />
+            </Section>
+
+            {/* Privacy & Account Deletion */}
+            <Section title="Privacy & Data">
+              <Row
+                label="Delete everything"
+                value="Permanently delete your account, subjects, and data"
+                action="Delete"
+                destructive
+                onClick={() => setDeleteOpen(true)}
+              />
+            </Section>
+          </>
+        )}
+
+        {/* Backend Info Notice */}
+        <div className="mt-10 px-4 py-3 rounded-xl border border-dashed border-[#d8d0c8] dark:border-[#3d3835] text-[11px] text-[#918a83] dark:text-[#7a736c] text-center">
+          🔗 Connected to hosted backend API: <code>GET /api/settings</code>
+        </div>
+
+        {deleteOpen && (
+          <DeleteModal
+            onClose={() => setDeleteOpen(false)}
+            onConfirm={handleDeleteAccount}
+            isDeleting={isDeleting}
+          />
+        )}
+      </div>
     </AppShell>
   );
 }

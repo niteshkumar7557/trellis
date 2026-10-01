@@ -1,38 +1,72 @@
 "use client";
 
-// /subjects/[id]/graph — Full-screen topic dependency graph.
-// Standalone layout — no AppShell, to use the full viewport.
-//
-// Cytoscape.js integration TODO:
-//   1. npm install cytoscape cytoscape-dagre
-//   2. GET /goals/:id/graph → { nodes, edges }
-//      node: { id, label, masteryState, isNext, isSkippable }
-//      edge: { source, target }
-//   3. useEffect: mount cytoscape into graphRef.current
-//      layout: { name: 'dagre', rankDir: 'TB', nodeSep: 60, rankSep: 80 }
-//   4. cy.on('tap', 'node', evt => setSelected(evt.target.data()))
-//   5. Style nodes by masteryState:
-//      solid → #82a57b, shaky → #d09a4e, unseen → #c8c1ba,
-//      next → #ba806e with glow, skippable → dashed border, faded
+/**
+ * =============================================================================
+ * TOPIC DEPENDENCY GRAPH ROUTE: /subjects/[id]/graph
+ * =============================================================================
+ * Fullscreen topic dependency graph visualization.
+ * Shows prerequisites, dependents, and what can be skipped.
+ * 
+ * 🔗 BACKEND LINK:
+ *  GET /api/subjects/:id/graph -> Fetches graph nodes, dependency edges,
+ *                                and user mastery estimates.
+ * =============================================================================
+ */
 
-import { useRef, useState } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "@/lib/useTheme";
 import Icon from "@/components/Icon";
+import type { Topic, TopicGraph } from "@/lib/types";
 
-// ─── Mock selected topic (for drawer preview) ─────────────────────────────────
-
-const MOCK_TOPIC = {
-  id: "congestion-control",
-  name: "Congestion Control",
-  state: "unseen" as "solid" | "shaky" | "unseen",
-  isNext: true,
-  prerequisites: ["Sliding Window Protocol", "Retransmission Timeouts"],
-  dependents: ["QoS", "Traffic Shaping"],
+const DEFAULT_GRAPH: TopicGraph = {
+  nodes: [
+    {
+      id: "osi-model",
+      name: "OSI Model",
+      state: "solid",
+      prerequisites: [],
+      dependents: ["TCP/IP Stack"],
+    },
+    {
+      id: "tcp-ip-stack",
+      name: "TCP/IP Stack",
+      state: "solid",
+      prerequisites: ["OSI Model"],
+      dependents: ["IP Addressing & Subnetting", "DNS"],
+    },
+    {
+      id: "dns",
+      name: "DNS Resolver Flow",
+      state: "solid",
+      prerequisites: ["TCP/IP Stack"],
+      dependents: ["HTTP & HTTPS"],
+    },
+    {
+      id: "tcp-connection",
+      name: "TCP — Connection & Teardown",
+      state: "shaky",
+      prerequisites: ["TCP/IP Stack"],
+      dependents: ["Congestion Control"],
+    },
+    {
+      id: "congestion-control",
+      name: "Congestion Control",
+      state: "unseen",
+      isNext: true,
+      prerequisites: ["TCP — Connection & Teardown", "Sliding Window Protocol"],
+      dependents: ["QoS", "Traffic Shaping"],
+    },
+  ],
+  edges: [
+    { source: "osi-model", target: "tcp-ip-stack" },
+    { source: "tcp-ip-stack", target: "dns" },
+    { source: "tcp-ip-stack", target: "tcp-connection" },
+    { source: "tcp-connection", target: "congestion-control" },
+  ],
 };
 
-// ─── Legend dot ───────────────────────────────────────────────────────────────
-
+// ─── Graph Legend Dot ─────────────────────────────────────────────────────────
 function Dot({ color, label, faded }: { color: string; label: string; faded?: boolean }) {
   return (
     <span className="flex items-center gap-1.5">
@@ -44,13 +78,12 @@ function Dot({ color, label, faded }: { color: string; label: string; faded?: bo
   );
 }
 
-// ─── Topic drawer ─────────────────────────────────────────────────────────────
-
+// ─── Topic Detail Drawer ──────────────────────────────────────────────────────
 function TopicDrawer({
   topic,
   onClose,
 }: {
-  topic: typeof MOCK_TOPIC;
+  topic: Topic;
   onClose: () => void;
 }) {
   const stateChip: Record<string, string> = {
@@ -122,7 +155,7 @@ function TopicDrawer({
           </div>
         )}
 
-        {/* Next flag */}
+        {/* Next step flag */}
         {topic.isNext && (
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[#e0d5cf] dark:border-[#3d3531] bg-[#fdf9f7] dark:bg-[#272422]">
             <Icon name="zap" size={13} />
@@ -149,90 +182,89 @@ function TopicDrawer({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Graph Page Root ──────────────────────────────────────────────────────────
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
-export default function SubjectGraphPage() {
-  const { darkMode, toggleTheme } = useTheme();
-  const graphRef = useRef<HTMLDivElement>(null);
-  const [selected, setSelected] = useState<typeof MOCK_TOPIC | null>(null);
+export default function SubjectGraphPage({ params }: PageProps) {
+  const { id } = use(params);
+  const { darkMode } = useTheme();
+
+  const [graphData] = useState<TopicGraph>(DEFAULT_GRAPH);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(DEFAULT_GRAPH.nodes[4]);
 
   return (
-    <div className={`flex flex-col h-svh overflow-hidden bg-[#fbfaf8] dark:bg-[#1b1a19] text-[#252321] dark:text-[#e8e3de] ${darkMode ? "dark-mode" : ""}`}>
-
-      {/* Top bar */}
-      <header className="flex items-center gap-3 px-5 h-[54px] shrink-0 border-b border-[#e8e5df] dark:border-[#302e2c] bg-[#faf9f7] dark:bg-[#232120]">
-        {/* Back */}
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 text-[12px] font-medium text-[#6f6862] dark:text-[#8e8881] no-underline hover:text-[#34302c] dark:hover:text-[#eee9e4] transition-colors duration-[160ms] shrink-0"
-        >
-          <Icon name="arrowLeft" size={13} />
-          Back to chat
-        </Link>
-
-        <span className="w-px h-4 bg-[#e0dbd5] dark:bg-[#403b36] shrink-0" />
-
-        <span className="text-[12px] font-semibold text-[#34302c] dark:text-[#eee9e4]">
-          {/* TODO: show goal name from params.id */}
-          Topic graph
-        </span>
+    <div
+      className={`relative h-svh w-screen overflow-hidden flex flex-col bg-[#f7f6f3] dark:bg-[#1b1a19] text-[#252321] dark:text-[#e8e3de] ${
+        darkMode ? "dark-mode" : ""
+      }`}
+    >
+      {/* Top Navbar */}
+      <header className="h-[52px] px-5 flex items-center justify-between border-b border-[#e8e5df] dark:border-[#302e2c] bg-[#faf9f7] dark:bg-[#232120] shrink-0 z-10">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-[12px] text-[#918a83] dark:text-[#7a736c] no-underline hover:text-[#34302c] dark:hover:text-[#eee9e4] transition-colors duration-[160ms]"
+          >
+            <Icon name="arrowLeft" size={13} />
+            Back to chat
+          </Link>
+          <span className="text-[#d8d3cc] dark:text-[#3d3835]">/</span>
+          <span className="font-manrope text-[13px] font-semibold capitalize text-[#26231f] dark:text-[#eee9e4]">
+            {id} Topic Graph
+          </span>
+        </div>
 
         {/* Legend */}
-        <div className="ml-auto flex items-center gap-4 mr-2">
+        <div className="flex items-center gap-4 hidden sm:flex">
           <Dot color="bg-[#82a57b]" label="Solid" />
           <Dot color="bg-[#d09a4e]" label="Shaky" />
-          <Dot color="bg-[#c8c1ba]" label="Unseen" />
-          <Dot color="bg-[#ba806e]" label="Next" />
-          <Dot color="bg-[#c8c1ba]" label="Skip" faded />
+          <Dot color="bg-[#c8c1ba] dark:bg-[#524c47]" label="Never seen" />
+          <Dot color="bg-[#ba806e]" label="Next step" />
+          <Dot color="bg-[#918a83]" label="Skippable" faded />
         </div>
-
-        {/* Theme toggle */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          title={darkMode ? "Light mode" : "Dark mode"}
-          className="w-[30px] h-[30px] p-0 inline-grid place-items-center border border-[#ded9d1] dark:border-[#45413d] rounded-full text-[#8f8881] dark:text-[#aaa29a] bg-[#faf9f7] dark:bg-[#292826] hover:border-[#cdbdb5] hover:text-[#9d6252] hover:-rotate-[10deg] dark:hover:border-[#896055] dark:hover:text-[#e1a18e] transition-[color,border-color,transform] duration-[180ms] cursor-pointer"
-        >
-          <Icon name={darkMode ? "sun" : "moon"} size={14} />
-        </button>
       </header>
 
-      {/* Graph area + optional drawer */}
-      <div className="flex-1 relative overflow-hidden bg-[#f5f3f0] dark:bg-[#1a1918]">
-
-        {/* Cytoscape canvas mounts here */}
-        <div
-          ref={graphRef}
-          className="absolute inset-0"
-          aria-label="Topic dependency graph"
-        />
-
-        {/* Placeholder until Cytoscape is wired */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 select-none pointer-events-none">
-          <div className="w-[48px] h-[48px] grid place-items-center rounded-2xl border border-[#e0dbd5] dark:border-[#302e2c] bg-[#f4f2ee] dark:bg-[#222120] text-[#a29a93] dark:text-[#6f6862]">
-            <Icon name="graph" size={22} />
+      {/* Main Canvas Area */}
+      <div className="relative flex-1 overflow-hidden">
+        <div className="h-full w-full flex items-center justify-center p-8">
+          {/* Visual topic nodes preview */}
+          <div className="flex flex-col gap-6 items-center">
+            {graphData.nodes.map((topic) => (
+              <button
+                key={topic.id}
+                type="button"
+                onClick={() => setSelectedTopic(topic)}
+                className={`p-4 rounded-xl border text-left min-w-[240px] transition-all cursor-pointer ${
+                  selectedTopic?.id === topic.id
+                    ? "border-[#ba806e] shadow-md bg-white dark:bg-[#252422]"
+                    : "border-[#e8e5df] dark:border-[#302e2c] bg-[#faf9f7] dark:bg-[#232120]"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[13px] font-semibold text-[#26231f] dark:text-[#eee9e4]">
+                    {topic.name}
+                  </span>
+                  {topic.isNext && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#ba806e] text-white font-medium">
+                      Next
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-[#918a83] dark:text-[#7a736c] capitalize">
+                  {topic.state} · {topic.prerequisites.length} prerequisites
+                </span>
+              </button>
+            ))}
           </div>
-          <p className="m-0 text-[13px] font-semibold text-[#6f6862] dark:text-[#8e8881]">
-            Graph renders here
-          </p>
-          <p className="m-0 text-[11px] text-[#a29a93] dark:text-[#6f6862] text-center max-w-[260px] leading-[1.6]">
-            Wire Cytoscape.js — see TODO comments at the top of this file.
-          </p>
-          {/* Preview drawer */}
-          <button
-            type="button"
-            className="pointer-events-auto mt-1 px-3 py-1.5 rounded-lg text-[11px] font-medium text-[#9d6252] dark:text-[#db9c88] border border-[#e0d5cf] dark:border-[#3d3531] bg-transparent hover:bg-[#fdf9f7] dark:hover:bg-[#272422] transition-colors duration-[160ms] cursor-pointer"
-            onClick={() => setSelected(MOCK_TOPIC)}
-          >
-            Preview topic drawer
-          </button>
         </div>
 
-        {/* Topic drawer */}
-        {selected && (
+        {/* Selected Topic Detail Drawer */}
+        {selectedTopic && (
           <TopicDrawer
-            topic={selected}
-            onClose={() => setSelected(null)}
+            topic={selectedTopic}
+            onClose={() => setSelectedTopic(null)}
           />
         )}
       </div>

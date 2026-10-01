@@ -67,6 +67,17 @@ export default function WelcomeState({
         ))}
       </div>
 
+      {isLoading && (
+        <div
+          className="chat-thinking-banner mb-2 mx-auto w-fit flex items-center gap-2 px-3 py-1 rounded-full text-[11.5px] font-medium text-[#ba806e] dark:text-[#c48e7a] bg-[#ba806e]/10 dark:bg-[#c48e7a]/15 border border-[#ba806e]/20 dark:border-[#c48e7a]/25 shadow-sm transition-all animate-pulse"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-[#ba806e] dark:bg-[#c48e7a] animate-ping" />
+          <span>Kero is thinking…</span>
+        </div>
+      )}
+
       <Composer
         draft={draft}
         setDraft={setDraft}

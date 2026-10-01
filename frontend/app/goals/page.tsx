@@ -1,24 +1,32 @@
-// /goals — all goals.
-// Dummy data; real data will come from the backend.
-
 "use client";
 
+/**
+ * =============================================================================
+ * ALL GOALS ROUTE: /goals
+ * =============================================================================
+ * Displays all study goals, separated into Active and Completed/Paused.
+ * 
+ * 🔗 BACKEND LINK:
+ *  GET /api/goals -> Fetches all user goals with progress percentages and status
+ * =============================================================================
+ */
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "@/lib/useTheme";
 import Sidebar from "@/components/Sidebar";
-import { DUMMY_GOALS } from "@/lib/dummy-data";
-import type { DummyGoal } from "@/lib/dummy-data";
+import { api } from "@/lib/api";
+import type { Goal } from "@/lib/types";
 
-// ─── Status config ─────────────────────────────────────────────────────────────
-
+// ─── Status Badge Styling ─────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<
-  DummyGoal["status"],
+  Goal["status"],
   { label: string; dot: string; badge: string }
 > = {
   active: {
     label: "Active",
     dot: "bg-[#82a57b]",
-    badge: "text-[#4a7545] bg-[#eaf3e7] dark:text-[#7ec478] dark:bg-[#1e2e1b]",
+    badge: "text-[#4a7545] bg-[#eaf3e7] dark:text-[#7ec478] dark:bg-[#1e2e1c]",
   },
   completed: {
     label: "Completed",
@@ -34,9 +42,32 @@ const STATUS_CONFIG: Record<
 
 export default function GoalsPage() {
   const { darkMode } = useTheme();
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const active = DUMMY_GOALS.filter((g) => g.status === "active");
-  const others = DUMMY_GOALS.filter((g) => g.status !== "active");
+  useEffect(() => {
+    let isMounted = true;
+
+    // 🔗 BACKEND LINK: GET /api/goals
+    async function fetchGoals() {
+      try {
+        const data = await api.goals.list();
+        if (isMounted) setGoals(data);
+      } catch (err) {
+        console.error("Failed to load goals from backend:", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    fetchGoals();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const active = goals.filter((g) => g.status === "active");
+  const others = goals.filter((g) => g.status !== "active");
 
   return (
     <div
@@ -47,7 +78,7 @@ export default function GoalsPage() {
       <Sidebar />
 
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <div className="max-w-170 mx-auto px-8 py-10">
+        <div className="max-w-[680px] mx-auto px-8 py-10">
 
           {/* Header */}
           <div className="mb-8">
@@ -59,37 +90,45 @@ export default function GoalsPage() {
             </p>
           </div>
 
-          {/* Active goals */}
-          {active.length > 0 && (
-            <section className="mb-8">
-              <h2 className="m-0 mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#6f6862] dark:text-[#8e8881]">
-                Active
-              </h2>
-              <div className="flex flex-col gap-3">
-                {active.map((goal) => (
-                  <GoalCard key={goal.uid} goal={goal} />
-                ))}
-              </div>
-            </section>
+          {isLoading ? (
+            <p className="text-[13px] text-[#918a83] dark:text-[#7a736c]">
+              Loading goals…
+            </p>
+          ) : (
+            <>
+              {/* Active goals section */}
+              {active.length > 0 && (
+                <section className="mb-8">
+                  <h2 className="m-0 mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#6f6862] dark:text-[#8e8881]">
+                    Active
+                  </h2>
+                  <div className="flex flex-col gap-3">
+                    {active.map((goal) => (
+                      <GoalCard key={goal.id} goal={goal} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Other goals section */}
+              {others.length > 0 && (
+                <section>
+                  <h2 className="m-0 mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#6f6862] dark:text-[#8e8881]">
+                    Other
+                  </h2>
+                  <div className="flex flex-col gap-3">
+                    {others.map((goal) => (
+                      <GoalCard key={goal.id} goal={goal} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
           )}
 
-          {/* Other goals */}
-          {others.length > 0 && (
-            <section>
-              <h2 className="m-0 mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#6f6862] dark:text-[#8e8881]">
-                Other
-              </h2>
-              <div className="flex flex-col gap-3">
-                {others.map((goal) => (
-                  <GoalCard key={goal.uid} goal={goal} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* TODO badge */}
+          {/* Backend Info Notice */}
           <div className="mt-10 px-4 py-3 rounded-xl border border-dashed border-[#d8d0c8] dark:border-[#3d3835] text-[11px] text-[#918a83] dark:text-[#7a736c] text-center">
-            Real goals will be loaded from the backend. This is dummy content.
+            🔗 Connected to hosted backend API: <code>GET /api/goals</code>
           </div>
         </div>
       </main>
@@ -97,14 +136,13 @@ export default function GoalsPage() {
   );
 }
 
-// ─── Goal card ────────────────────────────────────────────────────────────────
-
-function GoalCard({ goal }: { goal: DummyGoal }) {
-  const status = STATUS_CONFIG[goal.status];
+// ─── Goal Card Component ───────────────────────────────────────────────────────
+function GoalCard({ goal }: { goal: Goal }) {
+  const status = STATUS_CONFIG[goal.status] || STATUS_CONFIG.active;
 
   return (
     <Link
-      href={`/goal/${goal.uid}`}
+      href={`/goal/${goal.id}`}
       className="block p-4 rounded-xl border border-[#eeeae5] dark:border-[#2e2c2a] bg-[#fbfaf8] dark:bg-[#1d1c1b] no-underline hover:border-[#ddd8d0] dark:hover:border-[#3d3a37] hover:bg-[#f4f2ee] dark:hover:bg-[#222120] transition-[border-color,background-color] duration-160 group"
     >
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -123,7 +161,7 @@ function GoalCard({ goal }: { goal: DummyGoal }) {
         </span>
       </div>
 
-      {/* Progress */}
+      {/* Progress Bar */}
       <div className="flex items-center gap-2.5">
         <div className="flex-1 h-1 rounded-full bg-[#e2dcd4] dark:bg-[#3b3835] overflow-hidden">
           <div

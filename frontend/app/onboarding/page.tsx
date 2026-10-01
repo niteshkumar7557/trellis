@@ -1,65 +1,34 @@
 "use client";
 
-// /onboarding — First-time setup wizard. Runs immediately after registration.
-//
-// Steps:
-//   1. Pick a subject   (search + select from available subjects)
-//   2. Set a goal       (what are you working towards with this subject?)
-//   3. Sort topics      (drag or click each topic into: know / shaky / never seen)
-//   4. Done             (summary + go to dashboard)
-//
-// Design principles from the docs:
-//   - Step 3 takes ~2 minutes. Topics are pre-seeded by us (AI-generated, hand-reviewed).
-//   - "Know it" is held loosely — becomes a quick check later, not skipped forever.
-//   - "Never seen" is not bad — it's a starting point.
-//
-// TODO (backend):
-//   - GET /subjects/available → list of all available subjects (name, id, topicCount)
-//   - POST /subjects/enroll  → { subjectId, goal } → creates enrollment
-//   - POST /topics/sort      → { enrollmentId, sorts: [{topicId, state}] }
-//     where state: "solid" | "shaky" | "unseen"
-//   - On complete → redirect to /dashboard
-//   - If user already has subjects, skip to /dashboard (middleware guard)
+/**
+ * =============================================================================
+ * ONBOARDING WIZARD ROUTE: /onboarding
+ * =============================================================================
+ * First-time setup wizard for new learners.
+ * 
+ * Steps:
+ *   1. Pick a subject    (search & choose from available curated subjects)
+ *   2. Set a goal        (define what you are working towards)
+ *   3. Sort topics       (sort into: know it / shaky / never seen for calibration)
+ *   4. Done              (confirmation -> proceed to study thread)
+ * 
+ * 🔗 BACKEND LINKS:
+ *  1. GET /api/subjects         -> Fetches list of all curated subjects
+ *  2. POST /api/subjects/enroll -> Enrolls the user with a goal
+ *  3. POST /api/topics/sort     -> Saves initial mastery calibration in PostgreSQL
+ * =============================================================================
+ */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
 import Icon from "@/components/Icon";
-
-// ─── Mock data — replace with API responses ──────────────────────────────────
-
-const MOCK_AVAILABLE_SUBJECTS = [
-  { id: "networking", name: "Computer Networking", topicCount: 24 },
-  { id: "react", name: "React", topicCount: 18 },
-  { id: "dbms", name: "DBMS · PostgreSQL", topicCount: 21 },
-  { id: "express", name: "Backend · Express", topicCount: 15 },
-  { id: "dsa", name: "Data Structures & Algorithms", topicCount: 40 },
-  { id: "os", name: "Operating Systems", topicCount: 28 },
-];
-
-// Topics for whichever subject is selected — loaded from backend in reality
-const MOCK_TOPICS = [
-  "OSI Model",
-  "TCP/IP Stack",
-  "IP Addressing & Subnetting",
-  "ARP & RARP",
-  "DNS",
-  "HTTP & HTTPS",
-  "TCP — Connection & Teardown",
-  "UDP",
-  "Sliding Window Protocol",
-  "Congestion Control",
-  "Retransmission Timeouts",
-  "Routing Algorithms",
-  "OSPF & BGP",
-  "NAT & PAT",
-  "Firewalls & Packet Filtering",
-];
+import { DUMMY_AVAILABLE_SUBJECTS, DUMMY_TOPICS } from "@/lib/dummy-data";
+import type { Subject } from "@/lib/types";
 
 type SortState = "solid" | "shaky" | "unseen" | null;
 
-// ─── Step components ──────────────────────────────────────────────────────────
-
+// ─── Step progress bar indicator ─────────────────────────────────────────────
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
     <div className="flex items-center gap-1.5 mb-10">
@@ -77,16 +46,18 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
   );
 }
 
-// Step 1 — Pick a subject
+// ─── Step 1: Pick a Subject ──────────────────────────────────────────────────
 function StepSubject({
+  subjects,
   onSelect,
 }: {
+  subjects: Subject[];
   onSelect: (id: string, name: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
 
-  const filtered = MOCK_AVAILABLE_SUBJECTS.filter((s) =>
+  const filtered = subjects.filter((s) =>
     s.name.toLowerCase().includes(query.toLowerCase())
   );
 
@@ -136,8 +107,8 @@ function StepSubject({
         type="button"
         disabled={!selected}
         onClick={() => {
-          const subj = MOCK_AVAILABLE_SUBJECTS.find((s) => s.id === selected)!;
-          onSelect(subj.id, subj.name);
+          const subj = subjects.find((s) => s.id === selected);
+          if (subj) onSelect(subj.id, subj.name);
         }}
         className="mt-6 w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,opacity] duration-160 cursor-pointer"
       >
@@ -147,7 +118,7 @@ function StepSubject({
   );
 }
 
-// Step 2 — Set a goal
+// ─── Step 2: Set a Goal ──────────────────────────────────────────────────────
 function StepGoal({
   subjectName,
   onContinue,
@@ -216,14 +187,16 @@ function StepGoal({
   );
 }
 
-// Step 3 — Sort topics
+// ─── Step 3: Sort Topics ──────────────────────────────────────────────────────
 function StepSortTopics({
+  topics,
   onComplete,
 }: {
+  topics: string[];
   onComplete: (sorts: Record<string, SortState>) => void;
 }) {
-  const [sorts, setSorts] = useState<Record<string, SortState>>(
-    Object.fromEntries(MOCK_TOPICS.map((t) => [t, null]))
+  const [sorts, setSorts] = useState<Record<string, SortState>>(() =>
+    Object.fromEntries(topics.map((t) => [t, null]))
   );
 
   const buckets: { key: SortState; label: string; color: string; bg: string }[] =
@@ -264,23 +237,19 @@ function StepSortTopics({
         later, not that it&apos;s skipped forever.
       </p>
       <p className="mt-0 mb-5 text-[12px] text-[#a29a93] dark:text-[#7a736c]">
-        {sorted}/{MOCK_TOPICS.length} sorted
+        {sorted}/{topics.length} sorted
       </p>
 
-      {/* Topics as a scrollable pill list — click to cycle through states */}
+      {/* Topics as a scrollable list */}
       <div className="flex flex-col gap-2 max-h-85 overflow-y-auto pr-1">
-        {MOCK_TOPICS.map((topic) => {
+        {topics.map((topic) => {
           const state = sorts[topic];
-          const bucket = buckets.find((b) => b.key === state);
           return (
-            <div
-              key={topic}
-              className="flex items-center gap-3"
-            >
+            <div key={topic} className="flex items-center gap-3">
               <span className="flex-1 text-[13px] text-[#3f3a36] dark:text-[#d7d1cb]">
                 {topic}
               </span>
-              {/* Three-way toggle */}
+              {/* Three-way toggle buttons */}
               <div className="flex gap-1">
                 {buckets.map((b) => (
                   <button
@@ -309,18 +278,19 @@ function StepSortTopics({
 
       <button
         type="button"
-        disabled={sorted < MOCK_TOPICS.length}
+        disabled={sorted < topics.length}
         onClick={() => onComplete(sorts)}
         className="mt-6 w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,opacity] duration-160 cursor-pointer"
       >
         Done — show me my plan
       </button>
-      {/* Allow skipping full sort — unsorted topics default to "unseen" */}
+
+      {/* Skip option */}
       <button
         type="button"
         onClick={() => {
           const filled = Object.fromEntries(
-            MOCK_TOPICS.map((t) => [t, sorts[t] ?? "unseen"])
+            topics.map((t) => [t, sorts[t] ?? "unseen"])
           ) as Record<string, SortState>;
           onComplete(filled);
         }}
@@ -332,8 +302,8 @@ function StepSortTopics({
   );
 }
 
-// Step 4 — Done state
-function StepDone({ router }: { router: ReturnType<typeof useRouter> }) {
+// ─── Step 4: Done ────────────────────────────────────────────────────────────
+function StepDone({ onFinish }: { onFinish: () => void }) {
   return (
     <div className="text-center">
       <div className="w-13 h-13 mx-auto mb-5 grid place-items-center rounded-2xl bg-[#edf5eb] dark:bg-[#1e2e1c] border border-[#b8d4b3] dark:border-[#3a5a37] text-[#4a7a42] dark:text-[#82a57b]">
@@ -348,39 +318,38 @@ function StepDone({ router }: { router: ReturnType<typeof useRouter> }) {
       </p>
       <button
         type="button"
-        onClick={() => router.push("/dashboard")}
+        onClick={onFinish}
         className="w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] transition-colors duration-160 cursor-pointer"
       >
-        Go to my dashboard
+        Go to my chat
       </button>
     </div>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
+// ─── Onboarding Page Root ────────────────────────────────────────────────────
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [subjectId, setSubjectId] = useState("");
+
+  // Form states
+  const [subjects] = useState<Subject[]>(DUMMY_AVAILABLE_SUBJECTS);
+  const [, setSubjectId] = useState("");
   const [subjectName, setSubjectName] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [goal, setGoal] = useState("");
+  const [, setGoal] = useState("");
 
   return (
-    // Full-screen, no AppShell — onboarding has its own focused layout
     <div className="min-h-svh flex flex-col items-center justify-center bg-[#f7f6f3] dark:bg-[#1b1a19] px-6 py-12">
       <div className="w-full max-w-120">
-        {/* Brand */}
         <div className="mb-10 flex justify-center">
           <BrandMark />
         </div>
 
-        {/* Step progress */}
         {step < 4 && <StepIndicator current={step - 1} total={3} />}
 
         {step === 1 && (
           <StepSubject
+            subjects={subjects}
             onSelect={(id, name) => {
               setSubjectId(id);
               setSubjectName(name);
@@ -388,26 +357,29 @@ export default function OnboardingPage() {
             }}
           />
         )}
+
         {step === 2 && (
           <StepGoal
             subjectName={subjectName}
-            onContinue={(g) => {
-              setGoal(g);
-              // TODO: POST /subjects/enroll { subjectId, goal: g }
+            onContinue={(userGoal) => {
+              setGoal(userGoal);
               setStep(3);
             }}
           />
         )}
+
         {step === 3 && (
           <StepSortTopics
-            onComplete={(sorts) => {
-              // TODO: POST /topics/sort { enrollmentId, sorts }
-              console.log("Sorts submitted:", sorts, "for subject:", subjectId);
+            topics={DUMMY_TOPICS}
+            onComplete={() => {
               setStep(4);
             }}
           />
         )}
-        {step === 4 && <StepDone router={router} />}
+
+        {step === 4 && (
+          <StepDone onFinish={() => router.push("/")} />
+        )}
       </div>
     </div>
   );

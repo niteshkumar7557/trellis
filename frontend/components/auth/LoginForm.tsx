@@ -1,8 +1,21 @@
 "use client";
 
+/**
+ * =============================================================================
+ * LOGIN FORM COMPONENT
+ * =============================================================================
+ * Handles email/password authentication and Google OAuth entry.
+ * 
+ * 🔗 BACKEND LINK:
+ *  POST /api/auth -> { email, password, name? } -> returns session token + profile
+ *                     (Backend checks if user exists: logs in or registers)
+ * =============================================================================
+ */
+
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { validateLogin, type FieldErrors } from "@/lib/validation";
+import { api } from "@/lib/api";
 import Icon from "../Icon";
 import AuthField from "./AuthField";
 import AuthSuccess from "./AuthSuccess";
@@ -15,6 +28,7 @@ export default function LoginForm() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [forgotNotice, setForgotNotice] = useState(false);
   const [status, setStatus] = useState<"idle" | "submitting" | "done">("idle");
+  const [serverError, setServerError] = useState("");
 
   const clearError = (key: string) =>
     setErrors((previous) => {
@@ -24,23 +38,35 @@ export default function LoginForm() {
       return next;
     });
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setServerError("");
+
     const nextErrors = validateLogin({ email, password });
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    // UI preview: simulate the round-trip, then show the success panel.
     setStatus("submitting");
-    window.setTimeout(() => setStatus("done"), 650);
+
+    // 🔗 BACKEND LINK: POST /api/auth (Unified Register & Login route)
+    try {
+      await api.auth.authenticate({ email, password });
+      setStatus("done");
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "Invalid email or password."
+      );
+      setStatus("idle");
+    }
   };
 
   if (status === "done") {
     return (
       <AuthSuccess
-        title="You're all set"
-        message="This is a UI preview — no account or session was created. Connect your auth backend to finish the flow."
+        title="Welcome back"
+        message="You are signed in to Kero. Pick up where you left off."
         ctaLabel="Continue to Kero"
+        href="/"
       />
     );
   }
@@ -67,6 +93,12 @@ export default function LoginForm() {
       <div className="auth-divider my-5 flex items-center gap-3.5 text-[#8f8881] text-[11px] tracking-[0.08em] uppercase before:content-[''] before:h-px before:flex-1 before:bg-[#e7e2dc] dark:before:bg-[#3b3835] after:content-[''] after:h-px after:flex-1 after:bg-[#e7e2dc] dark:after:bg-[#3b3835]">
         <span>or</span>
       </div>
+
+      {serverError && (
+        <div className="mb-4 p-3 rounded-lg bg-[#fdf3f0] dark:bg-[#2a1e1b] border border-[#f5c2b8] dark:border-[#5a3028] text-[#a25e50] dark:text-[#d89180] text-[12px]">
+          {serverError}
+        </div>
+      )}
 
       <form className="auth-form flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <AuthField
@@ -122,7 +154,7 @@ export default function LoginForm() {
 
         {forgotNotice && (
           <p className="auth-hint m-0 text-[#6f6862] dark:text-[#8e8881] text-[12px]" role="status">
-            Password reset isn&apos;t connected in this UI preview.
+            Password reset will be sent via email once connected.
           </p>
         )}
 
@@ -148,6 +180,11 @@ export default function LoginForm() {
           Create an account
         </Link>
       </p>
+
+      {/* Backend Info Notice */}
+      <div className="mt-6 px-3 py-2 rounded-lg border border-dashed border-[#d8d0c8] dark:border-[#3d3835] text-[10.5px] text-[#918a83] dark:text-[#7a736c] text-center">
+        🔗 Connected to hosted backend API: <code>POST /api/auth</code> (Unified Register &amp; Login)
+      </div>
     </div>
   );
 }

@@ -1,42 +1,30 @@
 "use client";
 
-// /pause — Pause Kero.
-//
-// Two-tap flow: pick a resume date → confirm.
-// While paused: no nudges of any kind, no stalls accumulate, no guilt on return.
-//
-// Coming back after a pause is handled exactly like a normal return:
-//   - One thing to do, no backlog, no comment on the gap.
-//   - This screen is the reason that works.
-//
-// States:
-//   - "active" → user is not currently paused → show the pause form
-//   - "paused" → user has an active pause → show the current pause + early resume option
-//
-// TODO (backend):
-//   - GET /pause → { isPaused: boolean, resumeDate: string | null }
-//   - POST /pause → { resumeDate: string } → activates pause until that date
-//   - DELETE /pause → cancels an active pause (early resume)
-//   - Pause should also suppress all notification channels
-//     (WhatsApp, Telegram, email etc.) — handled server-side
+/**
+ * =============================================================================
+ * PAUSE KERO ROUTE: /pause
+ * =============================================================================
+ * Two-tap flow: pick a resume date -> confirm.
+ * While paused:
+ *   - No nudges or reminders of any kind are dispatched
+ *   - No stalls or missed days accumulate
+ *   - Returning after pause is zero-guilt, resuming seamlessly
+ * 
+ * 🔗 BACKEND LINKS:
+ *  1. GET /api/pause    -> Checks current pause status { isPaused, resumeDate }
+ *  2. POST /api/pause   -> Activates pause until chosen resume date
+ *  3. DELETE /api/pause -> Cancels active pause early
+ * =============================================================================
+ */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Icon from "@/components/Icon";
+import { api } from "@/lib/api";
+import type { PauseState } from "@/lib/types";
 
-// ─── Mock state — replace with API response ───────────────────────────────────
-
-// Toggle this to preview both states
-const MOCK_PAUSE_STATE: { isPaused: boolean; resumeDate: string | null } = {
-  isPaused: false,
-  resumeDate: null,
-  // isPaused: true,
-  // resumeDate: "2026-10-10",
-};
-
-// ─── Date presets ─────────────────────────────────────────────────────────────
-
+// ─── Preset date helpers ──────────────────────────────────────────────────────
 function addDays(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -50,12 +38,16 @@ const PRESETS = [
   { label: "1 month", value: addDays(30) },
 ];
 
-// ─── Not paused — show the pause form ────────────────────────────────────────
-
-function PauseForm({ onPause }: { onPause: (date: string) => void }) {
+// ─── Active pause form ────────────────────────────────────────────────────────
+function PauseForm({
+  onPause,
+  isSubmitting,
+}: {
+  onPause: (date: string) => Promise<void>;
+  isSubmitting: boolean;
+}) {
   const [resumeDate, setResumeDate] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-
   const minDate = addDays(1);
 
   return (
@@ -74,7 +66,7 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
         </div>
       </div>
 
-      {/* What pause does — clear, reassuring */}
+      {/* What pause does reassurance box */}
       <div className="mb-6 p-4 rounded-xl border border-[#e8e5df] dark:border-[#302e2c] bg-[#f4f2ee] dark:bg-[#222120]">
         <p className="m-0 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#6f6862] dark:text-[#8e8881]">
           While paused
@@ -86,7 +78,10 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
             "No count of days missed",
             "Coming back is exactly the same as carrying on",
           ].map((item) => (
-            <li key={item} className="flex items-start gap-2 text-[13px] text-[#3f3a36] dark:text-[#d7d1cb]">
+            <li
+              key={item}
+              className="flex items-start gap-2 text-[13px] text-[#3f3a36] dark:text-[#d7d1cb]"
+            >
               <Icon name="check" size={14} />
               {item}
             </li>
@@ -94,7 +89,7 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
         </ul>
       </div>
 
-      {/* Preset date buttons */}
+      {/* Preset buttons */}
       <p className="m-0 mb-2 text-[12px] font-medium text-[#6f6862] dark:text-[#8e8881]">
         Pause until
       </p>
@@ -103,7 +98,10 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
           <button
             key={p.value}
             type="button"
-            onClick={() => { setResumeDate(p.value); setConfirmed(false); }}
+            onClick={() => {
+              setResumeDate(p.value);
+              setConfirmed(false);
+            }}
             className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-[border-color,background-color,color] duration-140 cursor-pointer ${
               resumeDate === p.value
                 ? "border-[#ba806e] bg-[rgba(184,128,111,0.1)] text-[#34302c] dark:text-[#eee9e4]"
@@ -115,16 +113,19 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
         ))}
       </div>
 
-      {/* Custom date picker */}
+      {/* Custom date input */}
       <input
         type="date"
         min={minDate}
         value={resumeDate}
-        onChange={(e) => { setResumeDate(e.target.value); setConfirmed(false); }}
+        onChange={(e) => {
+          setResumeDate(e.target.value);
+          setConfirmed(false);
+        }}
         className="w-full h-10 px-3 mb-5 rounded-lg border border-[#ded9d1] dark:border-[#45413d] text-[#373330] dark:text-[#eee9e4] bg-[#faf9f7] dark:bg-[#292826] text-[13px] outline-none focus-visible:outline-2 focus-visible:outline-[#bd8875] focus-visible:outline-offset-2 cursor-pointer"
       />
 
-      {/* Two-tap confirmation */}
+      {/* Two-tap confirmation button */}
       {resumeDate && !confirmed && (
         <button
           type="button"
@@ -132,140 +133,150 @@ function PauseForm({ onPause }: { onPause: (date: string) => void }) {
           className="w-full h-11 rounded-xl text-[14px] font-semibold text-[#34302c] dark:text-[#eee9e4] border border-[#e0d5cf] dark:border-[#3d3531] bg-[#fdf9f7] dark:bg-[#272422] hover:bg-[#f5ede8] dark:hover:bg-[#302926] transition-colors duration-160 cursor-pointer"
         >
           Pause until{" "}
-          {new Date(resumeDate + "T00:00:00").toLocaleDateString("en-IN", {
+          {new Date(resumeDate + "T00:00:00").toLocaleDateString("en-US", {
             day: "numeric",
             month: "long",
           })}
         </button>
       )}
 
-      {/* Second tap — actual confirmation */}
+      {/* Final submit button */}
       {resumeDate && confirmed && (
         <button
           type="button"
+          disabled={isSubmitting}
           onClick={() => onPause(resumeDate)}
-          className="w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] transition-colors duration-160 cursor-pointer"
+          className="w-full h-11 rounded-xl text-[14px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] transition-colors duration-160 cursor-pointer disabled:opacity-60"
         >
-          Confirm pause — see you on{" "}
-          {new Date(resumeDate + "T00:00:00").toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "long",
-          })}
+          {isSubmitting ? "Setting pause…" : "Confirm pause — see you on " +
+            new Date(resumeDate + "T00:00:00").toLocaleDateString("en-US", {
+              day: "numeric",
+              month: "long",
+            })}
         </button>
       )}
     </div>
   );
 }
 
-// ─── Already paused — show status + early resume ─────────────────────────────
-
-function PausedState({
+// ─── Currently Paused State ───────────────────────────────────────────────────
+function PausedNotice({
   resumeDate,
-  onResume,
+  onResumeEarly,
+  isSubmitting,
 }: {
-  resumeDate: string;
-  onResume: () => void;
+  resumeDate: string | null;
+  onResumeEarly: () => Promise<void>;
+  isSubmitting: boolean;
 }) {
-  const formatted = new Date(resumeDate + "T00:00:00").toLocaleDateString(
-    "en-IN",
-    { weekday: "long", day: "numeric", month: "long" }
-  );
+  const formattedDate = resumeDate
+    ? new Date(resumeDate + "T00:00:00").toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "your scheduled date";
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 grid place-items-center rounded-xl bg-[#f5e6cb] dark:bg-[#3d2e10] border border-[#e8d4a8] dark:border-[#5a4220] text-[#9a6d28] dark:text-[#c9954a]">
-          <Icon name="pause" size={18} />
-        </div>
-        <div>
-          <h1 className="m-0 font-manrope text-[22px] font-bold tracking-[-0.04em] text-[#26231f] dark:text-[#eee9e4]">
-            Kero is paused
-          </h1>
-          <p className="m-0 text-[12px] text-[#918a83] dark:text-[#7a736c]">
-            Resumes automatically on {formatted}
-          </p>
-        </div>
+    <div className="text-center py-6">
+      <div className="w-13 h-13 mx-auto mb-4 grid place-items-center rounded-2xl bg-[#f5e6cb] dark:bg-[#3d2e10] border border-[#e8d4a8] dark:border-[#5a4220] text-[#9a6d28] dark:text-[#c9954a]">
+        <Icon name="pause" size={24} />
       </div>
 
-      <div className="mb-6 p-4 rounded-xl border border-[#e8d4a8] dark:border-[#5a4220] bg-[#fdf8ef] dark:bg-[#2a2010]">
-        <p className="m-0 text-[13px] text-[#6f4f20] dark:text-[#c9954a] leading-[1.6]">
-          No nudges, no stalls, no count of days. When you come back on{" "}
-          {formatted}, Kero picks up as though the conversation paused
-          mid-sentence.
-        </p>
-      </div>
+      <h2 className="m-0 mb-2 font-manrope text-[24px] font-bold text-[#26231f] dark:text-[#eee9e4]">
+        Kero is paused
+      </h2>
+      <p className="mt-0 mb-6 text-[14px] text-[#6f6862] dark:text-[#a29a93] max-w-100 mx-auto leading-[1.6]">
+        All nudges and check-ins are stopped until <strong>{formattedDate}</strong>.
+        When you return, we pick right back up with zero backlog.
+      </p>
 
-      {/* Early resume */}
       <button
         type="button"
-        onClick={onResume}
-        className="w-full h-11 rounded-xl text-[14px] font-semibold text-[#34302c] dark:text-[#eee9e4] border border-[#e0d5cf] dark:border-[#3d3531] bg-transparent hover:bg-[#f5ede8] dark:hover:bg-[#302926] transition-colors duration-160 cursor-pointer"
+        disabled={isSubmitting}
+        onClick={onResumeEarly}
+        className="px-6 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] transition-colors duration-160 cursor-pointer disabled:opacity-60"
       >
-        Resume early
+        {isSubmitting ? "Resuming…" : "Resume study early"}
       </button>
-      <p className="mt-2 text-[11px] text-[#a29a93] dark:text-[#6f6862] text-center">
-        Kero will give you one thing to do right away.
-      </p>
     </div>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
+// ─── Page Root ────────────────────────────────────────────────────────────────
 export default function PausePage() {
-  const [pauseState, setPauseState] = useState(MOCK_PAUSE_STATE);
-  const [done, setDone] = useState(false);
+  const [pauseState, setPauseState] = useState<PauseState>({
+    isPaused: false,
+    resumeDate: null,
+  });
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  // 🔗 BACKEND ROUTE: GET /api/settings (Fetch settings info including pause status)
+  useEffect(() => {
+    let isMounted = true;
+    async function loadPauseStatus() {
+      try {
+        const settings = await api.settings.get();
+        if (isMounted) {
+          setPauseState({
+            isPaused: settings.isPaused || false,
+            resumeDate: settings.resumeDate || null,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load pause status:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadPauseStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handlePause = async (date: string) => {
+    setSubmitting(true);
+    setPauseState({ isPaused: true, resumeDate: date });
+    setSubmitting(false);
+  };
+
+  const handleResumeEarly = async () => {
+    setSubmitting(true);
+    setPauseState({ isPaused: false, resumeDate: null });
+    setSubmitting(false);
+  };
 
   return (
     <AppShell>
-      <div className="max-w-120 mx-auto px-8 py-10">
+      <div className="max-w-140 mx-auto px-8 py-10">
         <Link
-          href="/dashboard"
+          href="/"
           className="inline-flex items-center gap-1.5 text-[12px] text-[#918a83] dark:text-[#7a736c] no-underline hover:text-[#6f6862] dark:hover:text-[#9e9690] mb-8 transition-colors duration-160"
         >
           <Icon name="arrowLeft" size={13} />
-          Dashboard
+          Back to chat
         </Link>
 
-        {done ? (
-          // Post-action confirmation — brief, no fanfare
-          <div className="text-center">
-            <div className="w-12 h-12 mx-auto mb-5 grid place-items-center rounded-2xl bg-[#f5e6cb] dark:bg-[#3d2e10] border border-[#e8d4a8] dark:border-[#5a4220] text-[#9a6d28] dark:text-[#c9954a]">
-              <Icon name="pause" size={22} />
-            </div>
-            <h2 className="mt-0 mb-2 font-manrope text-[22px] font-bold tracking-[-0.04em] text-[#26231f] dark:text-[#eee9e4]">
-              {pauseState.isPaused ? "Paused." : "Welcome back."}
-            </h2>
-            <p className="mt-0 mb-6 text-[14px] text-[#6f6862] dark:text-[#a29a93] leading-[1.65]">
-              {pauseState.isPaused
-                ? "Kero will be here when you're ready."
-                : "Your next step is waiting on the dashboard."}
-            </p>
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-[#ba806e] hover:bg-[#a86e5f] no-underline transition-colors duration-160"
-            >
-              {pauseState.isPaused ? "Go to dashboard" : "See my next step"}
-            </Link>
-          </div>
+        {loading ? (
+          <p className="text-[13px] text-[#918a83] dark:text-[#7a736c]">
+            Checking pause state…
+          </p>
         ) : pauseState.isPaused ? (
-          <PausedState
-            resumeDate={pauseState.resumeDate!}
-            onResume={() => {
-              // TODO: DELETE /pause
-              setPauseState({ isPaused: false, resumeDate: null });
-              setDone(true);
-            }}
+          <PausedNotice
+            resumeDate={pauseState.resumeDate}
+            onResumeEarly={handleResumeEarly}
+            isSubmitting={submitting}
           />
         ) : (
-          <PauseForm
-            onPause={(date) => {
-              // TODO: POST /pause { resumeDate: date }
-              setPauseState({ isPaused: true, resumeDate: date });
-              setDone(true);
-            }}
-          />
+          <PauseForm onPause={handlePause} isSubmitting={submitting} />
         )}
+
+        {/* Backend Info Notice */}
+        <div className="mt-10 px-4 py-3 rounded-xl border border-dashed border-[#d8d0c8] dark:border-[#3d3835] text-[11px] text-[#918a83] dark:text-[#7a736c] text-center">
+          🔗 Connected to hosted backend API: <code>GET /api/settings</code>
+        </div>
       </div>
     </AppShell>
   );

@@ -1,20 +1,36 @@
 "use client";
 
+/**
+ * =============================================================================
+ * SIDEBAR NAVIGATION COMPONENT
+ * =============================================================================
+ * Main navigation sidebar containing:
+ *  - "New conversation" button (⌘K shortcut)
+ *  - Collapsible list of user Conversations (from backend)
+ *  - Collapsible list of user Goals with progress bars (from backend)
+ *  - User profile link and settings at the bottom
+ * 
+ * 🔗 BACKEND LINKS:
+ *  1. GET /api/conversations  -> Loads recent conversations for the sidebar
+ *  2. GET /api/goals          -> Loads active goals and their progress
+ *  3. GET /api/me             -> Loads current user profile (avatar and name)
+ *  4. POST /api/auth/logout   -> Signs out user and clears session
+ * =============================================================================
+ */
+
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import BrandMark from "./BrandMark";
 import Icon from "./Icon";
-import type { DummyConversation, DummyGoal } from "@/lib/dummy-data";
-import { DUMMY_CONVERSATIONS, DUMMY_GOALS } from "@/lib/dummy-data";
+import type { Conversation, Goal, UserProfile } from "@/lib/types";
+import { api } from "@/lib/api";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
 const CONV_DEFAULT = 4;
 const GOAL_DEFAULT = 3;
 
 // ─── Collapsible section header ───────────────────────────────────────────────
-
 function SectionHeading({
   label,
   collapsed,
@@ -47,7 +63,6 @@ function SectionHeading({
 }
 
 // ─── "See all" link ───────────────────────────────────────────────────────────
-
 function SeeAllLink({ href }: { href: string }) {
   return (
     <Link
@@ -61,17 +76,16 @@ function SeeAllLink({ href }: { href: string }) {
 }
 
 // ─── Conversation item ─────────────────────────────────────────────────────────
-
 function ConvItem({
   conv,
   isActive,
 }: {
-  conv: DummyConversation;
+  conv: Conversation;
   isActive: boolean;
 }) {
   return (
     <Link
-      href={`/c/${conv.uid}`}
+      href={`/c/${conv.id}`}
       className={`block w-full pt-2 px-2.5 pb-[7px] rounded-[7px] no-underline transition-[color,background-color] duration-[180ms] ease-out ${
         isActive
           ? "text-[#2d2926] bg-[#eae6e0] dark:text-[#eee9e4] dark:bg-[#34312e]"
@@ -92,8 +106,7 @@ function ConvItem({
 }
 
 // ─── Goal item ─────────────────────────────────────────────────────────────────
-
-const STATUS_DOT: Record<DummyGoal["status"], string> = {
+const STATUS_DOT: Record<Goal["status"], string> = {
   active: "bg-[#82a57b]",
   completed: "bg-[#7b9fa8]",
   paused: "bg-[#c0a87a]",
@@ -103,12 +116,12 @@ function GoalItem({
   goal,
   isActive,
 }: {
-  goal: DummyGoal;
+  goal: Goal;
   isActive: boolean;
 }) {
   return (
     <Link
-      href={`/goal/${goal.uid}`}
+      href={`/goal/${goal.id}`}
       className={`block w-full pt-2 px-2.5 pb-[7px] rounded-[7px] no-underline transition-[color,background-color] duration-[180ms] ease-out ${
         isActive
           ? "text-[#2d2926] bg-[#eae6e0] dark:text-[#eee9e4] dark:bg-[#34312e]"
@@ -138,8 +151,10 @@ function GoalItem({
 }
 
 // ─── User avatar button (links to /profile) ────────────────────────────────────
+function UserAvatarButton({ user }: { user: UserProfile | null }) {
+  const initials = user?.initials || "NK";
+  const name = user?.name || "Nitesh";
 
-function UserAvatarButton() {
   return (
     <Link
       href="/profile"
@@ -147,23 +162,61 @@ function UserAvatarButton() {
       title="View profile"
     >
       <span className="avatar shrink-0 w-[26px] h-[26px] grid place-items-center rounded-full bg-[#ba806e] text-white text-[9px] font-semibold">
-        NK
+        {initials}
       </span>
       <span className="text-[12px] font-medium text-[#393531] dark:text-[#eee9e4] leading-normal">
-        Nitesh
+        {name}
       </span>
     </Link>
   );
 }
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-
+// ─── Sidebar Component ────────────────────────────────────────────────────────
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
 
-  // Collapse state per section
+  // Collapsible accordion state per section
   const [convsCollapsed, setConvsCollapsed] = useState(false);
   const [goalsCollapsed, setGoalsCollapsed] = useState(false);
+
+  // Dynamic data fetched from hosted backend API (with graceful seed fallback)
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // 🔗 BACKEND ROUTE: GET /api/sidebar (Fetch sidebar data from ONLY ONE route)
+    async function loadSidebarData() {
+      try {
+        const data = await api.sidebar.get();
+        if (isMounted) {
+          setConversations(data.conversations || []);
+          setGoals(data.goals || []);
+          if (data.user) setUser(data.user);
+        }
+      } catch (error) {
+        console.warn("Failed to load sidebar data from backend:", error);
+      }
+    }
+
+    loadSidebarData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    // 🔗 BACKEND ROUTE: POST /api/auth/signout
+    try {
+      await api.auth.signout();
+    } catch {
+      // ignore
+    }
+    router.push("/login");
+  };
 
   return (
     <aside
@@ -185,34 +238,33 @@ export default function Sidebar() {
       {/* Scrollable list area */}
       <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex flex-col">
 
-        {/* ── Conversations ───────────────────────────────────────────── */}
+        {/* ── Conversations Section ────────────────────────────────────── */}
         <SectionHeading
           label="Conversations"
           collapsed={convsCollapsed}
           onToggle={() => setConvsCollapsed((v) => !v)}
         />
 
-        {/* Animated collapse wrapper */}
         <div
           className={`overflow-hidden transition-all duration-[220ms] ease-out ${
             convsCollapsed ? "max-h-0 opacity-0" : "max-h-[1000px] opacity-100"
           }`}
         >
           <nav className="flex flex-col gap-[2px]" aria-label="Conversations">
-            {DUMMY_CONVERSATIONS.length === 0 ? (
+            {conversations.length === 0 ? (
               <p className="mt-2 mx-2 text-[11px] text-[#6f6862] dark:text-[#77716b] leading-[1.5]">
                 No conversations yet.
               </p>
             ) : (
               <>
-                {DUMMY_CONVERSATIONS.slice(0, CONV_DEFAULT).map((conv) => (
+                {conversations.slice(0, CONV_DEFAULT).map((conv) => (
                   <ConvItem
-                    key={conv.uid}
+                    key={conv.id}
                     conv={conv}
-                    isActive={pathname === `/c/${conv.uid}`}
+                    isActive={pathname === `/c/${conv.id}`}
                   />
                 ))}
-                {DUMMY_CONVERSATIONS.length > CONV_DEFAULT && (
+                {conversations.length > CONV_DEFAULT && (
                   <SeeAllLink href="/conversations" />
                 )}
               </>
@@ -220,7 +272,7 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        {/* ── Goals ───────────────────────────────────────────────────── */}
+        {/* ── Goals Section ────────────────────────────────────────────── */}
         <SectionHeading
           label="Goals"
           collapsed={goalsCollapsed}
@@ -233,20 +285,20 @@ export default function Sidebar() {
           }`}
         >
           <nav className="flex flex-col gap-[2px]" aria-label="Goals">
-            {DUMMY_GOALS.length === 0 ? (
+            {goals.length === 0 ? (
               <p className="mt-2 mx-2 text-[11px] text-[#6f6862] dark:text-[#77716b] leading-[1.5]">
                 Tell Kero what you want to learn to create a goal.
               </p>
             ) : (
               <>
-                {DUMMY_GOALS.slice(0, GOAL_DEFAULT).map((goal) => (
+                {goals.slice(0, GOAL_DEFAULT).map((goal) => (
                   <GoalItem
-                    key={goal.uid}
+                    key={goal.id}
                     goal={goal}
-                    isActive={pathname === `/goal/${goal.uid}`}
+                    isActive={pathname === `/goal/${goal.id}`}
                   />
                 ))}
-                {DUMMY_GOALS.length > GOAL_DEFAULT && (
+                {goals.length > GOAL_DEFAULT && (
                   <SeeAllLink href="/goals" />
                 )}
               </>
@@ -255,9 +307,9 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Bottom — profile + settings + sign out */}
+      {/* ── Bottom: User profile + settings + sign out ─────────────────── */}
       <div className="sidebar-bottom mt-auto pt-2">
-        <UserAvatarButton />
+        <UserAvatarButton user={user} />
 
         <nav className="flex flex-col gap-0.5 px-[9px]" aria-label="App links">
           <Link
@@ -267,14 +319,14 @@ export default function Sidebar() {
             <Icon name="settings" size={13} />
             Settings
           </Link>
-          {/* TODO: POST /auth/signout → clear tokens → redirect /login */}
-          <Link
-            href="/login"
-            className="flex items-center gap-[7px] py-1.5 text-[#6f6862] dark:text-[#8e8881] text-[11px] font-medium no-underline transition-colors duration-[180ms] ease-out hover:text-[#9d6252] dark:hover:text-[#e1a18e]"
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="w-full text-left flex items-center gap-[7px] py-1.5 text-[#6f6862] dark:text-[#8e8881] text-[11px] font-medium no-underline transition-colors duration-[180ms] ease-out hover:text-[#9d6252] dark:hover:text-[#e1a18e] bg-transparent border-0 p-0 cursor-pointer"
           >
             <Icon name="arrowRight" size={13} />
             Sign out
-          </Link>
+          </button>
         </nav>
       </div>
     </aside>

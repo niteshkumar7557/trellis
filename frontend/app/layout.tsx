@@ -31,7 +31,11 @@ export const viewport: Viewport = {
 // Runs before first paint so a dark-mode visitor never sees a light flash.
 const themeScript = `(function(){try{if(localStorage.getItem("kero-theme")==="dark"){document.documentElement.classList.add("dark-mode");document.documentElement.dataset.theme="dark";}}catch(e){}})();`;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"

@@ -1,5 +1,23 @@
 "use client";
 
+/**
+ * =============================================================================
+ * CHAT APPLICATION ROOT COMPONENT
+ * =============================================================================
+ * Central chat interface for Trellis / Kero.
+ * 
+ * 🔗 BACKEND INTEGRATION (ONLY REQUESTED ROUTES):
+ *  1. POST /api/conversations              -> First message of new convo
+ *                                             (Title is generated & stored in DB by backend)
+ *  2. POST /api/conversations/:id/messages -> Message to an existing convo
+ * 
+ * ⏱️ CHAT WAITING BEHAVIOR:
+ *  - User sends a message -> Immediate local append
+ *  - UI displays thinking status banner directly above input box
+ *  - Dummy 4 seconds wait time simulates AI generation latency until backend is connected
+ * =============================================================================
+ */
+
 import {
   useCallback,
   useEffect,
@@ -10,9 +28,8 @@ import {
   type UIEventHandler,
 } from "react";
 import { useRouter } from "next/navigation";
-import type { ChatMessage, Conversation, WireMessage } from "@/lib/types";
-import { createFallbackTitle, requestChat, requestTitle } from "@/lib/api";
-import { loadChats, saveChats } from "@/lib/storage";
+import type { ChatMessage } from "@/lib/types";
+import { api, waitDummyDelay } from "@/lib/api";
 import { useTheme } from "@/lib/useTheme";
 import ChatHeader from "./ChatHeader";
 import Composer from "./Composer";
@@ -27,26 +44,31 @@ type SendEvent =
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
 interface ChatAppProps {
+  initialConversationId?: string;
   initialMessages?: ChatMessage[];
   initialTitle?: string;
 }
 
 export default function ChatApp({
+  initialConversationId,
   initialMessages = EMPTY_MESSAGES,
   initialTitle,
 }: ChatAppProps = {}) {
   const router = useRouter();
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+
+  // Active chat state
+  const [messages, setMessages] = useState<ChatMessage[]>(() => initialMessages);
   const [draft, setDraft] = useState("");
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<
-    number | null
-  >(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(
+    () => initialConversationId || null
+  );
+  const [activeTitle, setActiveTitle] = useState<string>(() => initialTitle || "Kero");
+
+  // UI state
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
 
   const { darkMode, toggleTheme } = useTheme();
 
@@ -54,40 +76,7 @@ export default function ChatApp({
   const threadRef = useRef<HTMLDivElement>(null);
   const shouldScrollToLatest = useRef(false);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const restoreConversations = async () => {
-      try {
-        const savedConversations = await loadChats();
-        if (!isMounted || !Array.isArray(savedConversations)) return;
-        // Load the list so new conversations are persisted correctly,
-        // but never auto-open a previous chat — '/' is always a blank slate.
-        setConversations(savedConversations);
-      } catch (restoreError) {
-        if (isMounted) {
-          setError(
-            restoreError instanceof Error
-              ? restoreError.message
-              : "Saved conversations could not be restored.",
-          );
-        }
-      } finally {
-        if (isMounted) setIsHydrated(true);
-      }
-    };
-
-    restoreConversations();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) return;
-    saveChats(conversations).catch(() => {});
-  }, [conversations, isHydrated]);
-
+  // Smooth scroll handler
   const scrollToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
     if (!threadRef.current) return;
     threadRef.current.scrollTo({
@@ -97,6 +86,7 @@ export default function ChatApp({
     setShowScrollButton(false);
   }, []);
 
+  // Auto-scroll when new messages arrive
   useEffect(() => {
     if (!messages.length || !shouldScrollToLatest.current) return undefined;
     const frame = window.requestAnimationFrame(() => scrollToLatest());
@@ -111,122 +101,83 @@ export default function ChatApp({
     setShowScrollButton(distanceFromLatest > 120);
   };
 
+  /**
+   * Send message handler:
+   * 1. Appends user message to thread immediately
+   * 2. Displays thinking status above input box
+   * 3. Waits 4 seconds dummy time (replaced by real backend once connected)
+   * 4. Calls POST /api/conversations (new convo) or POST /api/conversations/:id/messages
+   */
   const sendMessage = async (event: SendEvent) => {
     event.preventDefault();
     const trimmedDraft = draft.trim();
-    if (!trimmedDraft) return;
+    if (!trimmedDraft || isLoading) return;
 
-    const messageId = Date.now();
-    const conversationId = activeConversationId || messageId;
-    const isNewConversation = !activeConversationId;
-    const nextMessages: ChatMessage[] = [
-      ...messages,
-      { id: messageId, role: "user", content: trimmedDraft, time: "Just now" },
-    ];
+    const messageId = `msg-${Date.now()}`;
+    const userMessage: ChatMessage = {
+      id: messageId,
+      role: "user",
+      content: trimmedDraft,
+      time: "Just now",
+    };
+
+    const nextMessages: ChatMessage[] = [...messages, userMessage];
     const currentRequestId = requestId.current + 1;
     requestId.current = currentRequestId;
     shouldScrollToLatest.current = true;
+
     setMessages(nextMessages);
-
-    if (isNewConversation) {
-      setActiveConversationId(conversationId);
-      setConversations((current) => [
-        {
-          id: conversationId,
-          title: createFallbackTitle(nextMessages),
-          preview: trimmedDraft,
-          time: "Just now",
-          messages: nextMessages,
-        },
-        ...current,
-      ]);
-    } else {
-      setConversations((current) =>
-        current.map((conversation) =>
-          conversation.id === conversationId
-            ? {
-                ...conversation,
-                preview: trimmedDraft,
-                time: "Just now",
-                messages: nextMessages,
-              }
-            : conversation,
-        ),
-      );
-    }
-
     setDraft("");
     setError("");
     setIsLoading(true);
 
+    const isNewConversation = !activeConversationId;
+    const targetConversationId = activeConversationId;
+
     try {
-      const response = await requestChat(
-        nextMessages.map(({ role, content }) => ({ role, content })),
-      );
+      // ⏱️ DUMMY 4-SECOND WAIT TIME (simulates AI thinking latency until backend is set up)
+      await waitDummyDelay(4000);
       if (requestId.current !== currentRequestId) return;
 
-      const assistantMessage: ChatMessage = {
-        id: Date.now() + 1,
-        role: "assistant",
-        content: response,
-        time: "Just now",
-      };
-      setMessages((current) => [...current, assistantMessage]);
-      setConversations((current) =>
-        current.map((conversation) =>
-          conversation.id === conversationId
-            ? {
-                ...conversation,
-                preview: response,
-                messages: [...conversation.messages, assistantMessage],
-              }
-            : conversation,
-        ),
-      );
-
       if (isNewConversation) {
-        const titleMessages: WireMessage[] = [
-          ...nextMessages,
-          assistantMessage,
-        ].map(({ role, content }) => ({ role, content }));
+        // 🔗 BACKEND ROUTE: POST /api/conversations
+        // New convo first message: Backend stores title in DB, generates AI response, saves both.
+        const createdConv = await api.conversations.create(trimmedDraft);
+        if (requestId.current !== currentRequestId) return;
 
-        requestTitle(titleMessages)
-          .then((title) => {
-            if (title?.trim()) {
-              setConversations((current) =>
-                current.map((conversation) =>
-                  conversation.id === conversationId
-                    ? { ...conversation, title: title.trim() }
-                    : conversation,
-                ),
-              );
-            }
-          })
-          .catch(() =>
-            setConversations((current) =>
-              current.map((conversation) =>
-                conversation.id === conversationId
-                  ? {
-                      ...conversation,
-                      title: createFallbackTitle(nextMessages),
-                    }
-                  : conversation,
-              ),
-            ),
-          );
+        setActiveConversationId(createdConv.id);
+        setActiveTitle(createdConv.title);
+
+        const assistantMsg = createdConv.messages.find((m) => m.role === "assistant") || {
+          id: `msg-${Date.now() + 1}`,
+          role: "assistant",
+          content: "I received your study check-in! Once the backend is online, precision AI study guidance will appear here.",
+          time: "Just now",
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+      } else if (targetConversationId) {
+        // 🔗 BACKEND ROUTE: POST /api/conversations/:id/messages
+        // Message on specific conv-id: Backend appends message & returns AI response.
+        const result = await api.conversations.sendMessage(targetConversationId, trimmedDraft);
+        if (requestId.current !== currentRequestId) return;
+
+        setMessages((prev) => [...prev, result.assistantMessage]);
       }
     } catch (requestError) {
       if (requestId.current !== currentRequestId) return;
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Something went wrong while contacting Groq.",
+          : "Could not send message. Verify your backend server is running."
       );
     } finally {
-      if (requestId.current === currentRequestId) setIsLoading(false);
+      if (requestId.current === currentRequestId) {
+        setIsLoading(false);
+      }
     }
   };
 
+  // Keyboard shortcut: Cmd+K / Ctrl+K jumps to new conversation at "/"
   useEffect(() => {
     const handleNewChatShortcut = (event: globalThis.KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -238,17 +189,6 @@ export default function ChatApp({
     return () => window.removeEventListener("keydown", handleNewChatShortcut);
   }, [router]);
 
-  useEffect(() => {
-    setMessages(initialMessages);
-  }, [initialMessages]);
-
-  const activeTitle =
-    conversations.find(
-      (conversation) => conversation.id === activeConversationId,
-    )?.title ||
-    initialTitle ||
-    "Kero";
-
   return (
     <main
       className={`app-shell h-svh min-h-svh flex overflow-hidden text-[#252321] dark:text-[#e8e3de] bg-[#fbfaf8] dark:bg-[#1b1a19] ${
@@ -259,8 +199,10 @@ export default function ChatApp({
           : "sidebar-hidden [&_.sidebar]:!w-0 [&_.sidebar]:!flex-[0_0_0px] [&_.sidebar]:!px-0 [&_.sidebar]:!border-r-transparent [&_.sidebar]:!opacity-0 [&_.sidebar]:!pointer-events-none"
       }`}
     >
+      {/* Sidebar fetching data from single GET /api/sidebar route */}
       <Sidebar />
 
+      {/* Main chat workspace */}
       <section className="chat-panel relative min-w-0 min-h-0 h-svh flex-1 flex flex-col bg-[#fbfaf8] dark:bg-[#1b1a19]">
         <ChatHeader
           title={activeTitle}
@@ -283,11 +225,27 @@ export default function ChatApp({
 
           {messages.length > 0 && (
             <div className="composer-wrap pt-2.5 px-0 pb-4.5">
+              {/* 💬 Thinking / status banner displayed above the input box */}
+              {isLoading && (
+                <div
+                  className="chat-thinking-banner mb-2 mx-auto w-fit flex items-center gap-2 px-3 py-1 rounded-full text-[11.5px] font-medium text-[#ba806e] dark:text-[#c48e7a] bg-[#ba806e]/10 dark:bg-[#c48e7a]/15 border border-[#ba806e]/20 dark:border-[#c48e7a]/25 shadow-sm transition-all animate-pulse"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ba806e] dark:bg-[#c48e7a] animate-ping" />
+                  <span>Kero is thinking…</span>
+                </div>
+              )}
+
               {error && (
-                <p className="chat-error mb-[9px] text-[#a25e50] dark:text-[#d89180] text-[11px] leading-[1.4] text-center" role="alert">
+                <p
+                  className="chat-error mb-[9px] text-[#a25e50] dark:text-[#d89180] text-[11px] leading-[1.4] text-center"
+                  role="alert"
+                >
                   {error}
                 </p>
               )}
+
               <Composer
                 draft={draft}
                 setDraft={setDraft}

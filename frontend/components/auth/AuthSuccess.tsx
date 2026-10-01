@@ -7,12 +7,14 @@ interface AuthSuccessProps {
   title: string;
   message: string;
   ctaLabel: string;
+  href?: string;
 }
 
 export default function AuthSuccess({
   title,
   message,
   ctaLabel,
+  href = "/",
 }: AuthSuccessProps) {
   return (
     <div className="auth-success pt-1.5 text-center" role="status">
@@ -27,7 +29,7 @@ export default function AuthSuccess({
       </p>
       <Link
         className="auth-submit w-full h-12 flex items-center justify-center gap-[9px] border-0 rounded-[10px] text-white bg-[#b8806f] hover:bg-[#a86d5d] text-[14px] font-semibold tracking-[-0.01em] no-underline shadow-[0_8px_20px_rgba(141,87,70,0.18)] hover:shadow-[0_10px_24px_rgba(141,87,70,0.24)] hover:-translate-y-px transition-[background-color,box-shadow,transform] duration-[180ms] ease-out"
-        href="/"
+        href={href}
       >
         {ctaLabel}
         <Icon name="arrowRight" size={16} />
