@@ -1,23 +1,13 @@
 "use client";
 
-/**
- * =============================================================================
- * ALL CONVERSATIONS ROUTE: /conversations
- * =============================================================================
- * Displays the complete archive of user conversations with Kero.
- * 
- * 🔗 BACKEND LINK:
- *  GET /api/conversations -> Fetches all conversation threads for authenticated user
- * =============================================================================
- */
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "@/lib/useTheme";
 import Sidebar from "@/components/Sidebar";
 import Icon from "@/components/Icon";
-import { api } from "@/lib/api";
-import type { Conversation } from "@/lib/types";
+import api from "@/app/_utils/axios";
+import type { Conversation } from "@/app/_types";
+import { formatSidebarTime } from "@/app/_utils/formatTime";
 
 export default function ConversationsPage() {
   const { darkMode } = useTheme();
@@ -27,11 +17,10 @@ export default function ConversationsPage() {
   useEffect(() => {
     let isMounted = true;
 
-    // 🔗 BACKEND LINK: GET /api/conversations
     async function fetchConversations() {
       try {
-        const data = await api.conversations.list();
-        if (isMounted) setConversations(data);
+        const { data } = await api.get<Conversation[]>("/conversations");
+        if (isMounted) setConversations(data || []);
       } catch (err) {
         console.error("Failed to load conversations:", err);
       } finally {
@@ -54,7 +43,7 @@ export default function ConversationsPage() {
       <Sidebar />
 
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <div className="max-w-[680px] mx-auto px-8 py-10">
+        <div className="max-w-170 mx-auto px-8 py-10">
 
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
@@ -104,7 +93,7 @@ export default function ConversationsPage() {
                         {conv.title}
                       </span>
                       <time className="shrink-0 text-[11px] text-[#a29a93] dark:text-[#6f6862] mt-0.5">
-                        {conv.time}
+                        {formatSidebarTime(conv.updatedAt || conv.createdAt || conv.time)}
                       </time>
                     </div>
                     <p className="m-0 mt-0.5 text-[12px] text-[#6f6862] dark:text-[#8e8881] leading-normal overflow-hidden text-ellipsis whitespace-nowrap">
@@ -116,10 +105,7 @@ export default function ConversationsPage() {
             </div>
           )}
 
-          {/* Backend Info Notice */}
-          <div className="mt-10 px-4 py-3 rounded-xl border border-dashed border-[#d8d0c8] dark:border-[#3d3835] text-[11px] text-[#918a83] dark:text-[#7a736c] text-center">
-            🔗 Connected to hosted backend API: <code>GET /api/conversations</code>
-          </div>
+
         </div>
       </main>
     </div>

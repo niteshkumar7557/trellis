@@ -1,45 +1,58 @@
-/**
- * =============================================================================
- * CONVERSATION ROUTE: /c/[uid]
- * =============================================================================
- * Displays an existing conversation thread with Kero.
- * 
- * 🔗 BACKEND LINK:
- *  GET /api/conversations/:id -> Fetches conversation title and historical messages
- * =============================================================================
- */
+"use client";
 
-import { notFound } from "next/navigation";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import ChatApp from "@/components/ChatApp";
-import { api } from "@/lib/api";
-import { DUMMY_CONVERSATIONS } from "@/lib/dummy-data";
+import api from "@/app/_utils/axios";
+import type { Conversation } from "@/app/_types";
 
 interface PageProps {
   params: Promise<{ uid: string }>;
 }
 
-export default async function ConversationPage({ params }: PageProps) {
-  const { uid } = await params;
+export default function ConversationPage({ params }: PageProps) {
+  const { uid } = use(params);
+  const router = useRouter();
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // 🔗 BACKEND LINK: GET /api/conversations/:id
-  // Fetches conversation record from your hosted backend API
-  const conversation = await api.conversations.get(uid);
+  useEffect(() => {
+    let isMounted = true;
 
-  if (!conversation) {
-    notFound();
+    async function fetchConversation() {
+      try {
+        const { data } = await api.get<Conversation>(`/conversations/${uid}`);
+        if (isMounted) {
+          if (!data) {
+            router.replace("/");
+            return;
+          }
+          setConversation(data);
+          setLoading(false);
+        }
+      } catch {
+        if (isMounted) {
+          router.replace("/");
+        }
+      }
+    }
+
+    fetchConversation();
+    return () => {
+      isMounted = false;
+    };
+  }, [uid, router]);
+
+  if (loading || !conversation) {
+    return <div className="h-svh bg-[#fbfaf8] dark:bg-[#1b1a19]" />;
   }
 
   return (
     <ChatApp
       key={conversation.id}
       initialConversationId={conversation.id}
-      initialMessages={conversation.messages}
-      initialTitle={conversation.title}
+      initialMessages={conversation.messages || []}
+      initialTitle={conversation.title || "Conversation"}
     />
   );
-}
-
-// Generate static routes for fallback pre-rendering
-export function generateStaticParams() {
-  return DUMMY_CONVERSATIONS.map((c) => ({ uid: c.id || c.uid }));
 }

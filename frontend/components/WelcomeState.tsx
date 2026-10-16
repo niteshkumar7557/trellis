@@ -42,25 +42,25 @@ export default function WelcomeState({
   return (
     <div className="welcome-state w-[min(560px,100%)] text-center -translate-y-2.5">
       {/* Brand orb — larger version of the sidebar orb */}
-      <div className="brand-orb w-[46px] h-[46px] mx-auto mb-[22px] rounded-[50%_50%_47%_53%] bg-[#ba806e] dark:bg-[#c78d78] shadow-[inset_-4px_-4px_0_#a86e5f] dark:shadow-[inset_-4px_-4px_0_#a97060] -rotate-[25deg]" />
+      <div className="brand-orb w-11.5 h-11.5 mx-auto mb-5.5 rounded-[50%_50%_47%_53%] bg-[#ba806e] dark:bg-[#c78d78] shadow-[inset_-4px_-4px_0_#a86e5f] dark:shadow-[inset_-4px_-4px_0_#a97060] rotate-[-25deg]" />
 
-      <h1 className="m-0 mb-[9px] text-[#34302c] dark:text-[#eee9e4] font-manrope text-[25px] font-semibold tracking-[-0.04em]">
+      <h1 className="m-0 mb-2.25 text-[#34302c] dark:text-[#eee9e4] font-manrope text-[25px] font-semibold tracking-[-0.04em]">
         What are you working on?
       </h1>
 
-      <p className="m-0 mb-[22px] text-[#7a736c] dark:text-[#817a73] text-[13px] leading-[1.6] max-w-[400px] mx-auto">
+      <p className="m-0 mb-5.5 text-[#7a736c] dark:text-[#817a73] text-[13px] leading-[1.6] max-w-100 mx-auto">
         Tell Kero what you want to learn, what you studied, or what you&apos;re
         stuck on. No forms. Just talk.
       </p>
 
       {/* Example prompt chips */}
-      <div className="flex flex-wrap justify-center gap-2 mb-[26px]">
+      <div className="flex flex-wrap justify-center gap-2 mb-6.5">
         {EXAMPLE_PROMPTS.map((prompt) => (
           <button
             key={prompt}
             type="button"
             onClick={() => setDraft(prompt)}
-            className="px-3 py-1.5 rounded-full text-[12px] font-medium border border-[#e2dcd4] dark:border-[#3b3835] text-[#6f6862] dark:text-[#a29a93] bg-[#faf9f7] dark:bg-[#292826] hover:border-[#cdbdb5] dark:hover:border-[#4a4541] hover:text-[#34302c] dark:hover:text-[#eee9e4] transition-[border-color,color] duration-[160ms] cursor-pointer"
+            className="px-3 py-1.5 rounded-full text-[12px] font-medium border border-[#e2dcd4] dark:border-[#3b3835] text-[#6f6862] dark:text-[#a29a93] bg-[#faf9f7] dark:bg-[#292826] hover:border-[#cdbdb5] dark:hover:border-[#4a4541] hover:text-[#34302c] dark:hover:text-[#eee9e4] transition-[border-color,color] duration-160 cursor-pointer"
           >
             {prompt}
           </button>
@@ -86,7 +86,7 @@ export default function WelcomeState({
         welcome
       />
 
-      <p className="mt-[14px] text-[#a29a93] dark:text-[#7a736c] text-[11px] leading-[1.5]">
+      <p className="mt-3.5 text-[#a29a93] dark:text-[#7a736c] text-[11px] leading-normal">
         Your goals, your words, your pace.
         <br />
         Kero figures out the rest.

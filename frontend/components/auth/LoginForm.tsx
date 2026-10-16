@@ -1,25 +1,13 @@
 "use client";
 
-/**
- * =============================================================================
- * LOGIN FORM COMPONENT
- * =============================================================================
- * Handles email/password authentication and Google OAuth entry.
- * 
- * 🔗 BACKEND LINK:
- *  POST /api/auth -> { email, password, name? } -> returns session token + profile
- *                     (Backend checks if user exists: logs in or registers)
- * =============================================================================
- */
-
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { validateLogin, type FieldErrors } from "@/lib/validation";
-import { api } from "@/lib/api";
 import Icon from "../Icon";
 import AuthField from "./AuthField";
 import AuthSuccess from "./AuthSuccess";
 import GoogleIcon from "./GoogleIcon";
+import api from "@/app/_utils/axios";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -48,9 +36,13 @@ export default function LoginForm() {
 
     setStatus("submitting");
 
-    // 🔗 BACKEND LINK: POST /api/auth (Unified Register & Login route)
+    // 🔗 BACKEND LINK: POST /user/login
     try {
-      await api.auth.authenticate({ email, password });
+      const response = await api.post<{ access_token?: string; accessToken?: string }>('/user/login' , { email, password });
+      const token = response.data.access_token || response.data.accessToken;
+      if (token) {
+        localStorage.setItem("access_token", token);
+      }
       setStatus("done");
     } catch (err) {
       setServerError(
@@ -77,13 +69,13 @@ export default function LoginForm() {
         <h2 className="m-0 mb-2 text-[#26231f] dark:text-[#eee9e4] font-manrope text-[30px] max-[520px]:text-[26px] font-bold tracking-[-0.04em]">
           Welcome back
         </h2>
-        <p className="m-0 mb-[26px] text-[#6f6862] dark:text-[#a29a93] text-[14px] leading-[1.55]">
+        <p className="m-0 mb-6.5 text-[#6f6862] dark:text-[#a29a93] text-[14px] leading-[1.55]">
           Pick up the thread exactly where you left it.
         </p>
       </div>
 
       <button
-        className="auth-oauth w-full h-[46px] flex items-center justify-center gap-2.5 border border-[#ded9d1] dark:border-[#45413d] rounded-[10px] text-[#373330] dark:text-[#e6dfd9] bg-white dark:bg-[#252422] text-[14px] font-medium transition-[border-color,background-color,box-shadow] duration-[180ms] ease-out hover:border-[#cdbdb5] dark:hover:border-[#5a544e] hover:bg-[#fffdfc] dark:hover:bg-[#2b2927] hover:shadow-[0_4px_14px_rgba(50,43,37,0.05)] dark:hover:shadow-none cursor-pointer"
+        className="auth-oauth w-full h-11.5 flex items-center justify-center gap-2.5 border border-[#ded9d1] dark:border-[#45413d] rounded-[10px] text-[#373330] dark:text-[#e6dfd9] bg-white dark:bg-[#252422] text-[14px] font-medium transition-[border-color,background-color,box-shadow] duration-180 ease-out hover:border-[#cdbdb5] dark:hover:border-[#5a544e] hover:bg-[#fffdfc] dark:hover:bg-[#2b2927] hover:shadow-[0_4px_14px_rgba(50,43,37,0.05)] dark:hover:shadow-none cursor-pointer"
         type="button"
       >
         <GoogleIcon />
@@ -134,7 +126,7 @@ export default function LoginForm() {
         />
 
         <div className="auth-row -mt-0.5 flex items-center justify-between gap-3">
-          <label className="auth-check inline-flex items-center gap-[9px] text-[#5b544e] dark:text-[#b1aaa3] text-[13px] cursor-pointer">
+          <label className="auth-check inline-flex items-center gap-2.25 text-[#5b544e] dark:text-[#b1aaa3] text-[13px] cursor-pointer">
             <input
               type="checkbox"
               checked={remember}
@@ -159,7 +151,7 @@ export default function LoginForm() {
         )}
 
         <button
-          className="auth-submit w-full h-12 flex items-center justify-center gap-[9px] border-0 rounded-[10px] text-white bg-[#b8806f] hover:not-disabled:bg-[#a86d5d] text-[14px] font-semibold tracking-[-0.01em] no-underline shadow-[0_8px_20px_rgba(141,87,70,0.18)] hover:not-disabled:shadow-[0_10px_24px_rgba(141,87,70,0.24)] hover:not-disabled:-translate-y-px transition-[background-color,box-shadow,transform] duration-[180ms] ease-out disabled:cursor-default disabled:opacity-60 cursor-pointer"
+          className="auth-submit w-full h-12 flex items-center justify-center gap-2.25 border-0 rounded-[10px] text-white bg-[#b8806f] hover:not-disabled:bg-[#a86d5d] text-[14px] font-semibold tracking-[-0.01em] no-underline shadow-[0_8px_20px_rgba(141,87,70,0.18)] hover:not-disabled:shadow-[0_10px_24px_rgba(141,87,70,0.24)] hover:not-disabled:-translate-y-px transition-[background-color,box-shadow,transform] duration-180 ease-out disabled:cursor-default disabled:opacity-60 cursor-pointer"
           type="submit"
           disabled={status === "submitting"}
         >
@@ -174,17 +166,12 @@ export default function LoginForm() {
         </button>
       </form>
 
-      <p className="auth-switch mt-[22px] text-[#6f6862] dark:text-[#8e8881] text-[13px] text-center">
+      <p className="auth-switch mt-5.5 text-[#6f6862] dark:text-[#8e8881] text-[13px] text-center">
         New to Kero?{" "}
         <Link className="auth-link text-[#9d6252] dark:text-[#db9c88] text-[13px] font-medium no-underline hover:text-[#814b3e] dark:hover:text-[#efb19d] hover:underline hover:underline-offset-2" href="/register">
           Create an account
         </Link>
       </p>
-
-      {/* Backend Info Notice */}
-      <div className="mt-6 px-3 py-2 rounded-lg border border-dashed border-[#d8d0c8] dark:border-[#3d3835] text-[10.5px] text-[#918a83] dark:text-[#7a736c] text-center">
-        🔗 Connected to hosted backend API: <code>POST /api/auth</code> (Unified Register &amp; Login)
-      </div>
     </div>
   );
 }

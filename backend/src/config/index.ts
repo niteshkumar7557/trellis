@@ -24,6 +24,10 @@ const config = {
   db: {
     url: process.env.DB_URL,
   },
+
+  jwt_secret: process.env.JWT_SECRET,
+  access_token_ttl: str("ACCESS_TOKEN_TTL", "15m"),
+  refresh_token_days: num("REFRESH_TOKEN_DAYS", 7),
 };
 
 export default config;

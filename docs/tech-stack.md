@@ -1,57 +1,43 @@
 # Tech Stack
 
-## Frontend (Riya and Nihamika)
+## Frontend
 - Nextjs
 - TailwindCSS
 - Cytoscape.js
 
 ## Backend
-- Nodejs + Expressjs (all)
-- FastAPI (Mansha)
-- Go (Nitesh)
+- Nodejs
+- Expressjs
 
 ## Database
-- Postgresql (all)
-- Redis (Mansha and Nitesh)
-- Neo4j (Nitesh)
+- Postgresql
+- Neo4j
+- Redis
 
-## Auth (all)
+## Auth
 - JWT access tokens + database-backed refresh tokens
 - Google OAuth2
 
-## Testing (all)
+## Testing
 - Vitest
 
-## Observability (Nitesh)
+## Observability
 - Sentry
 - Down Time Check -> [uptimerobot](https://uptimerobot.com/)
-- Nightly Database Backup -> [healthchecks](https://healthchecks.io/)
+- Ping Nightly Database Backup -> [healthchecks](https://healthchecks.io/)
 
-## AI (Mansha)
-- OpenRouter (Deepseek API)
-- langchain
-- langgraph
+## AI
+- OpenRouter API
+- TypeSafe AI Jev
+- Deepseek v4.1 flash
 
-## Notifications (Nitesh)
+## Notifications
 - AWS SES
 - Telegram (Bot API)
 - Discord (Bot API)
 - Whatsapp (Evolution API)
 
-## DevOps (Nitesh and Mansha)
+## DevOps
 - Docker
 - Github Actions (CI)
 - Railway (CD)
-
-## Mobile Application (Claude and Nitesh)
-- React Native
-- Expo
-
-## Electron Application (Claude and Nitesh)
-- Electronjs
-- Nodejs
-- Reactjs
-
-## CLI (Nitesh)
-- Go
-- Nodejs

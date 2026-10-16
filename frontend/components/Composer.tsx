@@ -50,7 +50,7 @@ export default function Composer({
 
   return (
     <form
-      className={`composer min-h-14.75 p-2 pl-[17px] flex items-end gap-2.5 border border-[#dfdad4] dark:border-[#45413d] rounded-[11px] bg-white dark:bg-[#252422] shadow-[0_5px_18px_rgba(50,43,37,0.04)] dark:shadow-[0_5px_18px_rgba(0,0,0,0.12)] transition-[border-color,box-shadow] duration-[180ms] ease-out focus-within:border-[#c6a196] focus-within:shadow-[0_5px_18px_rgba(141,87,70,0.08)] dark:focus-within:border-[#9c6b5d] dark:focus-within:shadow-[0_5px_18px_rgba(0,0,0,0.2)] ${
+      className={`composer min-h-14.75 p-2 pl-4.25 flex items-end gap-2.5 border border-[#dfdad4] dark:border-[#45413d] rounded-[11px] bg-white dark:bg-[#252422] shadow-[0_5px_18px_rgba(50,43,37,0.04)] dark:shadow-[0_5px_18px_rgba(0,0,0,0.12)] transition-[border-color,box-shadow] duration-180 ease-out focus-within:border-[#c6a196] focus-within:shadow-[0_5px_18px_rgba(141,87,70,0.08)] dark:focus-within:border-[#9c6b5d] dark:focus-within:shadow-[0_5px_18px_rgba(0,0,0,0.2)] ${
         welcome ? "welcome-composer mt-6.5 text-left" : ""
       }`}
       onSubmit={handleSubmit}
@@ -72,9 +72,9 @@ export default function Composer({
         aria-label="Message Kero"
         className="min-h-9.5 max-h-31.25 flex-1 py-2.25 px-0 resize-none border-0 outline-none focus:outline-none focus:ring-0 focus:border-0 focus:shadow-none text-[#3b3733] dark:text-[#e6dfd9] bg-transparent text-[13px] leading-[1.45] placeholder-[#8f8881] dark:placeholder-[#77716b]"
       />
-      <div className="composer-actions flex items-center gap-0.5 pb-[5px]">
+      <div className="composer-actions flex items-center gap-0.5 pb-1.25">
         <button
-          className="send-button w-8 h-8 grid place-items-center border-0 rounded-lg text-white bg-[#b8806f] hover:enabled:bg-[#a86d5d] disabled:cursor-default disabled:opacity-[0.38] transition-[background-color,opacity] duration-[180ms] ease-out cursor-pointer"
+          className="send-button w-8 h-8 grid place-items-center border-0 rounded-lg text-white bg-[#b8806f] hover:enabled:bg-[#a86d5d] disabled:cursor-default disabled:opacity-[0.38] transition-[background-color,opacity] duration-180 ease-out cursor-pointer"
           type="submit"
           aria-label="Send message"
           disabled={!draft.trim() || isLoading}

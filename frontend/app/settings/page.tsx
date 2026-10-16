@@ -1,29 +1,13 @@
 "use client";
 
-/**
- * =============================================================================
- * SETTINGS ROUTE: /settings
- * =============================================================================
- * Account settings and privacy controls.
- * 
- * Sections:
- *   1. Profile         - Name, email, member since
- *   2. Notifications   - Link to /settings/notifications
- *   3. Privacy & Data  - Permanent account deletion
- * 
- * 🔗 BACKEND LINKS:
- *  1. GET /api/me    -> Fetches user profile settings
- *  2. DELETE /api/me -> Permanently deletes user account and records
- * =============================================================================
- */
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import Icon from "@/components/Icon";
-import { api } from "@/lib/api";
-import type { UserProfile } from "@/lib/types";
+import api from "@/app/_utils/axios";
+import { getUser } from "@/app/_utils/getUser";
+import type { UserProfile } from "@/app/_types";
 
 // ─── Section Card Wrapper ─────────────────────────────────────────────────────
 function Section({
@@ -35,7 +19,7 @@ function Section({
 }) {
   return (
     <section className="mb-8">
-      <h2 className="m-0 mb-3 text-[11px] font-semibold tracking-[0.1em] uppercase text-[#6f6862] dark:text-[#8e8881]">
+      <h2 className="m-0 mb-3 text-[11px] font-semibold tracking-widest uppercase text-[#6f6862] dark:text-[#8e8881]">
         {title}
       </h2>
       <div className="rounded-xl border border-[#e8e5df] dark:border-[#302e2c] bg-[#faf9f7] dark:bg-[#232120] overflow-hidden">
@@ -64,7 +48,7 @@ function Row({
   const actionEl = href ? (
     <Link
       href={href}
-      className={`text-[12px] font-semibold no-underline transition-colors duration-[160ms] flex items-center gap-1 ${
+      className={`text-[12px] font-semibold no-underline transition-colors duration-160 flex items-center gap-1 ${
         destructive
           ? "text-[#a25e50] dark:text-[#d89180] hover:text-[#8a3030] dark:hover:text-[#e87a78]"
           : "text-[#9d6252] dark:text-[#db9c88] hover:text-[#7a4438] dark:hover:text-[#efb19d]"
@@ -77,7 +61,7 @@ function Row({
     <button
       type="button"
       onClick={onClick}
-      className={`text-[12px] font-semibold border-0 bg-transparent p-0 cursor-pointer transition-colors duration-[160ms] ${
+      className={`text-[12px] font-semibold border-0 bg-transparent p-0 cursor-pointer transition-colors duration-160 ${
         destructive
           ? "text-[#a25e50] dark:text-[#d89180] hover:text-[#8a3030] dark:hover:text-[#e87a78]"
           : "text-[#9d6252] dark:text-[#db9c88] hover:text-[#7a4438] dark:hover:text-[#efb19d]"
@@ -131,9 +115,8 @@ function DeleteModal({
         <ul className="m-0 mb-4 p-0 list-none flex flex-col gap-1">
           {[
             "Your profile and login",
-            "All enrolled subjects and goals",
+            "All conversations and messages",
             "All check-in history",
-            "All mastery estimates",
           ].map((item) => (
             <li
               key={item}
@@ -190,13 +173,20 @@ export default function SettingsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // 🔗 BACKEND ROUTE: GET /api/settings (Fetch settings info)
   useEffect(() => {
     let isMounted = true;
     async function fetchSettings() {
       try {
-        const data = await api.settings.get();
-        if (isMounted) setUser(data.user);
+        const currentUser = await getUser();
+        if (isMounted && currentUser) {
+          setUser({
+            id: currentUser.id,
+            name: currentUser.name,
+            initials: currentUser.name.slice(0, 2).toUpperCase(),
+            email: currentUser.email,
+            joinedAt: "Active member",
+          });
+        }
       } catch (err) {
         console.error("Failed to load settings:", err);
       } finally {
@@ -211,9 +201,9 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
-    // Backend handles account deletion flow; signout session
     try {
-      await api.auth.signout();
+      await api.post("/user/logout");
+      localStorage.removeItem("access_token");
       router.push("/register");
     } catch (err) {
       console.error("Failed to signout:", err);
@@ -243,9 +233,9 @@ export default function SettingsPage() {
           <>
             {/* Profile Section */}
             <Section title="Profile">
-              <Row label="Name" value={user?.name || "Nitesh Kumar"} />
-              <Row label="Email" value={user?.email || "nitesh@example.com"} />
-              <Row label="Member since" value={user?.joinedAt || "September 2026"} />
+              <Row label="Name" value={user?.name || "—"} />
+              <Row label="Email" value={user?.email || "—"} />
+              <Row label="Member since" value={user?.joinedAt || "—"} />
             </Section>
 
             {/* Notifications Section */}
@@ -277,10 +267,7 @@ export default function SettingsPage() {
           </>
         )}
 
-        {/* Backend Info Notice */}
-        <div className="mt-10 px-4 py-3 rounded-xl border border-dashed border-[#d8d0c8] dark:border-[#3d3835] text-[11px] text-[#918a83] dark:text-[#7a736c] text-center">
-          🔗 Connected to hosted backend API: <code>GET /api/settings</code>
-        </div>
+
 
         {deleteOpen && (
           <DeleteModal

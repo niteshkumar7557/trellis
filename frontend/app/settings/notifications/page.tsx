@@ -1,31 +1,25 @@
 "use client";
 
-/**
- * =============================================================================
- * NOTIFICATION PREFERENCES ROUTE: /settings/notifications
- * =============================================================================
- * Allows toggling channels (WhatsApp, Telegram, Discord, Email), configuring
- * bot/webhook credentials, and testing delivery.
- * 
- * 🔗 BACKEND LINKS:
- *  1. GET /api/notifications/settings          -> Fetches current notification config
- *  2. PATCH /api/notifications/settings        -> Saves updated channels and reminder time
- *  3. POST /api/notifications/channels/:id/test -> Fires test reminder through channel
- * =============================================================================
- */
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Icon from "@/components/Icon";
-import { api } from "@/lib/api";
 import type {
   NotificationChannelId,
   NotificationChannel,
   ChannelConfigState,
   NotificationSettings,
-} from "@/lib/types";
-import { DUMMY_NOTIFICATION_SETTINGS } from "@/lib/dummy-data";
+} from "@/app/_types";
+
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  channels: {
+    whatsapp: { enabled: false, configured: false, configValue: "" },
+    telegram: { enabled: false, configured: false, configValue: "" },
+    discord: { enabled: false, configured: false, configValue: "" },
+    email: { enabled: false, configured: false, configValue: "" },
+  },
+  reminderTime: "20:00",
+};
 
 // ─── Channel Definitions ──────────────────────────────────────────────────────
 const CHANNELS: NotificationChannel[] = [
@@ -80,15 +74,15 @@ function Toggle({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative w-[40px] h-[22px] rounded-full border transition-[background-color,border-color] duration-[200ms] cursor-pointer shrink-0 ${
+      className={`relative w-10 h-5.5 rounded-full border transition-[background-color,border-color] duration-200 cursor-pointer shrink-0 ${
         checked
           ? "bg-[#ba806e] border-[#ba806e]"
           : "bg-[#e8e3dc] dark:bg-[#302e2c] border-[#e0d8d2] dark:border-[#3d3835]"
       }`}
     >
       <span
-        className={`absolute top-[2px] left-[2px] w-[16px] h-[16px] rounded-full bg-white shadow-sm transition-transform duration-[200ms] ${
-          checked ? "translate-x-[18px]" : "translate-x-0"
+        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+          checked ? "translate-x-4.5" : "translate-x-0"
         }`}
       />
     </button>
@@ -202,27 +196,8 @@ function ChannelCard({
 
 // ─── Notification Settings Page Root ──────────────────────────────────────────
 export default function NotificationSettingsPage() {
-  const [settings, setSettings] = useState<NotificationSettings>(DUMMY_NOTIFICATION_SETTINGS);
-  const [loading, setLoading] = useState(true);
-
-  // 🔗 BACKEND ROUTE: GET /api/settings (Fetch settings info)
-  useEffect(() => {
-    let isMounted = true;
-    async function loadSettings() {
-      try {
-        await api.settings.get();
-        if (isMounted) setSettings(DUMMY_NOTIFICATION_SETTINGS);
-      } catch (err) {
-        console.error("Failed to load notification settings:", err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
-    loadSettings();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
+  const [loading] = useState(false);
 
   const handleChannelChange = (
     id: NotificationChannelId,
@@ -279,10 +254,7 @@ export default function NotificationSettingsPage() {
           </div>
         )}
 
-        {/* Backend Info Notice */}
-        <div className="mt-10 px-4 py-3 rounded-xl border border-dashed border-[#d8d0c8] dark:border-[#3d3835] text-[11px] text-[#918a83] dark:text-[#7a736c] text-center">
-          🔗 Connected to hosted backend API: <code>GET/PATCH /api/notifications/settings</code>
-        </div>
+
       </div>
     </AppShell>
   );

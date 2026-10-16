@@ -1,6 +1,7 @@
 
 #   docker compose -f docker-compose.dev.yml down
 #   docker compose -f docker-compose.dev.yml up -d
+#   docker exec -it trellis-dev-db psql -U trellis -d trellisdb
 
 name: trellis-dev
 services:

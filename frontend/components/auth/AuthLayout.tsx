@@ -23,14 +23,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       }`}
     >
       <aside
-        className="auth-aside relative overflow-hidden pt-[38px] px-11 pb-[34px] flex flex-col gap-[30px] border-r border-[#e8e5df] dark:border-[#302e2c] bg-[#f4f2ee] dark:bg-[#222120] max-[940px]:hidden [&>*]:relative [&>*]:z-[1]"
+        className="auth-aside relative overflow-hidden pt-9.5 px-11 pb-8.5 flex flex-col gap-7.5 border-r border-[#e8e5df] dark:border-[#302e2c] bg-[#f4f2ee] dark:bg-[#222120] max-[940px]:hidden *:relative *:z-1"
         aria-hidden="true"
       >
         <div className="auth-aside-brand flex items-center [&_.brand-mark]:p-0">
           <BrandMark />
         </div>
 
-        <div className="auth-aside-copy max-w-[440px] my-auto">
+        <div className="auth-aside-copy max-w-110 my-auto">
           <p className="auth-eyebrow m-0 text-[#9d6252] dark:text-[#db9c88] text-[11px] font-semibold tracking-[0.12em] uppercase">
             Adaptive study direction
           </p>
@@ -55,20 +55,20 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               </span>
             ))}
           </div>
-          <p className="auth-aside-note m-0 max-w-[380px] text-[#6f6862] dark:text-[#8e8881] text-[12px] leading-[1.55]">
+          <p className="auth-aside-note m-0 max-w-95 text-[#6f6862] dark:text-[#8e8881] text-[12px] leading-[1.55]">
             Kero never explains a concept. It tells you exactly what to study
             next, and it never punishes a gap.
           </p>
         </div>
       </aside>
 
-      <main className="auth-main relative flex flex-col items-center justify-center max-[940px]:justify-start pt-[88px] max-[940px]:pt-[104px] max-[520px]:pt-[92px] px-7 max-[520px]:px-[18px] pb-14 max-[520px]:pb-11 bg-[radial-gradient(120%_80%_at_100%_0%,#fdf7f4_0%,#f7f6f3_55%)] dark:bg-[radial-gradient(120%_80%_at_100%_0%,#282119_0%,#1b1a19_58%)]">
-        <div className="auth-topbar absolute top-[22px] right-[26px] left-[26px] flex items-center justify-end max-[940px]:justify-between">
+      <main className="auth-main relative flex flex-col items-center justify-center max-[940px]:justify-start pt-22 max-[940px]:pt-26 max-[520px]:pt-23 px-7 max-[520px]:px-4.5 pb-14 max-[520px]:pb-11 bg-[radial-gradient(120%_80%_at_100%_0%,#fdf7f4_0%,#f7f6f3_55%)] dark:bg-[radial-gradient(120%_80%_at_100%_0%,#282119_0%,#1b1a19_58%)]">
+        <div className="auth-topbar absolute top-5.5 right-6.5 left-6.5 flex items-center justify-end max-[940px]:justify-between">
           <span className="auth-mobile-brand hidden max-[940px]:flex [&_.brand-mark]:p-0">
             <BrandMark />
           </span>
           <button
-            className="auth-theme-toggle w-[34px] h-[34px] p-0 inline-grid place-items-center border border-[#ded9d1] dark:border-[#45413d] rounded-full text-[#8f8881] dark:text-[#aaa29a] bg-[#faf9f7] dark:bg-[#292826] transition-[color,border-color,background-color,transform] duration-[180ms] ease-out hover:border-[#cdbdb5] dark:hover:border-[#896055] hover:text-[#9d6252] dark:hover:text-[#e1a18e] hover:bg-white dark:hover:bg-[#35302d] hover:-rotate-[10deg] cursor-pointer"
+            className="auth-theme-toggle w-8.5 h-8.5 p-0 inline-grid place-items-center border border-[#ded9d1] dark:border-[#45413d] rounded-full text-[#8f8881] dark:text-[#aaa29a] bg-[#faf9f7] dark:bg-[#292826] transition-[color,border-color,background-color,transform] duration-180 ease-out hover:border-[#cdbdb5] dark:hover:border-[#896055] hover:text-[#9d6252] dark:hover:text-[#e1a18e] hover:bg-white dark:hover:bg-[#35302d] hover:rotate-[-10deg] cursor-pointer"
             type="button"
             onClick={toggleTheme}
             aria-label={themeLabel}

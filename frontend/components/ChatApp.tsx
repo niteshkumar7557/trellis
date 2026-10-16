@@ -1,23 +1,5 @@
 "use client";
 
-/**
- * =============================================================================
- * CHAT APPLICATION ROOT COMPONENT
- * =============================================================================
- * Central chat interface for Trellis / Kero.
- * 
- * 🔗 BACKEND INTEGRATION (ONLY REQUESTED ROUTES):
- *  1. POST /api/conversations              -> First message of new convo
- *                                             (Title is generated & stored in DB by backend)
- *  2. POST /api/conversations/:id/messages -> Message to an existing convo
- * 
- * ⏱️ CHAT WAITING BEHAVIOR:
- *  - User sends a message -> Immediate local append
- *  - UI displays thinking status banner directly above input box
- *  - Dummy 4 seconds wait time simulates AI generation latency until backend is connected
- * =============================================================================
- */
-
 import {
   useCallback,
   useEffect,
@@ -28,14 +10,14 @@ import {
   type UIEventHandler,
 } from "react";
 import { useRouter } from "next/navigation";
-import type { ChatMessage } from "@/lib/types";
-import { api, waitDummyDelay } from "@/lib/api";
+import api from "@/app/_utils/axios"
 import { useTheme } from "@/lib/useTheme";
 import ChatHeader from "./ChatHeader";
 import Composer from "./Composer";
 import MessageThread from "./MessageThread";
 import ScrollLatestButton from "./ScrollLatestButton";
 import Sidebar from "./Sidebar";
+import type { ChatMessage, Conversation } from "@/app/_types";
 
 type SendEvent =
   | FormEvent<HTMLFormElement>
@@ -105,20 +87,21 @@ export default function ChatApp({
    * Send message handler:
    * 1. Appends user message to thread immediately
    * 2. Displays thinking status above input box
-   * 3. Waits 4 seconds dummy time (replaced by real backend once connected)
-   * 4. Calls POST /api/conversations (new convo) or POST /api/conversations/:id/messages
+   * 3. Calls POST /api/conversations (new convo) or POST /api/conversations/:id/messages
    */
   const sendMessage = async (event: SendEvent) => {
     event.preventDefault();
     const trimmedDraft = draft.trim();
     if (!trimmedDraft || isLoading) return;
 
-    const messageId = `msg-${Date.now()}`;
+    const now = new Date();
+    const messageId = `msg-${now.getTime()}`;
     const userMessage: ChatMessage = {
       id: messageId,
       role: "user",
       content: trimmedDraft,
       time: "Just now",
+      createdAt: now.toISOString(),
     };
 
     const nextMessages: ChatMessage[] = [...messages, userMessage];
@@ -135,30 +118,27 @@ export default function ChatApp({
     const targetConversationId = activeConversationId;
 
     try {
-      // ⏱️ DUMMY 4-SECOND WAIT TIME (simulates AI thinking latency until backend is set up)
-      await waitDummyDelay(4000);
-      if (requestId.current !== currentRequestId) return;
-
       if (isNewConversation) {
-        // 🔗 BACKEND ROUTE: POST /api/conversations
-        // New convo first message: Backend stores title in DB, generates AI response, saves both.
-        const createdConv = await api.conversations.create(trimmedDraft);
+        // Create conversation in DB and receive AI reply from backend
+        const { data: createdConv } = await api.post<Conversation>('/conversations', {
+          message: trimmedDraft,
+        });
         if (requestId.current !== currentRequestId) return;
 
         setActiveConversationId(createdConv.id);
         setActiveTitle(createdConv.title);
+        setMessages(createdConv.messages);
 
-        const assistantMsg = createdConv.messages.find((m) => m.role === "assistant") || {
-          id: `msg-${Date.now() + 1}`,
-          role: "assistant",
-          content: "I received your study check-in! Once the backend is online, precision AI study guidance will appear here.",
-          time: "Just now",
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
+        // Seamlessly update URL to /c/[newConvoId] without page reload
+        window.history.replaceState(null, "", `/c/${createdConv.id}`);
       } else if (targetConversationId) {
-        // 🔗 BACKEND ROUTE: POST /api/conversations/:id/messages
-        // Message on specific conv-id: Backend appends message & returns AI response.
-        const result = await api.conversations.sendMessage(targetConversationId, trimmedDraft);
+        // Send message to existing conversation
+        const { data: result } = await api.post<{
+          userMessage: ChatMessage;
+          assistantMessage: ChatMessage;
+        }>(`/conversations/${targetConversationId}/messages`, {
+          message: trimmedDraft,
+        });
         if (requestId.current !== currentRequestId) return;
 
         setMessages((prev) => [...prev, result.assistantMessage]);
@@ -196,7 +176,7 @@ export default function ChatApp({
       } ${
         sidebarOpen
           ? ""
-          : "sidebar-hidden [&_.sidebar]:!w-0 [&_.sidebar]:!flex-[0_0_0px] [&_.sidebar]:!px-0 [&_.sidebar]:!border-r-transparent [&_.sidebar]:!opacity-0 [&_.sidebar]:!pointer-events-none"
+          : "sidebar-hidden [&_.sidebar]:w-0! [&_.sidebar]:flex-[0_0_0px]! [&_.sidebar]:px-0! [&_.sidebar]:border-r-transparent! [&_.sidebar]:opacity-0! [&_.sidebar]:pointer-events-none!"
       }`}
     >
       {/* Sidebar fetching data from single GET /api/sidebar route */}
@@ -239,7 +219,7 @@ export default function ChatApp({
 
               {error && (
                 <p
-                  className="chat-error mb-[9px] text-[#a25e50] dark:text-[#d89180] text-[11px] leading-[1.4] text-center"
+                  className="chat-error mb-2.25 text-[#a25e50] dark:text-[#d89180] text-[11px] leading-[1.4] text-center"
                   role="alert"
                 >
                   {error}

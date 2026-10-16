@@ -17,7 +17,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Kero",
+  title: "Trellis",
   description: "Ask anything, and Kero will help you think it through.",
 };
 
