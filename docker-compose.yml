@@ -1,0 +1,100 @@
+name: trellis
+
+services:
+  db:
+    image: postgres:18
+    container_name: trellis-db
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    volumes:
+      - trellis_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U trellis -d trellisdb" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - trellis-net
+
+  backend:
+    depends_on:
+      db:
+        condition: service_healthy
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trellis-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - trellis-net
+
+  frontend:
+    depends_on:
+      backend:
+        condition: service_healthy
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://trellis-backend:8000
+    env_file:
+      - ./frontend/.env
+    container_name: trellis-frontend
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - trellis-net
+      - proxy-net
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: trellis-pgadmin
+    restart: unless-stopped
+    env_file:
+      - ./pgadmin.env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - trellis_pgadmin_data:/var/lib/pgadmin
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - trellis-net
+      - proxy-net
+
+networks:
+  trellis-net:
+  proxy-net:
+    external: true
+
+volumes:
+  trellis_postgres_data:
+  trellis_pgadmin_data:
