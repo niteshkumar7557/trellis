@@ -8,7 +8,7 @@ services:
     env_file:
       - ./backend/.env
     volumes:
-      - trellis_postgres_data:/var/lib/postgresql/data
+      - trellis_postgres_data:/var/lib/postgresql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U trellis -d trellisdb" ]
       interval: 5s
