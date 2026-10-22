@@ -6,7 +6,7 @@ services:
     container_name: trellis-db
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./backend/.env.production
     volumes:
       - trellis_postgres_data:/var/lib/postgresql
     healthcheck:
@@ -33,7 +33,7 @@ services:
     container_name: trellis-backend
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./backend/.env.production
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1" ]
       interval: 10s
@@ -58,7 +58,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: http://trellis-backend:8000
     env_file:
-      - ./frontend/.env
+      - ./frontend/.env.production
     container_name: trellis-frontend
     restart: unless-stopped
     logging:
