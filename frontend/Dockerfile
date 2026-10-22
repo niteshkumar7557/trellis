@@ -8,11 +8,7 @@ WORKDIR /home/build
 COPY package*.json ./
 RUN npm ci
 
-COPY tsconfig.json ./
-COPY next.config* ./
-COPY postcss.config* ./
-COPY app/ app/
-COPY public/ public/
+COPY . .
 
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
