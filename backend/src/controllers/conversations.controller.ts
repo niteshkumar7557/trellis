@@ -80,7 +80,8 @@ export async function createConversation(
     );
     const userMsg = userMsgRows[0];
 
-    // 3. Faked AI response (waits 2s, returns fixed text)
+    // 3. AI response
+    // =============================  MAGIC is here!  =========================================
     const replyText = await generateAIReply(messageText);
 
     // 4. Insert assistant's reply
@@ -162,7 +163,8 @@ export async function addMessageToConversation(
     );
     const userMsg = userMsgRows[0];
 
-    // 2. Faked AI response (waits 2s, returns fixed text)
+    // 2. AI response
+    // =============================  MAGIC is here!  =========================================
     const replyText = await generateAIReply(messageText);
 
     // 3. Insert assistant reply
