@@ -1,5 +1,7 @@
-// The ONE place the backend reads process.env.
-import "dotenv/config";
+// The ONE place the backend reads process.env. Everything else imports `config`.
+// It runs once, when first imported, and THROWS on a bad value: a typo in .env stops the
+// server at boot with a clear message, instead of failing strangely later.
+import "dotenv/config"; // copies backend/.env into process.env (never overwrites a set variable)
 
 function str(name: string, fallback: string): string {
   const v = process.env[name];
@@ -28,6 +30,24 @@ const config = {
   jwt_secret: process.env.JWT_SECRET,
   access_token_ttl: str("ACCESS_TOKEN_TTL", "15m"),
   refresh_token_days: num("REFRESH_TOKEN_DAYS", 7),
+
+  // The topic graph's database (milestone M1).
+  neo4j: {
+    url: str("NEO4J_URL", "bolt://localhost:7687"),
+    user: str("NEO4J_USER", "neo4j"),
+    password: process.env.NEO4J_PASSWORD, // a secret: from .env only, no default
+  },
+
+  // The helper's AI, through OpenRouter (milestone M5). Model ids: openrouter.ai/models.
+  ai: {
+    openrouter_api_key: process.env.OPENROUTER_API_KEY, // a secret: no default
+    router_model: str("ROUTER_MODEL", ""), // Jev: picks the helper's path
+    reader_model: str("READER_MODEL", ""), // DeepSeek v4.1 flash: reads the message
+    // Below this, the router's guess is ignored. A fraction, 0 to 1.
+    // TODO(Task C): use fraction() here instead of num(), so 1.5 or -1 stops the server.
+    router_min_confidence: num("ROUTER_MIN_CONFIDENCE", 0.7),
+    timeout_ms: num("AI_TIMEOUT_MS", 8000), // give up on an AI call after this long
+  },
 };
 
 export default config;

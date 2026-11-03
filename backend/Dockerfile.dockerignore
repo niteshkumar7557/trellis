@@ -1,0 +1,9 @@
+# Used by backend/Dockerfile, whose build context is the repo root.
+# Only backend/ and shared/ go into the image.
+*
+!backend
+!shared
+**/node_modules
+**/dist
+**/.env*
+backend/Dockerfile*

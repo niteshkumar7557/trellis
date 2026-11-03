@@ -28,8 +28,9 @@ services:
       db:
         condition: service_healthy
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # The repo root, so the image can see shared/ (the domain code) next to backend/.
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: trellis-backend
     restart: unless-stopped
     env_file:
