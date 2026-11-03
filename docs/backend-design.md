@@ -93,9 +93,8 @@ Common errors and their fixes; who to ask.
 
 ### Git for the team
 
-- Integration branch: **`backend/v1`**, created from `redesign/frontend-v1`, which holds the
-  finished frontend. Ask the owner before creating it. Merging into `main` happens only on
-  the owner's say-so.
+- Integration branch: **`backend/v1`**, created on 3 Nov 2026 from `main`, which holds the
+  finished frontend. Merging into `main` happens only on the owner's say-so.
 - Teammates branch from `backend/v1` as `task/<date>-<letter>-<slug>` and open PRs back into it.
 - Claude commits only docs and its own planning, never a teammate's task, and never pushes.
 
@@ -488,10 +487,13 @@ Each line is roughly one teammate task. Within a milestone, tasks marked with th
 letter group can run on the same day, because they don't share files. Claude splits these
 into the daily three.
 
-**M0: Foundations** (do first; some is owner or Claude scaffolding, if the owner agrees)
+**M0: Foundations** (do first)
 - M0.1 Create `shared/` by moving `frontend/lib/{types,graph,prompt,parse,helper}.ts` and
-  `frontend/lib/data/*`. Add the alias to the frontend; `tsc` and `eslint` must stay clean.
-  *(Owner/Claude: touches many frontend files at once.)*
+  `frontend/lib/data/*`. Add the alias to the frontend; `tsc` and `eslint` must stay clean,
+  and the app must look and behave exactly the same. Also make `buildPrompt` take the
+  instructions as a parameter (§6). **The owner does this with Claude**, not a teammate,
+  because it touches many frontend files at once. Do it before handing out any M0.2+ tasks
+  that import from `shared/`.
 - M0.2 Backend build: tsup for build, tsx for dev, Vitest set up, zod added, the error
   middleware, and config for the new env vars.
 - M0.3 Golden test of `shared/graph.ts` (§7).
@@ -543,11 +545,9 @@ Update this table at the start of each planning session from `git log` and merge
 
 | Task | Status | Who | Merged in |
 |---|---|---|---|
-| — | nothing started yet | — | — |
+| M0.1 Move the domain code into `shared/` | assigned | owner, with Claude | — |
+| everything else | not started | — | — |
 
 ## 12. Open questions for the owner
 
-- Create `backend/v1` now, or merge `redesign/frontend-v1` into `main` first?
-- Who does M0.1 (moving code into `shared/`)? It touches many frontend files at once, so
-  it suits the owner with Claude, not a teammate.
 - The exact OpenRouter slugs for Jev and DeepSeek v4.1 flash (check on openrouter.ai).

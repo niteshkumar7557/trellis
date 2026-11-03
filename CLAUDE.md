@@ -32,16 +32,20 @@ outside GitHub. Don't write the teammates' code.
 
 ## Where things stand (3 Nov 2026)
 
-- **Frontend: finished** on branch `redesign/frontend-v1`. No API calls; the topic graphs are
+- **Frontend: finished** (on `main`). No API calls; the topic graphs are
   real (`frontend/lib/data/react-native.ts`, `redis.ts`, from roadmap.sh). The sample
   student, their history and the helper's AI (`lib/helper.ts`, `lib/parse.ts`) are
   stand-ins.
 - **Backend: designed, not built.** It has Express + Postgres auth only, plus two old chat
   tables to drop. The first milestone is M0 (move the domain code into `shared/`, the
   build setup), then M1 (Neo4j content).
-- **Git:** `redesign/frontend-v1` is not merged and not pushed; `main` still has the old
-  chat UI. Commit only on the working branch (backend work: `backend/v1`, once the owner
-  creates it). **Never push, never merge** without the owner's say-so.
+- **Git:** `main` holds the finished frontend as one squashed commit (`8e3aadc redesign:
+  frontend-v4`); `redesign/frontend-v1` keeps its step-by-step history. Work happens on
+  **`backend/v1`**, created 3 Nov 2026 from `main`. Commit only on `backend/v1`. **Never push,
+  never merge** without the owner's say-so. Teammates branch from `backend/v1` as
+  `task/<date>-<letter>-<slug>`.
+- **Next up:** M0.1, moving the domain code into `shared/`. The owner does it with Claude
+  in a fresh session (backend-design.md §10). Hand out teammate tasks after that.
 
 ## Decisions already made (don't re-ask)
 
