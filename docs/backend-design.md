@@ -560,11 +560,12 @@ Update this table at the start of each planning session from `git log` and merge
 | M0.4 Migrations 0005–0006, empty seed, Neo4j + AI config | assigned (Task C, 3 Nov) | — | — |
 | everything else | not started | — | — |
 
-**Owner wiring after the 3 Nov tasks merge:** in `src/app.ts`, register
-`app.use(notFound); app.use(errorHandler);` after all routes (Task A), and remove the
-`/conversations` route, then delete `src/routes/conversations.route.ts`,
-`src/controllers/conversations.controller.ts`, `src/ai/index.ts` and the `ChatMessage` /
-`Conversation` types in `src/types/index.ts` (Task C).
+**Owner wiring for the 3 Nov tasks:**
+- ✅ Done 3 Nov: removed the `/conversations` route from `src/app.ts` and deleted the old chat
+  code (its route, controller, `src/ai/index.ts`, and the chat types). Task C then drops
+  its tables.
+- After Task A merges: in `src/app.ts`, register `app.use(notFound); app.use(errorHandler);`
+  after all routes (`import { errorHandler, notFound } from "./middlewares/error.middleware.js";`).
 
 ## 12. Open questions for the owner
 
