@@ -250,7 +250,7 @@ confidence: which *path* the message takes.
 
 Most messages never reach DeepSeek, which is what keeps it cheap. Both models come through
 OpenRouter (the backend already uses its SDK); if Jev fails, DeepSeek does the routing too.
-The stand-in in `frontend/lib/helper.ts` routes the same way, with patterns where Jev will
+The stand-in in `shared/helper.ts` routes the same way, with patterns where Jev will
 be.
 
 **Prompts never use AI** (§9). The AI is called only when you talk to the helper. It never

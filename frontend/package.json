@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:shared": "cd .. && frontend/node_modules/.bin/eslint -c frontend/eslint.config.mjs shared"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.4",

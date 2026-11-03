@@ -94,11 +94,12 @@ frontend/
   components/map/      the map: layout, canvas, topic panel, helper chat, list view
   components/landing/  landing page
   components/art/      SVG drawings (the espalier)
-  lib/data/            the React Native and Redis maps (reviewed files), and a sample student
-  lib/graph.ts         derived logic: statuses, next topic, what's open, skip or not, stuck diagnosis
-  lib/helper.ts        the helper chat's brain (stand-in for the AI): ask, propose, reply
-  lib/prompt.ts        the three-part prompt: known topics, experiences, instructions
   lib/store.tsx        client state: the one place to swap in API calls
+shared/                domain code the frontend and backend both run (imported as @shared/*)
+  data/                the React Native and Redis maps (reviewed files), and a sample student
+  graph.ts             derived logic: statuses, next topic, what's open, skip or not, stuck diagnosis
+  helper.ts            the helper chat's brain (stand-in for the AI): ask, propose, reply
+  prompt.ts            the three-part prompt: known topics, experiences, instructions
 backend/
   src/                 Express API (auth today; the v1 endpoints are next)
 docs/                  design, frontend plan, tech stack

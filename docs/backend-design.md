@@ -137,13 +137,13 @@ Deployed with Docker Compose (db, neo4j, backend, frontend) behind a Cloudflare 
 
 ### The shared domain code (decided)
 
-The frontend already contains the domain logic (`frontend/lib/`). The backend must give the
-**same answers**: if they disagree about "next topic" or "can I skip", the product breaks.
-So that code moves to one place both import:
+The backend must give the frontend's **same answers**: if they disagree about "next topic"
+or "can I skip", the product breaks. So the domain logic lives in one place both import
+(moved out of `frontend/lib/` in M0.1, done 3 Nov 2026):
 
 ```
 shared/
-  types.ts          ← from frontend/lib/types.ts
+  types.ts          ← every shape (the data contract)
   data/             ← react-native.ts, redis.ts, build.ts, index.ts (with its checks), instructions.ts
   graph.ts          ← statuses, summaries, next, revealed, importance, suspects, past unlocks
   prompt.ts         ← the three-part prompt builder
@@ -151,7 +151,12 @@ shared/
   helper.ts         ← the helper's rules: questions, proposals, replies (the fallback brain)
 ```
 
-- The frontend imports it through a path alias (`@shared/*`). Next compiles it as source.
+- The frontend imports it through a path alias (`@shared/*` in `frontend/tsconfig.json`);
+  Next compiles it as source with `experimental.externalDir`. The frontend Docker image
+  builds from the repo root so it can copy `shared/` (`frontend/Dockerfile`,
+  `frontend/Dockerfile.dockerignore`). **The backend image will need the same change** in
+  M0.2: its compose `context` is `./backend` today, which can't see `shared/`.
+- Lint it with `npm run lint:shared` (in `frontend/`); `npx eslint .` there doesn't reach it.
 - The backend currently builds with `tsc` (`module: nodenext`), which needs `.js` extensions
   on relative imports. The frontend code has none. **Decision:** build the backend with
   **tsup** (esbuild), which bundles `shared/` and handles extensionless imports; keep `tsx`
@@ -427,8 +432,8 @@ checkIns, experiences, instructions)`.
   of past mistakes.
 
 The frontend assembles prompts locally with the same function, using `/api/instructions`.
-**Change needed on move:** `buildPrompt` currently imports `instructions` directly; it
-should take them as a parameter.
+Since M0.1, `buildPrompt` takes the instructions as a parameter; the frontend passes
+`shared/data/instructions.ts` until M6 swaps in the API.
 
 ## 7. Derived logic (must match the frontend exactly)
 
@@ -475,7 +480,7 @@ persisted to localStorage (`trellis-demo-v4`). When the API is ready:
 - hydrate from `GET /api/state` instead of localStorage;
 - turn each action into its request (goal → `PUT /api/goals`, claims → `POST /api/claims`,
   open → `POST /api/opened`, edit/remove → PATCH/DELETE, used → `POST /api/experiences/used`);
-- `components/map/useHelper.ts` calls the helper endpoints instead of `lib/helper.ts`;
+- `components/map/useHelper.ts` calls the helper endpoints instead of `shared/helper.ts`;
 - `app/(auth)/AuthForm.tsx` calls `/user/register` and `/user/login`, and keeps the access
   token in memory, refreshing on 401;
 - keep a "demo mode" flag that uses the sample data, so the landing page demo still works
@@ -488,14 +493,14 @@ letter group can run on the same day, because they don't share files. Claude spl
 into the daily three.
 
 **M0: Foundations** (do first)
-- M0.1 Create `shared/` by moving `frontend/lib/{types,graph,prompt,parse,helper}.ts` and
+- M0.1 ✅ Create `shared/` by moving `frontend/lib/{types,graph,prompt,parse,helper}.ts` and
   `frontend/lib/data/*`. Add the alias to the frontend; `tsc` and `eslint` must stay clean,
   and the app must look and behave exactly the same. Also make `buildPrompt` take the
-  instructions as a parameter (§6). **The owner does this with Claude**, not a teammate,
-  because it touches many frontend files at once. Do it before handing out any M0.2+ tasks
-  that import from `shared/`.
+  instructions as a parameter (§6). Done by the owner with Claude, 3 Nov 2026.
 - M0.2 Backend build: tsup for build, tsx for dev, Vitest set up, zod added, the error
-  middleware, and config for the new env vars.
+  middleware, and config for the new env vars. The backend reaches `shared/` by a relative
+  path or a tsconfig `paths` alias that tsup resolves, and its Docker build moves to the
+  repo root as the frontend's did (§2).
 - M0.3 Golden test of `shared/graph.ts` (§7).
 - M0.4 Migrations 0005 and 0006; replace the old chat seed with an empty seed script.
 
@@ -545,7 +550,7 @@ Update this table at the start of each planning session from `git log` and merge
 
 | Task | Status | Who | Merged in |
 |---|---|---|---|
-| M0.1 Move the domain code into `shared/` | assigned | owner, with Claude | — |
+| M0.1 Move the domain code into `shared/` | done | owner, with Claude | `backend/v1`, 3 Nov 2026 |
 | everything else | not started | — | — |
 
 ## 12. Open questions for the owner

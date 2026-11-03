@@ -5,12 +5,12 @@ import { Icon } from "@/components/ui/Icon";
 import { StatusPill } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
 import { TopicOptions } from "@/components/map/TopicOptions";
-import { subjectById, subjects, topicById } from "@/lib/data";
-import { TODAY } from "@/lib/data/student";
-import { relativeDay } from "@/lib/graph";
+import { subjectById, subjects, topicById } from "@shared/data";
+import { TODAY } from "@shared/data/student";
+import { relativeDay } from "@shared/graph";
 import { useStore } from "@/lib/store";
-import { tidy } from "@/lib/parse";
-import type { CheckIn, Experience, Outcome, SubjectId } from "@/lib/types";
+import { tidy } from "@shared/parse";
+import type { CheckIn, Experience, Outcome, SubjectId } from "@shared/types";
 import styles from "./checkins.module.css";
 
 const OUTCOME_STATUS = { got: "done", partly: "learning", stuck: "stuck" } as const;

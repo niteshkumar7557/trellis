@@ -1,5 +1,5 @@
-import { bigTopicsOf, kids, subjects } from "@/lib/data";
-import type { SubjectId } from "@/lib/types";
+import { bigTopicsOf, kids, subjects } from "@shared/data";
+import type { SubjectId } from "@shared/types";
 
 /** Every subtopic, grouped by big topic, with one subject's first. Check-ins always land on a subtopic. */
 export function TopicOptions({ first }: { first: SubjectId }) {

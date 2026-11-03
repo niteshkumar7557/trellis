@@ -2,13 +2,13 @@
 // no AI call. Three parts, each straight from the data (design.md §9):
 //   1. known topics — template text filled in from the student's statuses
 //   2. experiences — what the student told the helper about this topic
-//   3. instructions — fixed lines from the database, by layer
+//   3. instructions — fixed lines from the database, by layer (passed in: the frontend uses
+//      GET /api/instructions or shared/data/instructions.ts; the backend reads Postgres)
 // Every sentence comes from the map or the student's own words; none of it explains the topic.
 
-import { instructions } from "./data/instructions";
 import { subjectById, topicById } from "./data";
 import { isFooting, needsOf, pastUnlocks, statusOf, suspectsFor } from "./graph";
-import type { CheckIn, Experience, Status, Topic } from "./types";
+import type { CheckIn, Experience, Instruction, Status, Topic } from "./types";
 
 export interface Prompt {
   known: string;
@@ -50,7 +50,13 @@ function experienceLine(e: Experience): string {
   return `${name} was hard: ${lower(line)}.`;
 }
 
-export function buildPrompt(topic: Topic, statuses: Map<string, Status>, checkIns: CheckIn[], experiences: Experience[] = []): Prompt {
+export function buildPrompt(
+  topic: Topic,
+  statuses: Map<string, Status>,
+  checkIns: CheckIn[],
+  experiences: Experience[],
+  instructions: Instruction[],
+): Prompt {
   const subject = subjectById.get(topic.subjectId)!;
   const status = statusOf(statuses, topic.id);
   const area = topic.parentId ? topicById.get(topic.parentId)!.name : null;

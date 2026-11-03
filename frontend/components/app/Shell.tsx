@@ -6,12 +6,12 @@ import { useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Mark } from "@/components/ui/Mark";
 import ui from "@/components/ui/ui.module.css";
-import { goalById, subjects } from "@/lib/data";
-import { student } from "@/lib/data/student";
-import { summarise } from "@/lib/graph";
+import { goalById, subjects } from "@shared/data";
+import { student } from "@shared/data/student";
+import { summarise } from "@shared/graph";
 import { useStore } from "@/lib/store";
 import { useResolvedTheme, useTheme } from "@/lib/theme";
-import type { SubjectId } from "@/lib/types";
+import type { SubjectId } from "@shared/types";
 import { Search } from "./Search";
 import styles from "./shell.module.css";
 

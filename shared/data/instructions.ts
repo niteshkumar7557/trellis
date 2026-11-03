@@ -1,6 +1,6 @@
 // Part 3 of every prompt: fixed instructions, kept in the database (this file stands in).
 // Layers: base lines for every prompt, then lines for the topic's status, then the topic's own.
-// A topic's common mistakes are added as a topic line automatically (see lib/prompt.ts).
+// A topic's common mistakes are added as a topic line automatically (see shared/prompt.ts).
 // {topic} is the topic's name; {gap} is the likely real problem when stuck.
 // Reviewed content: change it in a pull request, not in passing.
 

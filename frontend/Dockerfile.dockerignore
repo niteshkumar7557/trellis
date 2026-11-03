@@ -1,0 +1,9 @@
+# Used by frontend/Dockerfile, whose build context is the repo root.
+# Only frontend/ and shared/ go into the image.
+*
+!frontend
+!shared
+**/node_modules
+**/.next
+**/.env*
+frontend/Dockerfile*

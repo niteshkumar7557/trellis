@@ -6,11 +6,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
-import { kids, subjectById, topicById } from "@/lib/data";
+import { kids, subjectById, topicById } from "@shared/data";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
-import { needsOf, summarise } from "@/lib/graph";
+import { needsOf, summarise } from "@shared/graph";
 import { useStore } from "@/lib/store";
-import type { ClaimKind } from "@/lib/types";
+import type { ClaimKind } from "@shared/types";
 import styles from "../start.module.css";
 
 const CHOICES: { kind: ClaimKind; label: string; key: string }[] = [

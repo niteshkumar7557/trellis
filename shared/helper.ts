@@ -3,7 +3,7 @@
 // This file stands in for the AI. The real version sends the message to DeepSeek with the
 // student's state and a few tools (propose an update, save an experience, get a prompt,
 // what's next, can I skip, why am I stuck); everything it decides is worked out by
-// lib/graph.ts, and the model only words it. The rules here are the same:
+// shared/graph.ts, and the model only words it. The rules here are the same:
 //   - it never saves anything itself: updates come back as a proposal the student confirms
 //   - it asks one question about how it went, then proposes
 //   - it never explains a topic; it hands back a prompt

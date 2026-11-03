@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark, StatusPill } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
-import { kids, subjectById, topicById } from "@/lib/data";
+import { kids, subjectById, topicById } from "@shared/data";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import {
   STATUS_LABEL,
@@ -18,10 +18,11 @@ import {
   statusOf,
   type Importance,
   type Suspect,
-} from "@/lib/graph";
-import { buildPrompt, chatGptUrl, claudeUrl, type Prompt } from "@/lib/prompt";
+} from "@shared/graph";
+import { instructions } from "@shared/data/instructions";
+import { buildPrompt, chatGptUrl, claudeUrl, type Prompt } from "@shared/prompt";
 import { useStore } from "@/lib/store";
-import type { CheckIn, Experience, Outcome, Status, Topic } from "@/lib/types";
+import type { CheckIn, Experience, Outcome, Status, Topic } from "@shared/types";
 import styles from "./rail.module.css";
 
 function Verdict({ importance }: { importance: Importance }) {
@@ -49,7 +50,7 @@ interface PanelProps {
 export function TopicPanel({ topic, statuses, checkIns, experiences, importance, suspects, onOpen, onClose, onLog }: PanelProps) {
   const root = useRef<HTMLDivElement>(null);
   const status = statusOf(statuses, topic.id);
-  const prompt = buildPrompt(topic, statuses, checkIns, experiences);
+  const prompt = buildPrompt(topic, statuses, checkIns, experiences, instructions);
   const said = experiences.filter((e) => e.topicId === topic.id).sort((a, b) => b.at.localeCompare(a.at));
   const history = checkIns.filter((c) => c.topicId === topic.id).sort((a, b) => b.at.localeCompare(a.at));
   const unlock = pastUnlocks(checkIns, experiences).at(-1);

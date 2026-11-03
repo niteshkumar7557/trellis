@@ -5,13 +5,14 @@ import { Icon } from "@/components/ui/Icon";
 import { Mark } from "@/components/ui/Mark";
 import { StatusMark } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
-import { topicById } from "@/lib/data";
+import { topicById } from "@shared/data";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
-import { shortDate, statusOf } from "@/lib/graph";
-import { tidy } from "@/lib/parse";
-import { buildPrompt, chatGptUrl, claudeUrl } from "@/lib/prompt";
+import { shortDate, statusOf } from "@shared/graph";
+import { tidy } from "@shared/parse";
+import { instructions } from "@shared/data/instructions";
+import { buildPrompt, chatGptUrl, claudeUrl } from "@shared/prompt";
 import { useStore } from "@/lib/store";
-import type { Card, ChatMessage, ExperienceKind, Outcome, Proposal } from "@/lib/types";
+import type { Card, ChatMessage, ExperienceKind, Outcome, Proposal } from "@shared/types";
 import { PromptView } from "./Rail";
 import styles from "./chat.module.css";
 import type { Helper } from "./useHelper";
@@ -299,7 +300,7 @@ function PromptCard({ topicId, onOpen }: { topicId: string; onOpen: (id: string)
   const [copied, setCopied] = useState(false);
   const topic = topicById.get(topicId);
   if (!topic) return null;
-  const prompt = buildPrompt(topic, statuses, checkIns, experiences);
+  const prompt = buildPrompt(topic, statuses, checkIns, experiences, instructions);
   // Taking the prompt counts; looking at it doesn't.
   const took = () => prompt.experienceIds.length && dispatch({ type: "used", experienceIds: prompt.experienceIds });
 
