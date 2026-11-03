@@ -1,0 +1,239 @@
+/*
+  Framed sheet. One tinted L-frame (sidebar + 48px top bar, no rule between them);
+  the work sits on a white sheet inset 8px from the window's right and bottom edges.
+  Columns: 228 sidebar + fluid sheet. The sheet's 1px edge is the only line in the chrome.
+*/
+
+.frame {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--topbar) minmax(0, 1fr);
+  height: 100svh;
+  background: var(--ground);
+}
+
+.sidebar {
+  grid-row: 1 / 3;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 12px 12px;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--topbar);
+  padding: 0 10px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nav {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.navItem:hover { color: var(--text); background: color-mix(in srgb, var(--active) 55%, transparent); }
+.navItem[aria-current="page"] { background: var(--active); color: var(--text); }
+
+.group {
+  display: grid;
+  gap: 2px;
+  margin-top: 28px;
+}
+
+.groupLabel {
+  margin: 0 0 6px;
+  padding: 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.subject {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  row-gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+.subject:hover { background: color-mix(in srgb, var(--active) 55%, transparent); }
+.subject[aria-current="true"] { background: var(--active); }
+
+.subjectName {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subjectFig {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.of {
+  color: var(--muted);
+}
+
+.track {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.track > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 10px;
+}
+
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--done-bg);
+  color: var(--done-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.userText {
+  display: grid;
+  min-width: 0;
+}
+
+.userName {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.userMail {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ top bar */
+
+.topbar {
+  grid-row: 1;
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 520px) 1fr;
+  align-items: center;
+  gap: 12px;
+  padding-right: calc(var(--sheet-inset) + 4px);
+}
+
+.topbar .menuBtn,
+.topbar .mobileTitle {
+  display: none;
+}
+
+.themeBtn {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* ------------------------------------------------------------ sheet */
+
+.sheet {
+  grid-row: 2;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  margin: 0 var(--sheet-inset) var(--sheet-inset) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sheet);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------ phone and small tablet */
+
+@media (max-width: 900px) {
+  .frame {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .frame[data-menu="open"] .sidebar {
+    display: flex;
+    position: fixed;
+    z-index: 40;
+    inset: var(--topbar) 0 0 0;
+    padding: 8px 16px 16px;
+    background: var(--ground);
+  }
+  .frame[data-menu="open"] .brand { display: none; }
+
+  .topbar {
+    grid-column: 1;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 0 8px;
+  }
+
+  .topbar .menuBtn {
+    display: inline-flex;
+  }
+
+  .topbar .mobileTitle {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+
+  .sheet {
+    grid-column: 1;
+    margin: 0;
+    border-width: 1px 0 0;
+    border-radius: 0;
+  }
+}

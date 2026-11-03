@@ -1,266 +1,165 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark-mode, .dark-mode *));
+/*
+  Trellis tokens. App screens use the "framed sheet" style: a green-grey frame
+  (the product's face: the colour of a garden wall), a white sheet, colour on data only.
+  Every component references these tokens; nothing hard-codes a colour.
+*/
 
-@theme {
-  --font-dm-sans: var(--font-dm-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-manrope: var(--font-manrope), sans-serif;
-
-  --animate-typing-pulse: typing-pulse 1.1s infinite ease-in-out;
-
-  @keyframes typing-pulse {
-    0%,
-    60%,
-    100% {
-      transform: translateY(0);
-      opacity: 0.45;
-    }
-    30% {
-      transform: translateY(-3px);
-      opacity: 1;
-    }
-  }
-}
-
-:root {
-  font-family: var(--font-dm-sans), -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  color: #252321;
-  background: #f7f6f3;
+:root,
+:root[data-theme="light"] {
   color-scheme: light;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+
+  --ground: #f2f4f0;      /* the frame: sidebar + top bar */
+  --surface: #ffffff;     /* the sheet */
+  --raised: #f5f7f3;      /* wells: the map canvas, settings panels */
+  --active: #e7eae4;      /* active nav pill, selected rows */
+  --border: #e3e6df;
+  --rule: #eef0eb;
+  --control: #c9cec4;
+  --text: #151714;
+  --muted: #565b54;       /* 6.6:1 on white */
+  --faint: #6a6f67;       /* 5.0:1 on white; placeholders */
+  --primary: #151714;
+  --on-primary: #ffffff;
+
+  /* Data. Topic statuses are the only colour on app screens. */
+  --accent: #2b6a3f;            /* leaf green: done, the one hue */
+  --done: #2b6a3f;      --done-bg: #e2f0e5;      --done-ink: #143a20;
+  --learning: #2f6db5;  --learning-bg: #e5eef9;  --learning-ink: #173b66;
+  --stuck: #c4242a;     --stuck-bg: #ffecea;     --stuck-ink: #831c1e;
+  --shaky: #a26a0a;     --shaky-bg: #fbf0d9;     --shaky-ink: #5f3e05;
+  --know: #151714;
+  --edge: #b9beb4;
+  --edge-soft: #d3d7cf;
+
+  /* The drawn plates (espaliers). */
+  --plate-paper: #eef0e9;
+  --plate-ink: #1d211c;
+  --plate-leaf: #b6d3bb;
+  --plate-fruit: #2b6a3f;
+  --plate-wire: #a3a99e;
+  --plate-post: #6d7268;
+
+  --font: var(--font-plex), "IBM Plex Sans", system-ui, sans-serif;
+
+  --radius-card: 8px;
+  --radius-control: 6px;
+  --radius-sheet: 16px;
+  --sheet-inset: 8px;
+  --sidebar-width: 228px;
+  --topbar: 48px;
+  --gap: 24px;
+  --pad: 24px;
+  --control-height: 32px;
+
+  --fs-title: 22px;
+  --fs-section: 16px;
+  --fs-figure: 28px;
+  --fs-body: 14px;
+  --fs-small: 12px;
+
+  --shadow-float: 0 12px 32px rgba(20, 24, 18, 0.14), 0 2px 6px rgba(20, 24, 18, 0.08);
 }
 
-html.dark-mode {
+:root[data-theme="dark"] {
   color-scheme: dark;
-  background: #1b1a19;
+
+  --ground: #0b0c0b;
+  --surface: #141614;
+  --raised: #1a1c1a;
+  --active: #252825;
+  --border: #262926;
+  --rule: #1f221f;
+  --control: #40443f;
+  --text: #f1f2f0;
+  --muted: #b3b7b1;
+  --faint: #959a93;
+  --primary: #f1f2f0;
+  --on-primary: #111311;
+
+  --accent: #63b77e;
+  --done: #63b77e;      --done-bg: #1a2b1f;      --done-ink: #8fd3a5;
+  --learning: #6fa4e4;  --learning-bg: #18243a;  --learning-ink: #a6c8f2;
+  --stuck: #ee6b72;     --stuck-bg: #33191c;     --stuck-ink: #f7a5aa;
+  --shaky: #d9a64c;     --shaky-bg: #2f2512;     --shaky-ink: #ecc983;
+  --know: #f1f2f0;
+  --edge: #4b4f4a;
+  --edge-soft: #343733;
+
+  --plate-paper: #181b17;
+  --plate-ink: #dde2da;
+  --plate-leaf: #3a5a41;
+  --plate-fruit: #63b77e;
+  --plate-wire: #4d524b;
+  --plate-post: #7d8279;
+
+  --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-* {
-  box-sizing: border-box;
+html {
+  background: var(--ground);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100svh;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: 20px;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button,
+input,
 textarea,
-input {
+select {
   font: inherit;
+  color: inherit;
 }
 
 button {
   cursor: pointer;
 }
 
-button:focus-visible{
-  outline: 2px solid #bd8875;
+:focus-visible {
+  outline: 2px solid var(--text);
   outline-offset: 2px;
-}
-
-/* Faint trellis lattice pattern on auth aside */
-.auth-aside::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: repeating-linear-gradient(
-      45deg,
-      rgba(184, 128, 111, 0.08) 0 1px,
-      transparent 1px 46px
-    ),
-    repeating-linear-gradient(
-      -45deg,
-      rgba(184, 128, 111, 0.08) 0 1px,
-      transparent 1px 46px
-    );
-  -webkit-mask-image: radial-gradient(
-    130% 95% at 82% 8%,
-    #000 0%,
-    transparent 76%
-  );
-  mask-image: radial-gradient(130% 95% at 82% 8%, #000 0%, transparent 76%);
-  pointer-events: none;
-}
-
-.dark-mode .auth-aside::before {
-  opacity: 0.5;
-}
-
-/* Password strength meter scores */
-.auth-strength[data-score="1"] .auth-strength-bars span:nth-child(1) {
-  background: #c9705a;
-}
-.auth-strength[data-score="2"] .auth-strength-bars span:nth-child(-n + 2) {
-  background: #d09a4e;
-}
-.auth-strength[data-score="3"] .auth-strength-bars span:nth-child(-n + 3) {
-  background: #b8a04e;
-}
-.auth-strength[data-score="4"] .auth-strength-bars span {
-  background: #7fa06f;
-}
-
-/* Markdown prose rendering */
-.markdown-body {
-  color: #3f3a36;
-  font-size: 15px;
-  line-height: 1.65;
-  letter-spacing: -0.01em;
-}
-.dark-mode .markdown-body {
-  color: #d7d1cb;
-}
-.markdown-body > :first-child {
-  margin-top: 0;
-}
-.markdown-body > :last-child {
-  margin-bottom: 0;
-}
-.markdown-body p {
-  margin: 0 0 13px;
-}
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3 {
-  margin: 20px 0 8px;
-  color: #302c29;
-  font-family: var(--font-manrope), sans-serif;
-  line-height: 1.3;
-  letter-spacing: -0.03em;
-}
-.dark-mode .markdown-body h1,
-.dark-mode .markdown-body h2,
-.dark-mode .markdown-body h3 {
-  color: #eee9e4;
-}
-.markdown-body h1 {
-  font-size: 21px;
-}
-.markdown-body h2 {
-  font-size: 18px;
-}
-.markdown-body h3 {
-  font-size: 16px;
-}
-.markdown-body ul,
-.markdown-body ol {
-  margin: 8px 0 15px;
-  padding-left: 22px;
-}
-.markdown-body li {
-  margin: 4px 0;
-  padding-left: 3px;
-}
-.markdown-body li::marker {
-  color: #b8806f;
-}
-.markdown-body a {
-  color: #a66656;
-  text-decoration: underline;
-  text-decoration-color: #d6b2a7;
-  text-underline-offset: 2px;
-}
-.markdown-body a:hover {
-  color: #814b3e;
-}
-.dark-mode .markdown-body a {
-  color: #db9c88;
-  text-decoration-color: #80564c;
-}
-.dark-mode .markdown-body a:hover {
-  color: #efb19d;
-}
-.markdown-body blockquote {
-  margin: 14px 0;
-  padding: 2px 0 2px 14px;
-  border-left: 2px solid #d7b4a9;
-  color: #716963;
-}
-.dark-mode .markdown-body blockquote {
-  border-left-color: #81584c;
-  color: #aaa29a;
-}
-.markdown-body code {
-  padding: 2px 5px;
-  border: 1px solid #e9e2dc;
   border-radius: 4px;
-  color: #7d4e41;
-  background: #f6f1ed;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.86em;
 }
-.dark-mode .markdown-body code {
-  border-color: #4a403a;
-  color: #e0a18e;
-  background: #302824;
+
+::selection {
+  background: var(--done-bg);
+  color: var(--text);
 }
-.markdown-body pre {
-  margin: 14px 0;
-  padding: 13px 14px;
-  overflow-x: auto;
-  border: 1px solid #e8e1db;
-  border-radius: 8px;
-  background: #f5f2ee;
+
+.num {
+  font-variant-numeric: tabular-nums;
 }
-.dark-mode .markdown-body pre {
-  border-color: #403b36;
-  background: #242321;
-}
-.markdown-body pre code {
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
   padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
   border: 0;
-  color: #4f4842;
-  background: transparent;
-  font-size: 12px;
-  line-height: 1.55;
-}
-.dark-mode .markdown-body pre code {
-  color: #d3cbc4;
-  background: transparent;
-}
-.markdown-body table {
-  width: 100%;
-  margin: 14px 0;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.markdown-body th,
-.markdown-body td {
-  padding: 7px 9px;
-  border: 1px solid #e4ded8;
-  text-align: left;
-}
-.dark-mode .markdown-body th,
-.dark-mode .markdown-body td {
-  border-color: #403b36;
-}
-.markdown-body th {
-  color: #4b433e;
-  background: #f5f1ed;
-  font-weight: 600;
-}
-.dark-mode .markdown-body th {
-  color: #e7dfd9;
-  background: #2a2826;
-}
-.markdown-body input[type="checkbox"] {
-  margin: 0 6px 0 0;
-  accent-color: #b8806f;
 }
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }

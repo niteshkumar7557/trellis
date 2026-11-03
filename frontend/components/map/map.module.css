@@ -1,0 +1,639 @@
+/* ------------------------------------------------------------ the map page inside the sheet */
+
+.page {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 24px;
+  padding: 20px var(--pad) 18px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.goalSelect {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.goalSelect select {
+  appearance: none;
+  height: var(--control-height);
+  padding: 0 32px 0 12px;
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font-size: 14px;
+  max-width: 340px;
+  text-overflow: ellipsis;
+}
+.goalSelect svg {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: var(--muted);
+}
+
+.findings {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+/* Stuck, next and new: each one opens its topic. */
+.finding {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+button.finding:hover { border-color: var(--control); color: var(--text); }
+.finding strong {
+  color: var(--text);
+  font-weight: 500;
+}
+.finding[data-tone="stuck"] {
+  border-color: color-mix(in srgb, var(--stuck) 30%, var(--border));
+  background: color-mix(in srgb, var(--stuck-bg) 60%, var(--surface));
+}
+.freshDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.headerSide {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.figures {
+  display: flex;
+  margin: 0;
+}
+.figures > div {
+  display: grid;
+  gap: 2px;
+  padding: 0 20px;
+  border-left: 1px solid var(--border);
+}
+.figures > div:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+.figures dt {
+  order: 2;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+.figures dd {
+  order: 1;
+  margin: 0;
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.figures dd small {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--rail-w, 400px);
+  min-height: 0;
+  border-top: 1px solid var(--border);
+}
+
+.work {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* The helper: one job, the whole column. */
+.rail {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+}
+.rail[data-collapsed] { grid-template-rows: minmax(0, 1fr); }
+.railHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 8px 0 20px;
+  border-bottom: 1px solid var(--rule);
+}
+.railTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+/* Drag the edge to make the helper wider or narrower. */
+.railEdge {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 8px;
+  cursor: col-resize;
+}
+.railEdge::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+.railEdge:hover::after,
+.railEdge:focus-visible::after { background: var(--control); }
+.railEdge:focus-visible { outline: none; }
+/* Folded away: a strip you click to bring it back. */
+.railStrip {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 10px;
+  padding: 14px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.railStrip:hover { background: var(--raised); color: var(--text); }
+.railStripLabel {
+  writing-mode: vertical-rl;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.railDot {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Topic details: a sheet over the map's right edge. */
+.sheet {
+  position: absolute;
+  z-index: 20;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: min(420px, calc(100% - 24px));
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+}
+
+/* ------------------------------------------------------------ canvas */
+
+.viewport {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  background: var(--raised);
+  touch-action: none;
+  user-select: none;
+}
+
+.world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.edges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.edge,
+.edgeSoft,
+.edgeReach,
+.trace {
+  fill: none;
+  transition: opacity 160ms ease, stroke 160ms ease;
+}
+.edge {
+  stroke: var(--edge);
+  stroke-width: 1.5;
+}
+.edgeSoft {
+  stroke: var(--edge-soft);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 4;
+}
+.edge[data-off],
+.edgeSoft[data-off] { opacity: 0.35; }
+[data-hovering] .edge[data-off],
+[data-hovering] .edgeSoft[data-off] { opacity: 0.12; }
+.edge[data-on],
+.edgeInner[data-on] {
+  stroke: var(--text);
+  stroke-width: 2;
+  opacity: 1;
+}
+/* Inside an open big topic: quieter than the links between big topics. */
+.edgeInner {
+  fill: none;
+  stroke: var(--edge);
+  stroke-width: 1.25;
+  transition: opacity 160ms ease, stroke 160ms ease;
+}
+.edgeInner[data-off] { opacity: 0.4; }
+[data-hovering] .edgeInner[data-off] { opacity: 0.12; }
+/* A link out of a frame, drawn only for the topic in focus. Solid: dashed means "helps". */
+.edgeReach {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.trace {
+  stroke: var(--stuck);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+.node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 17px;
+  text-align: left;
+  transition: opacity 160ms ease, border-color 120ms ease, background-color 160ms ease;
+}
+.node:hover { border-color: var(--control); }
+.node[aria-pressed="true"] {
+  border-color: var(--text);
+  outline: 1px solid var(--text);
+  outline-offset: 0;
+}
+.node[data-status="done"] { background: var(--done-bg); border-color: color-mix(in srgb, var(--done) 28%, var(--border)); }
+.node[data-status="stuck"] { background: var(--stuck-bg); border-color: color-mix(in srgb, var(--stuck) 40%, var(--border)); }
+.node[data-status="learning"] { border-color: color-mix(in srgb, var(--learning) 45%, var(--border)); }
+.node[data-optional] { border-style: dashed; }
+.node[data-next] {
+  border-color: var(--text);
+  outline: 1px solid var(--text);
+  outline-offset: 0;
+}
+/* Skippable for this goal: still there, still clickable, set back. */
+.node[data-skip] { opacity: 0.5; }
+.node[data-skip]:hover { opacity: 1; }
+.node[data-dim] { opacity: 0.22; }
+
+.nodeText {
+  display: grid;
+  min-width: 0;
+}
+.nodeName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ big topics */
+
+/* Closed: one node standing for everything inside. */
+.closed {
+  position: absolute;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 1px solid var(--control);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  transition: opacity 160ms ease, border-color 120ms ease;
+}
+.closed:hover { border-color: var(--text); }
+.closed[aria-pressed="true"] {
+  border-color: var(--text);
+  outline: 1px solid var(--text);
+}
+.closed[data-status="done"] { background: var(--done-bg); border-color: color-mix(in srgb, var(--done) 35%, var(--border)); }
+.closed[data-status="stuck"] { background: var(--stuck-bg); }
+.closed[data-target] .nodeName { font-weight: 600; }
+.closed[data-skip] { opacity: 0.5; }
+.closed[data-skip]:hover { opacity: 1; }
+.closed[data-dim] { opacity: 0.22; }
+.closedTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+}
+.closedMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 14px;
+}
+/* One tick per core subtopic; filled when it's on firm footing. */
+.ticks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-width: 110px;
+}
+.ticks > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--edge-soft);
+}
+.ticks > span[data-on] { background: var(--done); }
+
+/* Open: a frame holding its subtopics. */
+.frame {
+  position: absolute;
+  border: 1px solid var(--control);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  transition: opacity 160ms ease;
+}
+.frame[data-status="done"] { border-color: color-mix(in srgb, var(--done) 22%, var(--border)); }
+.frame[data-status="stuck"] { border-color: color-mix(in srgb, var(--stuck) 26%, var(--border)); }
+.frame[data-skip] { opacity: 0.6; }
+.frame[data-dim] { opacity: 0.35; }
+.frameHead {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px 14px 0 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+.frameHead:hover { background: var(--active); }
+.frameHead[aria-pressed="true"] { background: var(--active); }
+.frameName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.frameCount {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 13px;
+  border: 2px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nextTag {
+  position: absolute;
+  top: -11px;
+  left: 10px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.legend {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  max-width: calc(100% - 240px);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+.legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.zoom {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+}
+.zoom span {
+  min-width: 40px;
+  text-align: center;
+}
+.zoom button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+}
+.zoom button:hover { background: var(--active); }
+
+/* ------------------------------------------------------------ phone: the map gives way to the list */
+
+@media (max-width: 1100px) {
+  .body { grid-template-columns: minmax(0, 1fr) min(var(--rail-w, 400px), 360px); }
+  .figures > div { padding: 0 14px; }
+}
+
+@media (max-width: 900px) {
+  .page { height: auto; display: block; overflow-y: auto; }
+  .header { grid-template-columns: 1fr; padding: 16px; }
+  .headerSide { grid-column: 1; grid-row: auto; flex-wrap: wrap; gap: 12px; }
+  .body { display: block; border-top: 0; }
+  .work { display: block; }
+  .rail { border-left: 0; border-top: 1px solid var(--border); overflow: visible; height: 560px; }
+  .sheet { position: fixed; inset: auto 8px 8px; top: 12vh; width: auto; }
+}
+
+/* ------------------------------------------------------------ direction and names */
+
+/* Every line ends in a small head pointing to what it unlocks, drawn as its own shape. */
+.arrowHead {
+  fill: var(--edge);
+  transition: opacity 160ms ease;
+}
+.arrowHead[data-k="on"],
+.arrowHead[data-k="reach"] { fill: var(--text); }
+.arrowHead[data-k="soft"] { fill: var(--edge-soft); }
+.arrowHead[data-k="trace"] { fill: var(--stuck); }
+/* A head fades with its line. */
+.line[data-off] .arrowHead { opacity: 0.35; }
+[data-hovering] .line[data-off] .arrowHead { opacity: 0.12; }
+
+/* Hover: pulses run up the lit chain, the way you'd learn it. */
+.flow {
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 1.5 14;
+  animation: flow 0.9s linear infinite;
+  pointer-events: none;
+}
+@keyframes flow {
+  from { stroke-dashoffset: 31; }
+  to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow { display: none; }
+}
+
+.edgeLabel {
+  position: absolute;
+  z-index: 3;
+  padding: 1px 7px;
+  border: 1px solid var(--control);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform-origin: center;
+}
+.edgeLabel[data-kind="helps"] {
+  border-style: dashed;
+  color: var(--muted);
+}
+.traceLabel {
+  border-color: color-mix(in srgb, var(--stuck) 45%, var(--border));
+  background: var(--stuck-bg);
+  color: var(--stuck-ink);
+  font-weight: 600;
+}
+
+.legendLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legendEdge { stroke: var(--text); stroke-width: 1.5; fill: none; }
+.legendHead { fill: var(--text); }
+.legendEdgeSoft { stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 3 3; fill: none; }
+.legendHeadSoft { fill: var(--muted); }
+
+/* A relation name sitting on a topic's corner, for lines too short to carry it. */
+.nodeTag {
+  transform-origin: right center;
+  z-index: 4;
+}
+.summaryTag {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--surface);
+}

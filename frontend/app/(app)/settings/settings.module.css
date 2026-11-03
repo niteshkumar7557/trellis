@@ -1,0 +1,122 @@
+/* Settings in two columns: a ~360px label column beside a ~640px panel. 360 + 32 + 640 = 1032. */
+
+.page {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 24px var(--pad) 64px;
+}
+
+.header {
+  max-width: 1032px;
+  margin: 0 auto;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.section {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 640px);
+  gap: 32px;
+  max-width: 1032px;
+  margin: 0 auto;
+  padding: 32px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.section:last-child { border-bottom: 0; }
+
+.label {
+  padding-top: 8px;
+}
+.label h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.label p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.section[data-danger] .label h2 { color: var(--stuck); }
+
+.panel {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--raised);
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+.field > span {
+  font-size: 14px;
+  font-weight: 500;
+}
+.field input {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 14px;
+  outline: none;
+}
+.field input:focus { border-color: var(--control); }
+
+.panelFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stamp {
+  color: var(--done-ink);
+  font-size: 13px;
+}
+
+.facts {
+  display: grid;
+  margin: 0;
+}
+.facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.facts > div:last-child { border-bottom: 0; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; text-align: right; }
+
+.prose {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+}
+
+@media (max-width: 900px) {
+  .page { padding: 16px; }
+  .section { grid-template-columns: 1fr; gap: 12px; padding: 24px 0; }
+  .label { padding-top: 0; }
+}

@@ -1,0 +1,131 @@
+.list {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 8px var(--pad) 32px;
+}
+
+.group {
+  max-width: 880px;
+  padding-top: 24px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--fs-section);
+  font-weight: 600;
+}
+
+.count {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.note {
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rows li + li { border-top: 1px solid var(--rule); }
+
+.rows button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 72px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.rows button:hover { background: var(--raised); }
+.rows button[aria-pressed="true"] { background: var(--active); }
+
+.name {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.needs {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.next {
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: 1px;
+}
+
+.time {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .list { padding: 0 16px 24px; }
+  .rows button { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .time { display: none; }
+}
+
+/* ------------------------------------------------------------ big topics */
+
+.area {
+  border-top: 1px solid var(--border);
+}
+.area:last-child { border-bottom: 1px solid var(--border); }
+.areaHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.areaHead:hover { background: var(--raised); }
+.areaHead[aria-pressed="true"] { background: var(--active); }
+.areaHead .name { font-size: 15px; font-weight: 600; }
+.area .rows { padding: 0 0 10px 24px; }
+.rows li[data-skip] button { opacity: 0.55; }
+.rows li[data-skip] button:hover { opacity: 1; }
+
+.optional {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px dashed var(--control);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: 1px;
+}

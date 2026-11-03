@@ -1,0 +1,188 @@
+.page {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 24px var(--pad) 48px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1180px;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.sub {
+  max-width: 560px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.total {
+  margin: 24px 0 0;
+  font-size: 14px;
+}
+
+.empty {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  max-width: 1180px;
+  border: 1px dashed var(--control);
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.day {
+  max-width: 1180px;
+  margin-top: 28px;
+}
+
+.dayTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.dayTitle span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 112px 72px;
+  align-items: start;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.time {
+  padding-top: 1px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.text {
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.filed {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.follow {
+  color: var(--muted);
+  font-size: 13px;
+}
+.follow span { color: var(--text); }
+
+.row > :global(span[data-status]) {
+  justify-self: start;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-top: -6px;
+}
+
+.editor {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  margin: 8px 0;
+  border-radius: 12px;
+  background: var(--raised);
+}
+
+.editRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.editField {
+  display: grid;
+  gap: 8px;
+}
+.editField > span:first-child {
+  font-size: 13px;
+  font-weight: 500;
+}
+.editField input,
+.editField select {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--control);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+}
+
+.editActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .page { padding: 16px; }
+  .header { flex-direction: column; }
+  .row { grid-template-columns: minmax(0, 1fr) auto; }
+  .time { display: none; }
+  .row > :global(span[data-status]) { display: none; }
+}
+
+.noteBtn {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.noteBtn:hover { color: var(--text); }
+.noteInput {
+  width: min(100%, 420px);
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
