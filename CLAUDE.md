@@ -47,7 +47,9 @@ outside GitHub. Don't write the teammates' code.
   **`backend/v1`**, created 3 Nov 2026 from `main`. Commit only on `backend/v1`. **Never push,
   never merge** without the owner's say-so. Teammates branch from `backend/v1` as
   `task/<date>-<letter>-<slug>`.
-- **Next up:** teammate tasks for M0.2–M0.4 (backend-design.md §10), written per §0.
+- **Next up:** M0.2–M0.4 are handed out as the 3 Nov tasks (A build, B golden test,
+  C migrations + config); after they merge, do the owner wiring in backend-design.md §11,
+  then plan M1.
 
 ## Decisions already made (don't re-ask)
 

@@ -449,9 +449,11 @@ All of it lives in `shared/graph.ts`; the rules are in design.md §6 and §8. In
   a stuck topic's likely cause, or when opened by hand.
 - Suspects: prerequisites up to two steps below a stuck topic, weakest first.
 
-**Golden test** (write in M0): with the sample student (`shared/data/student.ts`) the React
-Native next topic is **State**, FlatList is stuck, its first suspect is **State**, and
-**Redis has no goal**. Run the same test against frontend and backend imports.
+**Golden test** (M0.3, `backend/test/golden.test.ts`): with the sample student
+(`shared/data/student.ts`) the React Native next topic is **State**, FlatList is stuck, its
+first suspect is **State**, and **Redis has no goal**. Both apps import the same `shared/`
+files, so one test covers both. `backend/test/data-checks.test.ts` fails if any
+`console.assert` in `shared/data/index.ts` fails.
 
 ## 8. Cross-cutting
 
@@ -467,7 +469,9 @@ Native next topic is **State**, FlatList is stuck, its first suspect is **State*
   parameterised SQL only.
 - **Tests:** Vitest plus supertest. Unit tests for `shared/` and integration tests per route
   against a test database. Each task ships its own tests.
-- **Code style:** TypeScript strict (as configured), ESM, small files: one router, one
+- **Code style:** TypeScript `strict`, ESM, small files. The backend drops
+  `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` (M0.2), because `shared/`
+  fails them with 13 errors and must type-check the same way in both apps. Small files: one router, one
   controller, one repo file per area (`src/routes/claims.routes.ts`,
   `src/controllers/claims.controller.ts`, `src/repos/claims.repo.ts`).
 - **Observability (later, M7):** Sentry, UptimeRobot for downtime, Healthchecks for the
@@ -551,7 +555,16 @@ Update this table at the start of each planning session from `git log` and merge
 | Task | Status | Who | Merged in |
 |---|---|---|---|
 | M0.1 Move the domain code into `shared/` | done | owner, with Claude | `backend/v1`, 3 Nov 2026 |
+| M0.2 tsup, Vitest, zod, error handler, Docker from the root | assigned (Task A, 3 Nov) | — | — |
+| M0.3 Golden test + data checks test | assigned (Task B, 3 Nov) | — | — |
+| M0.4 Migrations 0005–0006, empty seed, Neo4j + AI config | assigned (Task C, 3 Nov) | — | — |
 | everything else | not started | — | — |
+
+**Owner wiring after the 3 Nov tasks merge:** in `src/app.ts`, register
+`app.use(notFound); app.use(errorHandler);` after all routes (Task A), and remove the
+`/conversations` route, then delete `src/routes/conversations.route.ts`,
+`src/controllers/conversations.controller.ts`, `src/ai/index.ts` and the `ChatMessage` /
+`Conversation` types in `src/types/index.ts` (Task C).
 
 ## 12. Open questions for the owner
 
