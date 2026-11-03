@@ -6,7 +6,6 @@ import pool from "./db/index.js";
 import { makeHealthHandler } from "./utils/health.js";
 import userRoutes from "./routes/user.routes.js";
 import cookieParser from "cookie-parser";
-import conversationsRoutes from "./routes/conversations.route.js";
 
 const app = express();
 
@@ -25,6 +24,5 @@ app.get("/health", makeHealthHandler(() => pool.query("SELECT 1")));
 
 
 app.use("/user", userRoutes);
-app.use("/conversations", conversationsRoutes);
 
 export default app;
