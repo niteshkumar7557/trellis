@@ -18,17 +18,25 @@ project for a backend course, due around **27 Nov 2026**.
 
 ### When the owner asks "what's next in the backend?"
 
-Follow `docs/backend-design.md` §0 exactly:
+Follow `docs/backend-design.md` §0 exactly. It's the **70/30 model** (owner's rule, 3 Nov
+2026, for every milestone):
 1. Update §11 Progress from `git log` and merged PRs.
 2. Pick the next **three independent tasks** from §10.
-3. Write them as `team-tasks/<YYYY-MM-DD>/task-A-….md`, `task-B-…`, `task-C-…`, using the
-   template in §0.
+3. **Build about 70% of each yourself** on `backend/v1`: working code, with the teammate's
+   part left as `TODO(Task X)` gaps that compile and their tests written but `it.skip`.
+   Typecheck and tests stay green. Solve the 30% in a scratch copy to prove it works, then
+   commit the 70%.
+4. Write `team-tasks/<YYYY-MM-DD>/task-A-….md`, `task-B-…`, `task-C-…` (template in §0)
+   for the **remaining 30%**. Each one **teaches something new**, explains the 70% file by
+   file as well, opens with a block for the teammate's AI assistant (teach, don't just
+   write the code), and ends with "Explain it back" questions and viva questions with model
+   answers.
 
-The rules: no two tasks share a file, each is self-contained and hand-holding, migration
-numbers are reserved per task, and wiring in shared files (`src/app.ts`) is left to the
-owner. Three busy teammates who **don't know the codebase** write and commit the code. The
-owner does ideas and reviews. `team-tasks/` is git-ignored; the owner shares the files
-outside GitHub. Don't write the teammates' code.
+The rules: no two tasks share a file, migration numbers are reserved per task, and wiring
+in shared files (`src/app.ts`) is done in your 70%, never by a teammate. The teammates are
+busy and **don't know the codebase**, but must be able to explain both parts in the viva.
+The owner does ideas and reviews. `team-tasks/` is git-ignored; the owner shares the files
+outside GitHub.
 
 ## Where things stand (3 Nov 2026)
 
@@ -39,17 +47,16 @@ outside GitHub. Don't write the teammates' code.
 - **`shared/`** (M0.1, done): the domain code both apps run: types, data, graph, prompt,
   parse, helper. The frontend imports it as `@shared/*`. Keep it free of React, Next and
   Node-only APIs.
-- **Backend: designed, not built.** It has Express + Postgres auth only, plus two old chat
-  tables to drop. M0.1 is done; the rest of M0 (backend build, golden test, migrations)
-  is next, then M1 (Neo4j content).
+- **Backend: M0 in progress.** Express + Postgres auth, now built with tsup, tested with
+  Vitest, one error shape, Neo4j/AI config. No `/api` routes yet. Then M1 (Neo4j content).
 - **Git:** `main` holds the finished frontend as one squashed commit (`8e3aadc redesign:
   frontend-v4`); `redesign/frontend-v1` keeps its step-by-step history. Work happens on
   **`backend/v1`**, created 3 Nov 2026 from `main`. Commit only on `backend/v1`. **Never push,
   never merge** without the owner's say-so. Teammates branch from `backend/v1` as
   `task/<date>-<letter>-<slug>`.
-- **Next up:** M0.2–M0.4 are handed out as the 3 Nov tasks (A build, B golden test,
-  C migrations + config); after Task A merges, register its error handler in `app.ts`
-  (backend-design.md §11), then plan M1.
+- **M0:** the 70% is on `backend/v1` (`a730405`); the 3 Nov tasks (A error branches,
+  B golden prompt facts + data checks, C migrations 0005–0006 + `fraction()`) finish it.
+  **Next up:** once they merge, plan M1 with the same 70/30 model.
 
 ## Decisions already made (don't re-ask)
 
@@ -93,7 +100,9 @@ outside GitHub. Don't write the teammates' code.
 - **Checks:** `npx tsc --noEmit`, `npx eslint .` and `npm run lint:shared` stay clean (frontend). Design inspector:
   `node ~/.claude/skills/design-taste-frontend/scripts/inspect.mjs <url> [--app]`. The
   landing page always "fails" the picture checks; that's expected.
-- **Backend:** TypeScript strict ESM, zod validation, parameterised SQL scoped by the
+- **Backend:** TypeScript strict ESM (tsup builds, `tsc` only type-checks), `@shared/*` for
+  the domain code, errors as `{error:{code,message}}` via `HttpError`, zod via
+  `validateBody`, parameterised SQL scoped by the
   token's user id, one router/controller/repo file per area, tests with every task.
 - Keep the post-semester club distribution plan **out of repo docs**; `design.md` mentions
   groups only generically.
@@ -106,6 +115,7 @@ docker compose -f docker-compose.dev.yml up -d   # dev Postgres on :5050 (Neo4j 
 cd backend && npm install && npm run db-init && npm run dev
 ```
 
-`backend/example.env` has port 5432 in `DB_URL`, but the dev compose file maps Postgres to
-**5050**, so point `DB_URL` there. The frontend demo state is in localStorage
+The dev compose file maps Postgres to **5050** (`backend/example.env` says so; an older
+`backend/.env` may still say 5432). Backend checks: `npm run typecheck` and `npm test`.
+The frontend demo state is in localStorage
 `trellis-demo-v4`; Settings → "Restore the sample data" resets it.

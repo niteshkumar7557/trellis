@@ -11,44 +11,63 @@ data with no API calls. The existing backend has only auth and two old chat tabl
 
 ## 0. How the team works (read this first in every session)
 
-### Who does what
+### Who does what (the 70/30 model, from 3 Nov 2026)
 
 | Who | Role |
 |---|---|
-| **The owner** (the student who leads the project) | Ideas, product decisions, reviewing and merging. Talks to Claude. Doesn't hand-write the teammates' code. |
-| **Three teammates** | Write and commit the backend code. They are busy, know basic JavaScript/TypeScript, SQL and Git, and **do not know this codebase**. Their commits count towards their grade, so the code must be theirs. |
-| **Claude** | Plans the backend, keeps these docs current, and writes the teammates' task files. Does not write the teammates' backend code unless the owner asks for scaffolding. |
+| **The owner** (the student who leads the project) | Ideas, product decisions, reviewing and merging. Talks to Claude. |
+| **Claude** | Plans the backend and keeps these docs current. For each task, **writes about 70% of the code itself** and commits it on `backend/v1` (the setup, the plumbing, the parts that need the whole codebase in your head), then writes the task file for the other 30%. |
+| **Three teammates** | Busy; know basic JavaScript/TypeScript, SQL and Git; don't know this codebase. Each writes and commits **the remaining 30%**: a small, real piece that teaches something new. They must be able to **explain both parts** in the viva. They usually hand the task file to their own AI assistant. |
+
+Why: the teammates' commits count towards their grade and the viva tests their
+understanding, but they have little time. So Claude builds the parts that take most of the
+time, and each task turns the rest into a lesson.
 
 ### The daily loop
 
 1. The owner opens a **fresh** Claude session and asks: *"what's next in the backend?"*
 2. Claude reads `CLAUDE.md`, this file (especially §11 **Progress**), `git log` and the
    current backend code, then picks the **next three tasks** from the plan (§10).
-3. Claude writes **three task files**, one per teammate:
+3. For each task Claude **builds the 70%** on `backend/v1`: working code, with the
+   teammate's parts left as `TODO(Task X)` gaps that compile, plus tests where the
+   teammate's cases are written but marked `it.skip`. `npm run typecheck` and `npm test`
+   stay green. Claude also solves the 30% in a scratch copy to prove the gaps can be filled
+   as described, then throws that copy away.
+4. Claude commits the 70% (one commit) and writes **three task files**:
    `team-tasks/<YYYY-MM-DD>/task-A-<slug>.md`, `task-B-…`, `task-C-…`.
    `team-tasks/` is git-ignored: the owner sends the files to teammates outside GitHub.
-4. Each teammate works on their own branch, commits, and opens a pull request.
-5. The owner reviews and merges, and does any wiring the tasks said to leave
-   (registering routers in `app.ts`, for example).
-6. In the next session Claude reads what merged and updates §11 **Progress** before
+5. Each teammate branches from `backend/v1`, fills in their 30%, commits, and opens a PR
+   whose description answers the task's "Explain it back" questions in their own words.
+6. The owner reviews and merges, and does any wiring the tasks left.
+7. In the next session Claude reads what merged and updates §11 **Progress** before
    planning more.
 
 ### The rules for the three task files
 
+- **Teach, don't just instruct.** Every task teaches at least one concept that's new and
+  useful beyond this project (for example: Express error middleware, transactions,
+  characterisation tests, migrations). Each step of the 30% has a short **Learn** box: the
+  idea, why it matters, and a common mistake.
+- **Explain the 70% too.** A "What's already built" section walks through every file Claude
+  wrote for the task: what it does, why it's written that way, with a question per file.
+  The teammate must be able to explain it in the viva, not just their own lines.
+- **Written for their AI assistant as well.** Each file opens with a block addressed to the
+  AI the teammate will paste it into, telling it to teach: explain before coding, let the
+  student type, ask check questions, quiz with the viva questions at the end, never touch
+  the "Don't touch" files.
+- **Viva questions with model answers** at the end, covering both the 70% and the 30%.
+- **Explain it back.** Three or four questions the teammate answers in their own words in
+  the PR description. The owner reads them when reviewing.
 - **Independent.** Any one can be done first, or alone. No task waits on another task from
   the same day.
-- **No shared files.** Two tasks on the same day never edit the same file. Each task
-  creates its own files: its own router file, its own controller, its own migration, with
-  the migration **number reserved in the task** (for example, Task A gets `0007_…`, Task B
-  gets `0008_…`). Lines that would touch shared files, like registering a router in
-  `src/app.ts`, are **left to the owner**, and the task says so in a "Don't touch" list.
-- **Self-contained and hand-holding.** A teammate must be able to finish using only the
-  task file and the repo. Paste in everything they need: the exact shapes (JSON and
-  TypeScript), the SQL, the rules ("status is never stored"), the file paths. Never write
-  "see the codebase" or "as discussed".
-- **Small.** Two to four focused hours each. Split anything bigger across days.
-- **Checkable.** Every task ends with commands and expected output (`curl` with the
-  response, a `psql` query, or `npm test`) and a "done when" checklist.
+- **No shared files.** Two tasks on the same day never edit the same file. Migration
+  numbers are **reserved in the task**. Wiring in shared files like `src/app.ts` is done by
+  Claude in the 70%, or left to the owner, never to a teammate.
+- **Self-contained.** A teammate must be able to finish using only the task file and the
+  repo. Paste in the exact shapes, SQL, rules and file paths. Never "see the codebase".
+- **Small.** About 1–2 focused hours for the 30%, plus reading time.
+- **Checkable.** Commands with expected output (`npm test` going from "N skipped" to all
+  passing, a `curl` with its response, a `psql` query) and a "done when" checklist.
 
 ### The task file template
 
@@ -57,22 +76,25 @@ Use these sections, in this order:
 ```markdown
 # Task <A|B|C> · <short title>          (<date>, about <N> hours)
 
+> **For the AI assistant helping with this task:** teach-mode rules (see any 3 Nov file)
+
 ## Why this matters
 Two or three sentences: what this unlocks for students, in plain words.
 
+## What you'll learn
+Three to five bullets: the concepts, by name.
+
 ## Before you start
-- Pull the latest `backend/v1` and create your branch: `git checkout -b task/<date>-<letter>-<slug>`
-- Setup commands (database up, env vars, `npm install`), exactly as typed.
+Branch, setup commands, exactly as typed, and the "before" state (`npm test` output).
 
-## What you'll build
-A short list of the files you create or change, with full paths.
+## The big picture
+How this piece fits: a request's path through the files, or the data's path.
 
-## Step by step
-Numbered steps. Each has:
-- what to do and why, in one or two lines
-- the code, or a skeleton with the parts to fill in clearly marked
-- the exact SQL for any migration
-- the shapes (request and response JSON, TypeScript types), copied in full
+## What's already built (the 70%)
+File by file: what it does, why it's written that way, and one question to answer.
+
+## Your part (the 30%)
+Numbered steps. Each has a **Learn** box, then the code: most of it given, the gaps marked.
 
 ## Check it works
 Exact commands, and what you should see.
@@ -80,9 +102,14 @@ Exact commands, and what you should see.
 ## Done when
 - [ ] checklist items a reviewer can tick
 
+## Explain it back (in your PR description)
+Three or four questions to answer in your own words.
+
+## Viva questions
+Questions with model answers, covering both the 70% and the 30%.
+
 ## Commit and open a PR
-Branch name, commit message (Conventional Commits, e.g. `feat(api): add claims endpoint`),
-PR title, and what to write in the PR description.
+Branch name, commit message (Conventional Commits), PR title and description.
 
 ## Don't touch
 Files owned by other tasks today, and wiring left to the owner.
@@ -96,7 +123,8 @@ Common errors and their fixes; who to ask.
 - Integration branch: **`backend/v1`**, created on 3 Nov 2026 from `main`, which holds the
   finished frontend. Merging into `main` happens only on the owner's say-so.
 - Teammates branch from `backend/v1` as `task/<date>-<letter>-<slug>` and open PRs back into it.
-- Claude commits only docs and its own planning, never a teammate's task, and never pushes.
+- Claude commits its 70% and the docs on `backend/v1`, never a teammate's 30%, and never
+  pushes or merges.
 
 ---
 
@@ -154,11 +182,12 @@ shared/
 - The frontend imports it through a path alias (`@shared/*` in `frontend/tsconfig.json`);
   Next compiles it as source with `experimental.externalDir`. The frontend Docker image
   builds from the repo root so it can copy `shared/` (`frontend/Dockerfile`,
-  `frontend/Dockerfile.dockerignore`). **The backend image will need the same change** in
-  M0.2: its compose `context` is `./backend` today, which can't see `shared/`.
+  `frontend/Dockerfile.dockerignore`). The backend image does the same since M0
+  (`backend/Dockerfile`, `backend/Dockerfile.dockerignore`). The backend imports it as
+  `@shared/*` too (`backend/tsconfig.json`; repeated in `backend/vitest.config.ts`).
 - Lint it with `npm run lint:shared` (in `frontend/`); `npx eslint .` there doesn't reach it.
-- The backend currently builds with `tsc` (`module: nodenext`), which needs `.js` extensions
-  on relative imports. The frontend code has none. **Decision:** build the backend with
+- The backend used to build with `tsc` (`module: nodenext`), which needs `.js` extensions
+  on relative imports, and `shared/` has none. **Decision (done in M0):** build the backend with
   **tsup** (esbuild), which bundles `shared/` and handles extensionless imports; keep `tsx`
   for development. This is milestone M0.
 - `shared/` stays free of React, Next and Node-only APIs.
@@ -460,8 +489,8 @@ files, so one test covers both. `backend/test/data-checks.test.ts` fails if any
 - **Config:** `backend/src/config/index.ts` is the only place that reads `process.env`.
   Add `NEO4J_URL` (e.g. `bolt://localhost:7687`), `NEO4J_USER`, `NEO4J_PASSWORD` and the AI
   variables above.
-- **Dev env gotcha:** `backend/example.env` uses port 5432 in `DB_URL`, but
-  `docker-compose.dev.yml` maps Postgres to **5050**. Point `DB_URL` at 5050.
+- **Dev env:** `docker-compose.dev.yml` maps Postgres to **5050**; `backend/example.env`
+  says so since M0 (older copies of `.env` may still say 5432).
 - **Errors:** one Express error-handling middleware producing the error shape in §4, plus
   `async` handler wrappers (Express 5 catches rejected promises by itself).
 - **Security:** helmet and CORS (exist); bcrypt (exists); refresh token in an httpOnly
@@ -555,17 +584,13 @@ Update this table at the start of each planning session from `git log` and merge
 | Task | Status | Who | Merged in |
 |---|---|---|---|
 | M0.1 Move the domain code into `shared/` | done | owner, with Claude | `backend/v1`, 3 Nov 2026 |
-| M0.2 tsup, Vitest, zod, error handler, Docker from the root | assigned (Task A, 3 Nov) | — | — |
-| M0.3 Golden test + data checks test | assigned (Task B, 3 Nov) | — | — |
-| M0.4 Migrations 0005–0006, empty seed, Neo4j + AI config | assigned (Task C, 3 Nov) | — | — |
+| M0.2 tsup, Vitest, zod, error handler, Docker from the root | 70% done (Claude, `a730405`); Task A: the 3 `errorHandler` branches + tests | — | — |
+| M0.3 Golden test + data checks test | 70% done (facts 1–5); Task B: facts 6–7 + the data-checks test | — | — |
+| M0.4 Migrations 0005–0006, empty seed, Neo4j + AI config | 70% done (config, seed, env); Task C: migrations 0005–0006, `fraction()`, range tests | — | — |
 | everything else | not started | — | — |
 
-**Owner wiring for the 3 Nov tasks:**
-- ✅ Done 3 Nov: removed the `/conversations` route from `src/app.ts` and deleted the old chat
-  code (its route, controller, `src/ai/index.ts`, and the chat types). Task C then drops
-  its tables.
-- After Task A merges: in `src/app.ts`, register `app.use(notFound); app.use(errorHandler);`
-  after all routes (`import { errorHandler, notFound } from "./middlewares/error.middleware.js";`).
+**Wiring for the 3 Nov tasks:** all done in the 70% (old chat code removed; `notFound` and
+`errorHandler` registered last in `src/app.ts`). Nothing left for the owner after merging.
 
 ## 12. Open questions for the owner
 
