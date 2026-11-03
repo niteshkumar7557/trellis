@@ -5,7 +5,7 @@ How the frontend is built and how to change it safely. The product rules live in
 the code map, the rules each part follows, the gotchas, and the **data contract** the
 backend must serve.
 
-**Status (3 Nov 2026):** finished on branch `redesign/frontend-v1`. It makes **no API
+**Status (3 Nov 2026):** finished (on `main`; the step-by-step history is on `redesign/frontend-v1`). It makes **no API
 calls**. The topic graphs are real; the student, their history and the helper's "AI" are
 stand-ins. `frontend/lib/store.tsx` is the one place to swap in the API (§11).
 
