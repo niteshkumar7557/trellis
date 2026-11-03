@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark } from "@/components/ui/Status";
-import { kids, subjectById, topicById } from "@/lib/data";
+import { kids, subjectById, topicById } from "@shared/data";
 import { Draggable, gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
-import { STATUS_LABEL, helpsOf, needsOf, neededBy, progressOf, statusOf } from "@/lib/graph";
-import type { Status } from "@/lib/types";
+import { STATUS_LABEL, helpsOf, needsOf, neededBy, progressOf, statusOf } from "@shared/graph";
+import type { Status } from "@shared/types";
 import { HEAD_LENGTH, along, link, shownAs, type Head, type Layout, type LaidNode, type Point } from "./layout";
 import styles from "./map.module.css";
 

@@ -5,10 +5,10 @@ import { useMemo, useState } from "react";
 import { MiniMap } from "@/components/map/MiniMap";
 import { Icon } from "@/components/ui/Icon";
 import ui from "@/components/ui/ui.module.css";
-import { SOURCE, bigTopicsOf, goalsOf, subjects, subtopicsOf } from "@/lib/data";
-import { requiredFor } from "@/lib/graph";
+import { SOURCE, bigTopicsOf, goalsOf, subjects, subtopicsOf } from "@shared/data";
+import { requiredFor } from "@shared/graph";
 import { useStore } from "@/lib/store";
-import type { SubjectId } from "@/lib/types";
+import type { SubjectId } from "@shared/types";
 import styles from "./start.module.css";
 
 export default function StartPage() {

@@ -1,5 +1,5 @@
-import { STATUS_LABEL } from "@/lib/graph";
-import type { Status } from "@/lib/types";
+import { STATUS_LABEL } from "@shared/graph";
+import type { Status } from "@shared/types";
 import styles from "./ui.module.css";
 
 // Each status has its own shape as well as its colour, so it reads without colour too:

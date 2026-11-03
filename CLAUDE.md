@@ -33,19 +33,21 @@ outside GitHub. Don't write the teammates' code.
 ## Where things stand (3 Nov 2026)
 
 - **Frontend: finished** (on `main`). No API calls; the topic graphs are
-  real (`frontend/lib/data/react-native.ts`, `redis.ts`, from roadmap.sh). The sample
-  student, their history and the helper's AI (`lib/helper.ts`, `lib/parse.ts`) are
+  real (`shared/data/react-native.ts`, `redis.ts`, from roadmap.sh). The sample
+  student, their history and the helper's AI (`shared/helper.ts`, `shared/parse.ts`) are
   stand-ins.
+- **`shared/`** (M0.1, done): the domain code both apps run: types, data, graph, prompt,
+  parse, helper. The frontend imports it as `@shared/*`. Keep it free of React, Next and
+  Node-only APIs.
 - **Backend: designed, not built.** It has Express + Postgres auth only, plus two old chat
-  tables to drop. The first milestone is M0 (move the domain code into `shared/`, the
-  build setup), then M1 (Neo4j content).
+  tables to drop. M0.1 is done; the rest of M0 (backend build, golden test, migrations)
+  is next, then M1 (Neo4j content).
 - **Git:** `main` holds the finished frontend as one squashed commit (`8e3aadc redesign:
   frontend-v4`); `redesign/frontend-v1` keeps its step-by-step history. Work happens on
   **`backend/v1`**, created 3 Nov 2026 from `main`. Commit only on `backend/v1`. **Never push,
   never merge** without the owner's say-so. Teammates branch from `backend/v1` as
   `task/<date>-<letter>-<slug>`.
-- **Next up:** M0.1, moving the domain code into `shared/`. The owner does it with Claude
-  in a fresh session (backend-design.md §10). Hand out teammate tasks after that.
+- **Next up:** teammate tasks for M0.2–M0.4 (backend-design.md §10), written per §0.
 
 ## Decisions already made (don't re-ask)
 
@@ -86,7 +88,7 @@ outside GitHub. Don't write the teammates' code.
   primary button, no gradients, no resting shadows. The landing page has its own tokens.
 - **GSAP** from `@/lib/gsap`, with `useGSAP` and a scope; respect reduced motion.
 - **IBM Plex Sans** only; the theme is set before paint by `themeScript`.
-- **Checks:** `npx tsc --noEmit` and `npx eslint .` stay clean (frontend). Design inspector:
+- **Checks:** `npx tsc --noEmit`, `npx eslint .` and `npm run lint:shared` stay clean (frontend). Design inspector:
   `node ~/.claude/skills/design-taste-frontend/scripts/inspect.mjs <url> [--app]`. The
   landing page always "fails" the picture checks; that's expected.
 - **Backend:** TypeScript strict ESM, zod validation, parameterised SQL scoped by the

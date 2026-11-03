@@ -21,7 +21,7 @@ import {
   subjects,
   topicById,
   topics,
-} from "@/lib/data";
+} from "@shared/data";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import {
   importanceOf,
@@ -30,9 +30,9 @@ import {
   statusOf,
   suspectsFor,
   summarise,
-} from "@/lib/graph";
+} from "@shared/graph";
 import { useStore } from "@/lib/store";
-import type { Status, SubjectId, Topic } from "@/lib/types";
+import type { Status, SubjectId, Topic } from "@shared/types";
 import styles from "./search.module.css";
 
 // ⌘K anywhere in the app: one search over pages, subjects, topics and the student's own
