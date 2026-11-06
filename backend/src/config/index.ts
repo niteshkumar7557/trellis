@@ -18,6 +18,16 @@ function num(name: string, fallback: number): number {
   return n;
 }
 
+function fraction(name: string, fallback: number): number {
+  const n = num(name, fallback);
+
+  if (n < 0 || n > 1) {
+    throw new Error(`Config: ${name} must be between 0 and 1, got "${n}"`);
+  }
+
+  return n;
+}
+
 const config = {
   server_port: num("PORT", num("SERVER_PORT", 8000)),
   client_url: process.env.CLIENT_URL,
@@ -44,8 +54,8 @@ const config = {
     router_model: str("ROUTER_MODEL", ""), // Jev: picks the helper's path
     reader_model: str("READER_MODEL", ""), // DeepSeek v4.1 flash: reads the message
     // Below this, the router's guess is ignored. A fraction, 0 to 1.
-    // TODO(Task C): use fraction() here instead of num(), so 1.5 or -1 stops the server.
-    router_min_confidence: num("ROUTER_MIN_CONFIDENCE", 0.7),
+
+    router_min_confidence: fraction("ROUTER_MIN_CONFIDENCE", 0.7),
     timeout_ms: num("AI_TIMEOUT_MS", 8000), // give up on an AI call after this long
   },
 };
