@@ -27,6 +27,9 @@ app.get("/boom", () => {
 app.get("/boom-async", async () => {
   throw new Error("secret async detail");
 });
+app.post("/nested", validateBody(z.object({ goal: z.object({ id: z.string() }) })), (_req, res) => {
+  res.end();
+});
 app.use(notFound);
 app.use(errorHandler);
 
@@ -64,30 +67,28 @@ describe("the error shape", () => {
     log.mockRestore();
   });
 
-  // ---------------------------------------------------------------- Task A (3 Nov)
-  // These three fail until errorHandler handles them. Remove `.skip` from each one, then
-  // make it pass by filling in the matching TODO in error.middleware.ts.
-
-  it.skip("answers 400 invalid_request with details for a body that fails the schema", async () => {
+  it("answers 400 invalid_request with details for a body that fails the schema", async () => {
     const res = await request(app).post("/echo").send({ name: "" });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("invalid_request");
     expect(res.body.error.details[0].path).toBe("name");
   });
 
-  it.skip("answers 400 invalid_json for a body that isn't JSON", async () => {
+  it("answers 400 invalid_json for a body that isn't JSON", async () => {
     const res = await request(app).post("/echo").set("Content-Type", "application/json").send('{"name": ');
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("invalid_json");
   });
 
-  it.skip("answers an HttpError with its own status, code and message", async () => {
+  it("answers an HttpError with its own status, code and message", async () => {
     const res = await request(app).get("/taken");
     expect(res.status).toBe(409);
     expect(res.body).toEqual({ error: { code: "conflict", message: "That email is already taken." } });
   });
 
-  // TODO(Task A): write one more test yourself: a schema with a NESTED field, e.g.
-  //   z.object({ goal: z.object({ id: z.string() }) }), sent { goal: {} },
-  //   should give details[0].path === "goal.id". Add its route above `app.use(notFound)`.
+  it("answers validation errors with a dotted path for a nested field", async () => {
+    const res = await request(app).post("/nested").send({ goal: {} });
+    expect(res.status).toBe(400);
+    expect(res.body.error.details[0].path).toBe("goal.id");
+  });
 });
