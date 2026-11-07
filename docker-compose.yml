@@ -28,8 +28,9 @@ services:
       db:
         condition: service_healthy
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # The repo root, so the image can see shared/ (the domain code) next to backend/.
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: trellis-backend
     restart: unless-stopped
     env_file:
@@ -53,8 +54,9 @@ services:
       backend:
         condition: service_healthy
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # The repo root, so the image can see shared/ (the domain code) next to frontend/.
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://trellis-backend:8000
     env_file:

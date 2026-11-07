@@ -6,8 +6,8 @@
 // subtopics, prerequisites lower down inside the frame too.
 
 import dagre from "@dagrejs/dagre";
-import { bigTopicsOf, edges, kids, topicById } from "@/lib/data";
-import type { SubjectId, Topic } from "@/lib/types";
+import { bigTopicsOf, edges, kids, topicById } from "@shared/data";
+import type { SubjectId, Topic } from "@shared/types";
 
 export const NODE_W = 188;
 export const NODE_H = 36;

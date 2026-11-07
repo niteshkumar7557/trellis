@@ -1,9 +1,9 @@
 "use client";
 
 import { StatusMark, StatusPill } from "@/components/ui/Status";
-import { bigTopicsOf, kids, topicById } from "@/lib/data";
-import { needsOf, progressOf, sortByRoute, statusOf, type GoalSummary } from "@/lib/graph";
-import type { Status, Topic } from "@/lib/types";
+import { bigTopicsOf, kids, topicById } from "@shared/data";
+import { needsOf, progressOf, sortByRoute, statusOf, type GoalSummary } from "@shared/graph";
+import type { Status, Topic } from "@shared/types";
 import styles from "./list.module.css";
 
 interface Props {

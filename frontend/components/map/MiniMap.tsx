@@ -2,8 +2,8 @@
 
 import { useRef } from "react";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
-import { statusOf } from "@/lib/graph";
-import type { Status, SubjectId } from "@/lib/types";
+import { statusOf } from "@shared/graph";
+import type { Status, SubjectId } from "@shared/types";
 import { layoutFor } from "./layout";
 
 const NONE = new Set<string>();

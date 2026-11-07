@@ -7,6 +7,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
+  // shared/ (the domain code the backend also runs) sits outside this folder; this lets
+  // Next compile it as source. It is bundled at build time, so standalone output is unchanged.
+  experimental: { externalDir: true },
   async rewrites() {
     return [
       {

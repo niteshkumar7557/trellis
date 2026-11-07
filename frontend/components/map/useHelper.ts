@@ -1,14 +1,14 @@
 "use client";
 
-// Runs the helper conversation for the current subject. It talks to lib/helper.ts (the
+// Runs the helper conversation for the current subject. It talks to shared/helper.ts (the
 // stand-in for the AI) with the student's latest state, and is the only thing that
 // dispatches the helper's changes, always through a confirm card.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { afterSave, greeting, respond, type HelperContext, type Input, type Reply } from "@/lib/helper";
-import { nextTopic, revealed } from "@/lib/graph";
+import { afterSave, greeting, respond, type HelperContext, type Input, type Reply } from "@shared/helper";
+import { nextTopic, revealed } from "@shared/graph";
 import { newId, useStore } from "@/lib/store";
-import type { ChatMessage, Outcome, Proposal } from "@/lib/types";
+import type { ChatMessage, Outcome, Proposal } from "@shared/types";
 
 /** How long the stand-in "thinks". The real call takes a second or two. */
 const THINK_MS = 650;

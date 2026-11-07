@@ -5,7 +5,7 @@ How the frontend is built and how to change it safely. The product rules live in
 the code map, the rules each part follows, the gotchas, and the **data contract** the
 backend must serve.
 
-**Status (3 Nov 2026):** finished on branch `redesign/frontend-v1`. It makes **no API
+**Status (3 Nov 2026):** finished (on `main`; the step-by-step history is on `redesign/frontend-v1`). It makes **no API
 calls**. The topic graphs are real; the student, their history and the helper's "AI" are
 stand-ins. `frontend/lib/store.tsx` is the one place to swap in the API (§11).
 
@@ -13,7 +13,7 @@ stand-ins. `frontend/lib/store.tsx` is the one place to swap in the API (§11).
 
 ```bash
 cd frontend && npm install && npm run dev     # http://localhost:3000 (the owner usually has it running)
-npx tsc --noEmit && npx eslint .              # must stay clean
+npx tsc --noEmit && npx eslint . && npm run lint:shared   # must stay clean
 node ~/.claude/skills/design-taste-frontend/scripts/inspect.mjs http://localhost:3000/map --app
 ```
 
@@ -109,31 +109,34 @@ frontend/
       MapCanvas.tsx        pan/zoom camera, hover chains, labels, trace, frame-open motion (§7)
       Rail.tsx             TopicPanel, BigPanel, PromptView (the three-part prompt), rows
       Chat.tsx             the helper's thread, confirm cards, folded prompt cards, compose
-      useHelper.ts         runs the conversation against lib/helper.ts (the API later)
+      useHelper.ts         runs the conversation against shared/helper.ts (the API later)
       RouteList.tsx        the list view (and the phone view), grouped by big topic
       MiniMap.tsx          the small whole-map drawing on /start
       TopicOptions.tsx     <optgroup> topic picker (check-ins edit form)
     landing/               the landing page;  art/Espalier.tsx  procedural SVG
     ui/                    Icon, Mark (logo), Status (StatusMark, StatusPill), ui.module.css
   lib/
-    types.ts               every shape (the data contract, §12)
-    data/react-native.ts   the React Native graph (reviewed content)
-    data/redis.ts          the Redis graph (reviewed content)
-    data/build.ts          helpers: big(), sub(), edgesFrom()
-    data/index.ts          subjects, lookups (topicById, kids, bigOf…) and the data checks
-    data/instructions.ts   prompt part 3 (a DB table later)
-    data/student.ts        the sample student, history and conversation; TODAY = 2026-11-03
-    graph.ts               all derived logic (§6)
-    prompt.ts              the three-part prompt builder (§8)
-    parse.ts               keyword reader: topic, outcome, reason, kind, tidy
-    helper.ts              the helper's brain (stand-in for the AI; §8)
     store.tsx              the client store (§10)
     theme.tsx, gsap.ts     theme and motion setup
+shared/                    the domain code; the backend runs the same files (import as @shared/*)
+  types.ts                 every shape (the data contract, §12)
+  data/react-native.ts     the React Native graph (reviewed content)
+  data/redis.ts            the Redis graph (reviewed content)
+  data/build.ts            helpers: big(), sub(), edgesFrom()
+  data/index.ts            subjects, lookups (topicById, kids, bigOf…) and the data checks
+  data/instructions.ts     prompt part 3 (a DB table later)
+  data/student.ts          the sample student, history and conversation; TODAY = 2026-11-03
+  graph.ts                 all derived logic (§6)
+  prompt.ts                the three-part prompt builder (§8)
+  parse.ts                 keyword reader: topic, outcome, reason, kind, tidy
+  helper.ts                the helper's brain (stand-in for the AI; §8)
 ```
 
-`backend-design.md` §2 plans to move `types`, `data/*`, `graph`, `prompt`, `parse` and
-`helper` into a top-level `shared/` folder, so the backend runs the same code. After that
-move, read these paths as `shared/…`.
+`shared/` sits outside `frontend/`. The frontend reaches it through the `@shared/*` path in
+`tsconfig.json` and `experimental.externalDir` in `next.config.ts`. Keep it free of React,
+Next and Node-only APIs, because the backend imports it too. `npm run lint` covers only
+`frontend/`, so run `npm run lint:shared` as well. The Docker image builds from the repo
+root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy `shared/`.
 
 ## 6. Content and derived logic
 
@@ -147,14 +150,14 @@ move, read these paths as `shared/…`.
 - Links are `[from, to]` pairs meaning "from needs to" (or "helps"). Links join two big
   topics, or two subtopics. A subtopic may need one in another big topic **only if** its own
   big topic stands on that one; otherwise make it a "helps" link.
-- `lib/data/index.ts` checks everything on load: no duplicate ids, a parent for every
+- `shared/data/index.ts` checks everything on load: no duplicate ids, a parent for every
   subtopic, at least one core subtopic per big topic, no missing ids, no cross-subject
   links, no loops, the cross-big-topic rule, and goals targeting big topics. **The console
   must stay silent.** To check outside the browser, run `index.ts` with `npx jiti`,
   overriding `console.assert` to collect failures.
 - Goals: `targets` lists big topics; they bring everything they stand on.
 
-### `lib/graph.ts` (the rules from design.md §6 and §8)
+### `shared/graph.ts` (the rules from design.md §6 and §8)
 
 - `deriveStatuses`: a subtopic's latest check-in, else its own claim, else its big topic's
   claim. A big topic's status is summed up from its core subtopics.
@@ -221,7 +224,7 @@ move, read these paths as `shared/…`.
 
 ## 8. The helper and prompts
 
-### The helper (design.md §7; `lib/helper.ts` + `useHelper.ts` + `Chat.tsx`)
+### The helper (design.md §7; `shared/helper.ts` + `useHelper.ts` + `Chat.tsx`)
 
 - **The stand-in for the AI.** `respond(input, ctx)` routes by patterns (explain, app
   guide, why stuck, skip, a report with an outcome, next) where the backend will use Jev,
@@ -246,9 +249,9 @@ move, read these paths as `shared/…`.
 - Prompt cards in the chat are **folded to one line** (Copy · ChatGPT · Claude) and unfold
   to the three parts.
 
-### Prompts (design.md §9; `lib/prompt.ts`)
+### Prompts (design.md §9; `shared/prompt.ts`)
 
-- Assembled, **never generated**: `buildPrompt(topic, statuses, checkIns, experiences)` →
+- Assembled, **never generated**: `buildPrompt(topic, statuses, checkIns, experiences, instructions)` →
   `{known, experiences[], instructions[], text, experienceIds}`.
 - **Known:** template text from statuses, including the likely gap when stuck.
 - **Experiences:** **this topic's own only**, newest first, at most 4. A `hard` one is left
@@ -293,7 +296,7 @@ the sample data for visitors without an account.
 
 ## 12. Data contract
 
-These are the shapes the screens consume (`lib/types.ts`). The backend returns the same.
+These are the shapes the screens consume (`shared/types.ts`). The backend returns the same.
 
 | Shape | Fields |
 |---|---|

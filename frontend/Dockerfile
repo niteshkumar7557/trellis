@@ -3,12 +3,14 @@ FROM node:24-alpine AS base
 # Stage 1: build
 FROM base AS builder
 RUN apk add --no-cache libc6-compat
-WORKDIR /home/build
+# Built from the repo root (see docker-compose.yml), because the app imports ../shared.
+WORKDIR /home/build/frontend
 
-COPY package*.json ./
+COPY frontend/package*.json ./
 RUN npm ci
 
-COPY . .
+COPY frontend/ ./
+COPY shared/ ../shared/
 
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
@@ -25,9 +27,9 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
-COPY --from=builder --chown=node:node /home/build/.next/standalone ./
-COPY --from=builder --chown=node:node /home/build/.next/static ./.next/static
-COPY --from=builder --chown=node:node /home/build/public ./public
+COPY --from=builder --chown=node:node /home/build/frontend/.next/standalone ./
+COPY --from=builder --chown=node:node /home/build/frontend/.next/static ./.next/static
+COPY --from=builder --chown=node:node /home/build/frontend/public ./public
 
 USER node
 EXPOSE 3000

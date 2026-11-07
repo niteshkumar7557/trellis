@@ -12,8 +12,8 @@ import styles from "@/components/map/map.module.css";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
-import { goalsOf, isBig, subjectById, topicById } from "@/lib/data";
-import { TODAY } from "@/lib/data/student";
+import { goalsOf, isBig, subjectById, topicById } from "@shared/data";
+import { TODAY } from "@shared/data/student";
 import {
   daysBetween,
   importanceOf,
@@ -24,7 +24,7 @@ import {
   statusOf,
   suspectsFor,
   summarise,
-} from "@/lib/graph";
+} from "@shared/graph";
 import { useStore } from "@/lib/store";
 
 export default function MapPage() {

@@ -4,10 +4,10 @@
 // become requests and the initial state comes from the server; screens stay as they are.
 
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
-import { goalById, topicById } from "./data";
-import { sampleCheckIns, sampleClaims, sampleExperiences, sampleMessages, student } from "./data/student";
-import { deriveStatuses } from "./graph";
-import type { ChatMessage, CheckIn, Claim, Experience, Goal, Proposal, Status, SubjectId } from "./types";
+import { goalById, topicById } from "@shared/data";
+import { sampleCheckIns, sampleClaims, sampleExperiences, sampleMessages, student } from "@shared/data/student";
+import { deriveStatuses } from "@shared/graph";
+import type { ChatMessage, CheckIn, Claim, Experience, Goal, Proposal, Status, SubjectId } from "@shared/types";
 
 interface State {
   claims: Claim[];

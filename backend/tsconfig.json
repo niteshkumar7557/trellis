@@ -1,30 +1,33 @@
 {
+  // TypeScript here only CHECKS types (`npm run typecheck`). It doesn't build anything:
+  // tsup does that (see tsup.config.ts). Two tools, two jobs.
   "compilerOptions": {
-    // File Layout
-    "rootDir": "./src",
-    "outDir": "./dist",
+    "noEmit": true,
 
     // Environment
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    // "bundler" resolution: imports work with or without ".js", the way a bundler
+    // (tsup/esbuild) resolves them. shared/ has no ".js" on its imports, so we need this.
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "target": "es2022",
     "lib": ["es2022"],
     "types": ["node"],
 
-    // Other Outputs
-    "sourceMap": true,
-
-    // Strict Typechecking
+    // Strict typechecking. The same level as the frontend, because both type-check the same
+    // shared/ files. (noUncheckedIndexedAccess and exactOptionalPropertyTypes were turned
+    // off on purpose: shared/ fails them with 13 errors, and the frontend doesn't use them.)
     "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
 
     // Module handling
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    // The domain code both apps run. Import it as "@shared/graph", "@shared/data", ...
+    // tsup and tsx read this alias from here; Vitest needs it repeated (vitest.config.ts).
+    "paths": { "@shared/*": ["../shared/*"] }
   },
-  "include": ["src"],
+  "include": ["src", "test", "../shared", "*.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
