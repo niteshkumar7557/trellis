@@ -612,7 +612,7 @@ Update this table at the start of each planning session from `git log` and merge
 | M0.2 tsup, Vitest, zod, error handler, Docker from the root | done | Claude; ManshaAgarwal716 (PR #2) | `main`, 7 Nov 2026 |
 | M0.3 Golden test + data checks test | done | Claude; nihamika (PR #4) | `main`, 7 Nov 2026 |
 | M0.4 Migrations 0005–0006, empty seed, Neo4j + AI config | done | Claude; riyaagarwal5040 (PR #3) | `main`, 7 Nov 2026 |
-| M1.1 Neo4j in compose, driver, config, boot check | done | Claude (`d644e3c`) | `backend/v1`, not yet pushed |
+| M1.1 Neo4j in compose, driver, config, boot check | done | Claude (`4bf1f3e`) | `backend/v1`, 7 Nov 2026 |
 | M1.2 `npm run seed:graph` | half done (content, counts); **Task A**: constraints, stale removal, `assertCounts`, tests | — | — |
 | M1.3 Graph repo, snapshot, content routes | half done (subjects, topics, HTTP layer); **Task B**: edges, goals, 404 and caching, snapshot, drift check, tests | — | — |
 | M1.4 Migration 0013, instructions seed, `GET /api/instructions` | half done (route, controller, seed step wired in); **Task C**: migration, seed, repo, tests | — | — |

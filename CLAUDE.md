@@ -46,7 +46,7 @@ outside GitHub.
 - **`shared/`:** the domain code both apps run: types, data, graph, prompt, parse, helper.
   The frontend imports it as `@shared/*`. Keep it free of React, Next and Node-only APIs.
 - **Backend:** M0 is done and on `main`, with the teammates' commits. M1 (Neo4j content) is half
-  built on `backend/v1` (`d644e3c`); the 7 Nov tasks finish it: A the seed's constraints and
+  built on `backend/v1` (`4bf1f3e`); the 7 Nov tasks finish it: A the seed's constraints and
   stale removal, B the graph read and drift check, C the instructions and the path query.
   **Next up:** review their PRs, merge, then plan M2 the same way.
 - **Git:** work happens on **`backend/v1`**. Commit only there. **Never push, never merge**
