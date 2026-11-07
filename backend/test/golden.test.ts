@@ -49,28 +49,19 @@ describe("golden: the sample student", () => {
   });
 });
 
-// ---------------------------------------------------------------- Task B (3 Nov)
-// Remove `.skip` from each test and write its body. The facts are in your task file.
 describe("golden: FlatList's prompt", () => {
   const flatList = topicById.get("rn-flatlist")!;
 
   it("6. starts with the gap, uses FlatList's own experience, and keeps the base rules", () => {
-    // TODO(Task B): build the prompt:
-      const prompt = buildPrompt(flatList, statuses, sampleCheckIns, sampleExperiences, instructions);
-      expect(prompt.instructions[0]).toBe("Start with State, briefly, then connect it back to FlatList.");
-      expect(prompt.experienceIds).toEqual(["e08"]);
-      expect(prompt.text).toContain("Don't lecture, and don't give me everything at once.");
-    // and check three things:
-    //   - prompt.instructions[0] is "Start with State, briefly, then connect it back to FlatList."
-    //   - prompt.experienceIds equals ["e08"]
-    //   - prompt.text contains "Don't lecture, and don't give me everything at once."
+    const prompt = buildPrompt(flatList, statuses, sampleCheckIns, sampleExperiences, instructions);
+    expect(prompt.instructions[0]).toBe("Start with State, briefly, then connect it back to FlatList.");
+    expect(prompt.experienceIds).toEqual(["e08"]);
+    expect(prompt.text).toContain("Don't lecture, and don't give me everything at once.");
   });
 
   it("7. leaves out a 'hard' experience once it has been used in 2 prompts", () => {
-    // TODO(Task B): copy the experiences with e08 marked as used twice:
-      const used = sampleExperiences.map((e) => (e.id === "e08" ? { ...e, uses: 2 } : e));
-      const prompt = buildPrompt(flatList, statuses, sampleCheckIns, used, instructions);
-      expect(prompt.experienceIds).toEqual([]);
-    // build the prompt with `used` instead, and check prompt.experienceIds equals [].
+    const used = sampleExperiences.map((e) => (e.id === "e08" ? { ...e, uses: 2 } : e));
+    const prompt = buildPrompt(flatList, statuses, sampleCheckIns, used, instructions);
+    expect(prompt.experienceIds).toEqual([]);
   });
 });
