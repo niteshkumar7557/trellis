@@ -55,13 +55,23 @@ describe("config", () => {
     await expect(loadConfig()).rejects.toThrow(/AI_TIMEOUT_MS/);
   });
 
-  // ---------------------------------------------------------------- Task C (3 Nov)
-  // Remove `.skip`, then make it pass by writing fraction() in src/config/index.ts.
-  it.skip("stops at boot when the confidence isn't between 0 and 1", async () => {
+  
+  it("stops at boot when the confidence isn't between 0 and 1", async () => {
     vi.stubEnv("ROUTER_MIN_CONFIDENCE", "1.5");
     await expect(loadConfig()).rejects.toThrow(/between 0 and 1/);
   });
 
-  // TODO(Task C): write one more test yourself: "accepts the edges, 0 and 1". Stub
-  // ROUTER_MIN_CONFIDENCE to "0", load, expect 0; then (after vi.resetModules()) "1" → 1.
+  it("accepts the edges, 0 and 1", async () => {
+  vi.stubEnv("ROUTER_MIN_CONFIDENCE", "0");
+
+  let config = await loadConfig();
+  expect(config.ai.router_min_confidence).toBe(0);
+
+  vi.resetModules();
+
+  vi.stubEnv("ROUTER_MIN_CONFIDENCE", "1");
+
+  config = await loadConfig();
+  expect(config.ai.router_min_confidence).toBe(1);
+});
 });
