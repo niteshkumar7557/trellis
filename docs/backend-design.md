@@ -4,68 +4,75 @@ The backend's system design, the build plan, and **how the team works**. Read th
 `docs/design.md` (the product, the source of truth) and `docs/frontend.md` (the screens and
 the data contract the backend serves).
 
-**Status (3 Nov 2026):** designed, not built. The frontend is finished and runs on sample
-data with no API calls. The existing backend has only auth and two old chat tables.
+**Status (7 Nov 2026):** M0 is done and on `main`. M1 (Neo4j content) is in progress: see §11.
+The frontend is finished and still runs on sample data with no API calls.
 
 ---
 
 ## 0. How the team works (read this first in every session)
 
-### Who does what (the 70/30 model, from 3 Nov 2026)
+### Who does what (the 50/50 model, from 7 Nov 2026)
 
 | Who | Role |
 |---|---|
 | **The owner** (the student who leads the project) | Ideas, product decisions, reviewing and merging. Talks to Claude. |
-| **Claude** | Plans the backend and keeps these docs current. For each task, **writes about 70% of the code itself** and commits it on `backend/v1` (the setup, the plumbing, the parts that need the whole codebase in your head), then writes the task file for the other 30%. |
-| **Three teammates** | Busy; know basic JavaScript/TypeScript, SQL and Git; don't know this codebase. Each writes and commits **the remaining 30%**: a small, real piece that teaches something new. They must be able to **explain both parts** in the viva. They usually hand the task file to their own AI assistant. |
+| **Claude** | Plans the backend and keeps these docs current. Writes **about half** of each milestone and commits it on `backend/v1` (the setup, the wiring, the parts that need the whole codebase in your head, and one worked example of each pattern), then writes the task files for the other half. |
+| **Three teammates** | Know basic JavaScript/TypeScript, SQL and Git; don't know this codebase. Each writes and commits **the other half**: real logic, not fill-in-the-blanks, that teaches something new. They must be able to **explain both halves** in the viva. They usually hand the task file to their own AI assistant. |
 
 Why: the teammates' commits count towards their grade and the viva tests their
-understanding, but they have little time. So Claude builds the parts that take most of the
-time, and each task turns the rest into a lesson.
+understanding. Under the 70/30 model of 3 Nov their part proved too small and too easy (the
+owner's call, 7 Nov), so now they write about half, from a spec rather than from given code.
 
 ### The daily loop
 
 1. The owner opens a **fresh** Claude session and asks: *"what's next in the backend?"*
 2. Claude reads `CLAUDE.md`, this file (especially §11 **Progress**), `git log` and the
    current backend code, then picks the **next three tasks** from the plan (§10).
-3. For each task Claude **builds the 70%** on `backend/v1`: working code, with the
-   teammate's parts left as `TODO(Task X)` gaps that compile, plus tests where the
-   teammate's cases are written but marked `it.skip`. `npm run typecheck` and `npm test`
-   stay green. Claude also solves the 30% in a scratch copy to prove the gaps can be filled
-   as described, then throws that copy away.
-4. Claude commits the 70% (one commit) and writes **three task files**:
+3. Claude **builds its half** on `backend/v1`: working code, with the teammate's parts left
+   as `TODO(Task X)` gaps that compile, plus tests where the teammate's cases are named and
+   described but marked `it.skip`. `npm run typecheck` and `npm test` stay green. Claude also
+   **solves every gap in a scratch copy**, against the real databases, each task alone and
+   then all together. This finds real bugs (on 7 Nov: a variable-name clash, and a query
+   whose answer wasn't deterministic) and gives the exact numbers the task files quote.
+4. Claude commits its half and writes **three task files**:
    `team-tasks/<YYYY-MM-DD>/task-A-<slug>.md`, `task-B-…`, `task-C-…`.
    `team-tasks/` is git-ignored: the owner sends the files to teammates outside GitHub.
-5. Each teammate branches from `backend/v1`, fills in their 30%, commits, and opens a PR
-   whose description answers the task's "Explain it back" questions in their own words.
-6. The owner reviews and merges, and does any wiring the tasks left.
-7. In the next session Claude reads what merged and updates §11 **Progress** before
+5. Each teammate branches from `backend/v1`, does their half, commits, and opens a PR **into
+   `backend/v1`** whose description answers the task's "Explain it back" questions in their
+   own words.
+6. Claude checks each PR when asked: the diff, the tests, and deliberately breaking the code
+   to see that the tests notice. The owner decides, and PRs merge with a **merge commit**.
+7. At the end of a milestone `backend/v1` merges into `main`, again with a **merge commit**.
+8. In the next session Claude reads what merged and updates §11 **Progress** before
    planning more.
 
 ### The rules for the three task files
 
 - **Teach, don't just instruct.** Every task teaches at least one concept that's new and
   useful beyond this project (for example: Express error middleware, transactions,
-  characterisation tests, migrations). Each step of the 30% has a short **Learn** box: the
-  idea, why it matters, and a common mistake.
-- **Explain the 70% too.** A "What's already built" section walks through every file Claude
-  wrote for the task: what it does, why it's written that way, with a question per file.
-  The teammate must be able to explain it in the viva, not just their own lines.
+  characterisation tests, migrations). Each step of their half has a short **Learn** box:
+  the idea, why it matters, and a common mistake.
+- **A spec, not a transcript.** Give the behaviour, the exact shapes and names, the syntax
+  that's new to them and the traps. Don't give the finished code to retype: Claude's half
+  has a worked example of each pattern, and the test names say what must be true.
+- **Explain Claude's half too.** A "What's already built" section walks through every file
+  Claude wrote for the task: what it does, why it's written that way, with a question per
+  file. The teammate must be able to explain it in the viva, not just their own lines.
 - **Written for their AI assistant as well.** Each file opens with a block addressed to the
   AI the teammate will paste it into, telling it to teach: explain before coding, let the
   student type, ask check questions, quiz with the viva questions at the end, never touch
   the "Don't touch" files.
-- **Viva questions with model answers** at the end, covering both the 70% and the 30%.
+- **Viva questions with model answers** at the end, covering both halves.
 - **Explain it back.** Three or four questions the teammate answers in their own words in
   the PR description. The owner reads them when reviewing.
 - **Independent.** Any one can be done first, or alone. No task waits on another task from
   the same day.
 - **No shared files.** Two tasks on the same day never edit the same file. Migration
   numbers are **reserved in the task**. Wiring in shared files like `src/app.ts` is done by
-  Claude in the 70%, or left to the owner, never to a teammate.
+  Claude in its half, or left to the owner, never to a teammate.
 - **Self-contained.** A teammate must be able to finish using only the task file and the
   repo. Paste in the exact shapes, SQL, rules and file paths. Never "see the codebase".
-- **Small.** About 1–2 focused hours for the 30%, plus reading time.
+- **A real afternoon.** About 3–4 focused hours, including reading Claude's half.
 - **Checkable.** Commands with expected output (`npm test` going from "N skipped" to all
   passing, a `curl` with its response, a `psql` query) and a "done when" checklist.
 
@@ -90,11 +97,11 @@ Branch, setup commands, exactly as typed, and the "before" state (`npm test` out
 ## The big picture
 How this piece fits: a request's path through the files, or the data's path.
 
-## What's already built (the 70%)
+## What's already built (Claude's half)
 File by file: what it does, why it's written that way, and one question to answer.
 
-## Your part (the 30%)
-Numbered steps. Each has a **Learn** box, then the code: most of it given, the gaps marked.
+## Your part (your half)
+Numbered steps. Each has a **Learn** box, then the spec: behaviour, new syntax and traps.
 
 ## Check it works
 Exact commands, and what you should see.
@@ -106,7 +113,7 @@ Exact commands, and what you should see.
 Three or four questions to answer in your own words.
 
 ## Viva questions
-Questions with model answers, covering both the 70% and the 30%.
+Questions with model answers, covering both halves.
 
 ## Commit and open a PR
 Branch name, commit message (Conventional Commits), PR title and description.
@@ -120,11 +127,21 @@ Common errors and their fixes; who to ask.
 
 ### Git for the team
 
-- Integration branch: **`backend/v1`**, created on 3 Nov 2026 from `main`, which holds the
-  finished frontend. Merging into `main` happens only on the owner's say-so.
-- Teammates branch from `backend/v1` as `task/<date>-<letter>-<slug>` and open PRs back into it.
-- Claude commits its 70% and the docs on `backend/v1`, never a teammate's 30%, and never
-  pushes or merges.
+- Integration branch: **`backend/v1`**, created on 3 Nov 2026 from `main`. Merging into
+  `main` happens at the end of a milestone, on the owner's say-so.
+- Teammates branch from `backend/v1` as `task/<date>-<letter>-<slug>` and open PRs back into
+  it. A PR's base must be `backend/v1`: GitHub offers `main` by default.
+- **Never squash, always a merge commit,** for task PRs and for `backend/v1` into `main`.
+  Squashing would replace a teammate's commits with one of the merger's. Their commits on
+  `main` are what the viva examiners look at, and only commits on the default branch count
+  on GitHub's contributors page.
+- A commit only counts for someone if its **email is on their GitHub account**. Check with
+  `git config user.email`. Adding the email to the account later links old commits too.
+- Branch names are case-sensitive on GitHub but not on macOS or Windows. A branch called
+  `Backend/v1` next to `backend/v1` corrupts remote-tracking refs in every clone on those
+  systems, so never create names that differ only by case.
+- Claude commits its half and the docs on `backend/v1`, never a teammate's half, and pushes
+  or merges only when the owner says so.
 
 ---
 
@@ -200,30 +217,36 @@ shared/
   idempotent (`MERGE`) and deletes nodes that are no longer in the files:
 
   ```
-  (:Subject {id, name, shortName, blurb})
-  (:Topic {id, name, summary, minutes, optional, big, keywords, mistakes})-[:OF]->(:Subject)
-  (:Topic)-[:IN]->(:Topic)            subtopic in its big topic
-  (:Topic)-[:NEEDS]->(:Topic)         from dependent to prerequisite
-  (:Topic)-[:HELPS]->(:Topic)
-  (:Goal {id, name, blurb})-[:FOR]->(:Subject),  (:Goal)-[:TARGETS]->(:Topic)
+  (:Subject {id, name, shortName, blurb, position})
+  (:Topic {id, name, summary, minutes, optional, big, keywords, mistakes, position})-[:OF]->(:Subject)
+  (:Topic)-[:IN]->(:Topic)                 subtopic in its big topic
+  (:Topic)-[:NEEDS {position}]->(:Topic)   from dependent to prerequisite
+  (:Topic)-[:HELPS {position}]->(:Topic)
+  (:Goal {id, name, blurb, position})-[:FOR]->(:Subject)
+  (:Goal)-[:TARGETS {position}]->(:Topic)
+  position: where it sits in the file. A database keeps no order; the map depends on it.
   ```
-- **At boot the API loads the graph from Neo4j into memory** (about 190 topics and 230
-  links), and `shared/graph.ts` computes statuses, next, skip and why-stuck from that
-  snapshot. It reloads after a reseed. Per-student data stays in Postgres: statuses are
-  derived, never stored in either database.
+- **At boot the API loads the graph from Neo4j into memory** (227 topics, 248 links) and
+  compares it with `shared/data`. If they differ, the server refuses to start and says to run
+  `npm run seed:graph`. A reseed needs a restart. The snapshot also lets later milestones
+  check a topic id with no round trip. **`shared/graph.ts` itself still computes from the
+  files in `shared/data`, not from the snapshot** (it imports them directly, and the frontend
+  needs that): that's exactly why the drift check matters. Per-student data stays in Postgres:
+  statuses are derived, never stored in either database.
 - **Where Neo4j does real work** (so it's more than storage, and it shows):
   - `GET /api/subjects/:id/graph` reads straight from Neo4j with Cypher.
   - `GET /api/topics/:id/path-to/:targetId`: "what stands between this topic and that one?"
-    is a variable-length `NEEDS` path query (`MATCH p = (t:Topic {id:$target})-[:NEEDS*]->(s:Topic {id:$id})`),
-    returning the chain in learning order. The helper can later answer "how far am I from
-    Publishing?" with it.
+    is a variable-length `NEEDS` path query (`allShortestPaths((target)-[:NEEDS*]->(topic))`),
+    returning the shortest chain in learning order; equally short chains are settled by file
+    order, so the answer never changes between calls. The helper can later answer "how far am
+    I from Publishing?" with it.
   - Neo4j Browser (port 7474) is a good demo screen for the course: the whole subject as a
     live graph.
 - **Honest note, kept for the record:** at this size Postgres tables could hold the graph,
   and in-memory derivation means most requests never touch Neo4j. It was kept for the course
   showcase and for v2 (concepts shared across subjects, "learning from everyone"). Keep all
-  Cypher behind one `graphRepo` module (`src/repos/graph.repo.ts`), so nothing else in the
-  backend knows which database holds the graph.
+  Cypher in `src/repos/` (`graph.repo.ts`, `paths.repo.ts`) and `src/db/graph-seed.ts`, so
+  nothing else in the backend knows which database holds the graph.
 
 ## 3. Postgres schema
 
@@ -496,8 +519,10 @@ files, so one test covers both. `backend/test/data-checks.test.ts` fails if any
 - **Security:** helmet and CORS (exist); bcrypt (exists); refresh token in an httpOnly
   cookie (exists); every query scoped by `user_id` from the token, never from the body;
   parameterised SQL only.
-- **Tests:** Vitest plus supertest. Unit tests for `shared/` and integration tests per route
-  against a test database. Each task ships its own tests.
+- **Tests:** Vitest plus supertest, in two commands. `npm test` needs no database and takes
+  a second: pure functions, and routes with the repo replaced by a fake (`vi.mock`).
+  `npm run test:integration` runs `test/integration/` against the real dev databases, and
+  fails if they're down rather than skipping. Each task ships its own tests.
 - **Code style:** TypeScript `strict`, ESM, small files. The backend drops
   `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` (M0.2), because `shared/`
   fails them with 13 errors and must type-check the same way in both apps. Small files: one router, one
@@ -525,8 +550,8 @@ Each line is roughly one teammate task. Within a milestone, tasks marked with th
 letter group can run on the same day, because they don't share files. Claude splits these
 into the daily three.
 
-**M0: Foundations** (do first)
-- M0.1 ✅ Create `shared/` by moving `frontend/lib/{types,graph,prompt,parse,helper}.ts` and
+**M0: Foundations** ✅ (merged into `main`, 7 Nov 2026)
+- M0.1 Create `shared/` by moving `frontend/lib/{types,graph,prompt,parse,helper}.ts` and
   `frontend/lib/data/*`. Add the alias to the frontend; `tsc` and `eslint` must stay clean,
   and the app must look and behave exactly the same. Also make `buildPrompt` take the
   instructions as a parameter (§6). Done by the owner with Claude, 3 Nov 2026.
@@ -583,14 +608,29 @@ Update this table at the start of each planning session from `git log` and merge
 
 | Task | Status | Who | Merged in |
 |---|---|---|---|
-| M0.1 Move the domain code into `shared/` | done | owner, with Claude | `backend/v1`, 3 Nov 2026 |
-| M0.2 tsup, Vitest, zod, error handler, Docker from the root | 70% done (Claude, `a730405`); Task A: the 3 `errorHandler` branches + tests | — | — |
-| M0.3 Golden test + data checks test | 70% done (facts 1–5); Task B: facts 6–7 + the data-checks test | — | — |
-| M0.4 Migrations 0005–0006, empty seed, Neo4j + AI config | 70% done (config, seed, env); Task C: migrations 0005–0006, `fraction()`, range tests | — | — |
+| M0.1 Move the domain code into `shared/` | done | owner, with Claude | `main`, 7 Nov 2026 |
+| M0.2 tsup, Vitest, zod, error handler, Docker from the root | done | Claude; ManshaAgarwal716 (PR #2) | `main`, 7 Nov 2026 |
+| M0.3 Golden test + data checks test | done | Claude; nihamika (PR #4) | `main`, 7 Nov 2026 |
+| M0.4 Migrations 0005–0006, empty seed, Neo4j + AI config | done | Claude; riyaagarwal5040 (PR #3) | `main`, 7 Nov 2026 |
+| M1.1 Neo4j in compose, driver, config, boot check | done | Claude (`d644e3c`) | `backend/v1`, not yet pushed |
+| M1.2 `npm run seed:graph` | half done (content, counts); **Task A**: constraints, stale removal, `assertCounts`, tests | — | — |
+| M1.3 Graph repo, snapshot, content routes | half done (subjects, topics, HTTP layer); **Task B**: edges, goals, 404 and caching, snapshot, drift check, tests | — | — |
+| M1.4 Migration 0013, instructions seed, `GET /api/instructions` | half done (route, controller, seed step wired in); **Task C**: migration, seed, repo, tests | — | — |
+| M1.5 `GET /api/topics/:id/path-to/:targetId` | half done (route, controller, route tests); **Task C**: the query, tests | — | — |
 | everything else | not started | — | — |
 
-**Wiring for the 3 Nov tasks:** all done in the 70% (old chat code removed; `notFound` and
-`errorHandler` registered last in `src/app.ts`). Nothing left for the owner after merging.
+**Expected test counts on `backend/v1` while M1 is open:** 29 passed + 8 skipped in `npm test`,
+5 + 21 in `npm run test:integration`. With all three 7 Nov tasks merged: 37 and 26, none skipped.
+
+**Follow-ups for Claude's half of a later milestone:**
+- `errorHandler` treats every `ZodError` as a bad request. Once the server validates its own
+  data with zod (M5.3, DeepSeek replies), a bad AI reply would blame the student and expose
+  internal details. Fix by M5.3 at the latest: have `validateBody` wrap its errors.
+- A body over 100 KB answers 500 instead of 413, and is logged as a server error.
+- `requireAuth` and the `/user/*` controllers still answer `{ error: "text" }`, not the error
+  shape in §4. Fix with M2.1, which changes `/user/me` anyway.
+- **Before deploying anything past M0:** the backend now needs Neo4j at boot, and
+  `docker-compose.yml` (production) doesn't have it yet. That's M7.1.
 
 ## 12. Open questions for the owner
 

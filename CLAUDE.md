@@ -18,45 +18,41 @@ project for a backend course, due around **27 Nov 2026**.
 
 ### When the owner asks "what's next in the backend?"
 
-Follow `docs/backend-design.md` §0 exactly. It's the **70/30 model** (owner's rule, 3 Nov
-2026, for every milestone):
+Follow `docs/backend-design.md` §0 exactly. It's the **50/50 model** (owner's rule, 7 Nov
+2026, for every milestone from M1; the 70/30 of 3 Nov proved too small and easy):
 1. Update §11 Progress from `git log` and merged PRs.
 2. Pick the next **three independent tasks** from §10.
-3. **Build about 70% of each yourself** on `backend/v1`: working code, with the teammate's
-   part left as `TODO(Task X)` gaps that compile and their tests written but `it.skip`.
-   Typecheck and tests stay green. Solve the 30% in a scratch copy to prove it works, then
-   commit the 70%.
+3. **Build about half yourself** on `backend/v1`: working code, with the teammate's half left
+   as `TODO(Task X)` gaps that compile and their tests named and described but `it.skip`.
+   Typecheck and tests stay green. **Solve every gap in a scratch copy, against the real
+   databases, each task alone and then together,** then commit your half.
 4. Write `team-tasks/<YYYY-MM-DD>/task-A-….md`, `task-B-…`, `task-C-…` (template in §0)
-   for the **remaining 30%**. Each one **teaches something new**, explains the 70% file by
-   file as well, opens with a block for the teammate's AI assistant (teach, don't just
-   write the code), and ends with "Explain it back" questions and viva questions with model
-   answers.
+   for the **other half**: a spec with the new syntax and the traps, not finished code. Each
+   **teaches something new**, explains your half file by file as well, opens with a block for
+   the teammate's AI assistant (teach, don't just write the code), and ends with "Explain it
+   back" questions and viva questions with model answers.
 
 The rules: no two tasks share a file, migration numbers are reserved per task, and wiring
-in shared files (`src/app.ts`) is done in your 70%, never by a teammate. The teammates are
-busy and **don't know the codebase**, but must be able to explain both parts in the viva.
+in shared files (`src/app.ts`) is done in your half, never by a teammate. The teammates
+**don't know the codebase**, but must be able to explain both halves in the viva.
 The owner does ideas and reviews. `team-tasks/` is git-ignored; the owner shares the files
 outside GitHub.
 
-## Where things stand (3 Nov 2026)
+## Where things stand (7 Nov 2026)
 
-- **Frontend: finished** (on `main`). No API calls; the topic graphs are
-  real (`shared/data/react-native.ts`, `redis.ts`, from roadmap.sh). The sample
-  student, their history and the helper's AI (`shared/helper.ts`, `shared/parse.ts`) are
-  stand-ins.
-- **`shared/`** (M0.1, done): the domain code both apps run: types, data, graph, prompt,
-  parse, helper. The frontend imports it as `@shared/*`. Keep it free of React, Next and
-  Node-only APIs.
-- **Backend: M0 in progress.** Express + Postgres auth, now built with tsup, tested with
-  Vitest, one error shape, Neo4j/AI config. No `/api` routes yet. Then M1 (Neo4j content).
-- **Git:** `main` holds the finished frontend as one squashed commit (`8e3aadc redesign:
-  frontend-v4`); `redesign/frontend-v1` keeps its step-by-step history. Work happens on
-  **`backend/v1`**, created 3 Nov 2026 from `main`. Commit only on `backend/v1`. **Never push,
-  never merge** without the owner's say-so. Teammates branch from `backend/v1` as
-  `task/<date>-<letter>-<slug>`.
-- **M0:** the 70% is on `backend/v1` (`a730405`); the 3 Nov tasks (A error branches,
-  B golden prompt facts + data checks, C migrations 0005–0006 + `fraction()`) finish it.
-  **Next up:** once they merge, plan M1 with the same 70/30 model.
+- **Frontend: finished.** No API calls; the topic graphs are real
+  (`shared/data/react-native.ts`, `redis.ts`, from roadmap.sh). The sample student, their
+  history and the helper's AI (`shared/helper.ts`, `shared/parse.ts`) are stand-ins.
+- **`shared/`:** the domain code both apps run: types, data, graph, prompt, parse, helper.
+  The frontend imports it as `@shared/*`. Keep it free of React, Next and Node-only APIs.
+- **Backend:** M0 is done and on `main`, with the teammates' commits. M1 (Neo4j content) is half
+  built on `backend/v1` (`d644e3c`); the 7 Nov tasks finish it: A the seed's constraints and
+  stale removal, B the graph read and drift check, C the instructions and the path query.
+  **Next up:** review their PRs, merge, then plan M2 the same way.
+- **Git:** work happens on **`backend/v1`**. Commit only there. **Never push, never merge**
+  without the owner's say-so. Teammates branch from `backend/v1` as
+  `task/<date>-<letter>-<slug>`, and PRs go into `backend/v1`. **Merge commits only, never
+  squash:** the owner needs each teammate's own commits visible on `main` for the viva.
 
 ## Decisions already made (don't re-ask)
 
@@ -111,11 +107,12 @@ outside GitHub.
 
 ```bash
 cd frontend && npm install && npm run dev        # http://localhost:3000, sample student
-docker compose -f docker-compose.dev.yml up -d   # dev Postgres on :5050 (Neo4j joins in M1)
-cd backend && npm install && npm run db-init && npm run dev
+docker compose -f docker-compose.dev.yml up -d   # dev Postgres on :5050, Neo4j on :7687 and :7474
+cd backend && npm install && npm run db-init && npm run seed:graph && npm run dev
 ```
 
 The dev compose file maps Postgres to **5050** (`backend/example.env` says so; an older
-`backend/.env` may still say 5432). Backend checks: `npm run typecheck` and `npm test`.
+`backend/.env` may still say 5432; it also needs `NEO4J_PASSWORD=trellis-dev-pass`). Backend
+checks: `npm run typecheck`, `npm test` (no database) and `npm run test:integration` (real ones).
 The frontend demo state is in localStorage
 `trellis-demo-v4`; Settings → "Restore the sample data" resets it.

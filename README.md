@@ -53,7 +53,7 @@ ours. Any other subject gets a "coming soon" for now.
 |---|---|
 | Frontend | Next.js 16, Tailwind 4, GSAP. The map is laid out with dagre and drawn in SVG. |
 | Backend | Node.js, Express |
-| Data | Postgres for accounts and every student's record; Neo4j for the topic graph (planned) |
+| Data | Postgres for accounts and every student's record; Neo4j for the topic graph |
 | AI | Only in the helper chat, through OpenRouter: Jev to route each message, DeepSeek to read it (planned; a rule-based stand-in for now) |
 | Infra | Docker Compose, served through a Cloudflare Tunnel |
 
@@ -74,7 +74,7 @@ FlatList. Redis starts from zero, so you can try the start flow. **Settings → 
 
 ```bash
 cp backend/example.env backend/.env   # then point DB_URL at port 5050
-docker compose -f docker-compose.dev.yml up -d   # Postgres on localhost:5050
+docker compose -f docker-compose.dev.yml up -d   # Postgres on localhost:5050, Neo4j on 7687 (browser UI on 7474)
 ```
 
 **Backend:**
@@ -83,6 +83,7 @@ docker compose -f docker-compose.dev.yml up -d   # Postgres on localhost:5050
 cd backend
 npm install
 npm run db-init      # migrations + seed
+npm run seed:graph   # copies the topic graph into Neo4j
 npm run dev
 ```
 
