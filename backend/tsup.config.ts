@@ -13,6 +13,7 @@ export default defineConfig({
     // "migrations" folder next to itself (dist/db/migrations; the Dockerfile copies them).
     "db/migrate": "src/db/migrate.ts",
     "db/seed": "src/db/seed.ts",
+    "db/seed-graph": "src/db/seed-graph.ts",
   },
   format: ["esm"], // package.json says "type": "module"
   platform: "node",
