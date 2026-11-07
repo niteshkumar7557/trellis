@@ -16,12 +16,17 @@
 import { expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------- Task B (3 Nov)
-it.skip("the topic data passes every check in shared/data/index.ts", async () => {
+it("the topic data passes every check in shared/data/index.ts", async () => {
   const assert = vi.spyOn(console, "assert");
   // TODO(Task B):
-  //   1. load the data:      await import("@shared/data");
-  //   2. keep the failures:  const failed = assert.mock.calls.filter(([ok]) => !ok);
-  //   3. expect no failures: expect(failed).toEqual([]);
+    // 1. load the data:      
+  await import("@shared/data");
+  //   2. keep the failures:  
+  const failed = assert.mock.calls.filter(([ok]) => !ok);
+  //   3. expect no failures:
+  expect(failed).toEqual([]);
   //      (on failure, Vitest prints each failing call, message included)
-  //   4. and expect(assert).toHaveBeenCalled(), so the test can't pass by checking nothing.
+  //   4. and 
+  expect(assert).toHaveBeenCalled();
+  // , so the test can't pass by checking nothing.
 });
