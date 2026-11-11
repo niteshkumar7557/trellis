@@ -1,46 +1,74 @@
-// The prerequisite-path query, against a real Neo4j. Run with `npm run test:integration`.
-
-import { afterAll, describe, it } from "vitest";
+import { afterAll, describe, it, expect } from "vitest";
 import { closeNeo4j } from "../../src/db/neo4j.js";
+import { findPath } from "../../src/repos/paths.repo.js";
+import { topicById } from "@shared/data";
+import { cypher } from "./helpers.js";
 
 afterAll(closeNeo4j);
 
-// ---------------------------------------------------------------- Task C (7 Nov)
-// Remove `.skip`, import findPath from "../../src/repos/paths.repo.js", and write each body.
 describe("findPath", () => {
-  it.skip("returns the chain in learning order", async () => {
-    // TODO(Task C): rn-js to rn-jsx is a single step. rn-jsx to rn-state goes through
-    // rn-components. Expect the ids in learning order: ["rn-jsx", "rn-components", "rn-state"]
+  it("returns the chain in learning order", async () => {
+    const result = await findPath("rn-jsx", "rn-state");
+
+    expect(result?.map((topic) => topic.id)).toEqual([
+      "rn-jsx",
+      "rn-components",
+      "rn-state",
+    ]);
   });
 
-  it.skip("returns whole topics, not just ids", async () => {
-    // TODO(Task C): take a topic from that chain, and expect it to toEqual the same topic
-    // from topicById in @shared/data.
+  it("returns whole topics, not just ids", async () => {
+    const result = await findPath("rn-jsx", "rn-state");
+    expect(result?.[1]).toEqual(topicById.get("rn-components"));
   });
 
-  it.skip("returns the shortest chain when there are several", async () => {
-    // TODO(Task C): rn-js to rn-websockets has a route of 2 steps and one of 5. Expect 3
-    // topics back (2 steps join 3 topics).
+  it("returns the shortest chain when there are several", async () => {
+    const result = await findPath("rn-js", "rn-websockets");
+
+    expect(result).toHaveLength(3);
   });
 
-  it.skip("always picks the same chain when two are equally short", async () => {
-    // TODO(Task C): rn-components to rn-flatlist can go through rn-props or rn-state, both 2
-    // steps. Expect ["rn-components", "rn-props", "rn-flatlist"], ten times in a row.
+  it("always picks the same chain when two are equally short", async () => {
+    for (let i = 0; i < 10; i++) {
+      const result = await findPath("rn-components", "rn-flatlist");
+
+      expect(result?.map((topic) => topic.id)).toEqual([
+        "rn-components",
+        "rn-props",
+        "rn-flatlist",
+      ]);
+    }
   });
 
-  it.skip("returns [] when the target doesn't stand on the topic, even the other way round", async () => {
-    // TODO(Task C): rn-flatlist to rn-components is the wrong direction, so [].
+  it("returns [] when the target doesn't stand on the topic, even the other way round", async () => {
+    const result = await findPath("rn-flatlist", "rn-components");
+
+    expect(result).toEqual([]);
   });
 
-  it.skip("returns [] across subjects", async () => {
-    // TODO(Task C): a React Native topic to a Redis one. Both exist; no chain joins them.
+  it("returns [] across subjects", async () => {
+    const rows = await cypher(`
+      MATCH (t:Topic)-[:OF]->(s:Subject)
+      WHERE toLower(s.name) CONTAINS 'redis'
+      RETURN t.id AS id
+      LIMIT 1
+    `);
+
+    expect(rows.length).toBeGreaterThan(0);
+
+    const result = await findPath("rn-state", rows[0].id as string);
+
+    expect(result).toEqual([]);
   });
 
-  it.skip("returns just the topic when both ids are the same", async () => {
-    // TODO(Task C): rn-state to rn-state gives one topic. (shortestPath alone throws here.)
+  it("returns just the topic when both ids are the same", async () => {
+    const result = await findPath("rn-state", "rn-state");
+
+    expect(result?.map((topic) => topic.id)).toEqual(["rn-state"]);
   });
 
-  it.skip("returns null when either topic doesn't exist", async () => {
-    // TODO(Task C): test the made-up id in each position.
+  it("returns null when either topic doesn't exist", async () => {
+    expect(await findPath("made-up-topic", "rn-state")).toBeNull();
+    expect(await findPath("rn-state", "made-up-topic")).toBeNull();
   });
 });
