@@ -1,0 +1,75 @@
+// Reading the graph back from a real Neo4j. Run with `npm run test:integration`.
+
+import { afterAll, describe, expect, it } from "vitest";
+import { edges, goals, subjects, topicById, topicsOf } from "@shared/data";
+import { seedGraph } from "../../src/db/graph-seed.js";
+import { closeNeo4j } from "../../src/db/neo4j.js";
+import {
+  checkGraphAtBoot,
+  getSubjectGraph,
+  getSubjects,
+  loadGraphSnapshot,
+  topicExists,
+} from "../../src/repos/graph.repo.js";
+import { cypher } from "./helpers.js";
+
+afterAll(closeNeo4j);
+
+describe("the graph repo", () => {
+  it("reads the subjects, in file order", async () => {
+    expect(await getSubjects()).toEqual(subjects);
+  });
+
+  it("reads every topic of a subject, exactly as the files have it", async () => {
+    for (const s of subjects) {
+      const graph = await getSubjectGraph(s.id);
+      expect(graph?.topics).toEqual(topicsOf(s.id));
+    }
+  });
+
+  it("gives null for a subject that doesn't exist", async () => {
+    expect(await getSubjectGraph("cobol")).toBeNull();
+  });
+
+  it("reads every edge of a subject, in file order", async () => {
+    for (const s of subjects) {
+      const graph = await getSubjectGraph(s.id);
+      expect(graph?.edges).toEqual(edges.filter((e) => topicById.get(e.from)?.subjectId === s.id));
+    }
+  });
+
+  it("reads every goal of a subject, with its targets in file order", async () => {
+    for (const s of subjects) {
+      const graph = await getSubjectGraph(s.id);
+      expect(graph?.goals).toEqual(goals.filter((g) => g.subjectId === s.id));
+    }
+  });
+
+  it("loads a snapshot that knows every topic, and no made-up one", async () => {
+    expect(topicExists("rn-state")).toBe(false);
+    await loadGraphSnapshot();
+    expect(topicExists("rn-state")).toBe(true);
+    expect(topicExists("rn-made-up")).toBe(false);
+  });
+
+  it("passes the boot check when Neo4j matches the files", async () => {
+    await expect(checkGraphAtBoot()).resolves.toBeUndefined();
+  });
+
+  it("fails the boot check when Neo4j doesn't match, and says what to do", async () => {
+    const [link] = await cypher(
+      `MATCH (a:Topic)-[r:HELPS]->(b:Topic)
+       WITH a, b, r ORDER BY r.position LIMIT 1
+       DELETE r
+       RETURN a.id AS from, b.id AS to`,
+    );
+    try {
+      await expect(checkGraphAtBoot()).rejects.toThrow(/seed:graph/);
+      await expect(checkGraphAtBoot()).rejects.toThrow(
+        `helps link ${link.from} → ${link.to} is in the files but not in Neo4j`,
+      );
+    } finally {
+      await seedGraph();
+    }
+  });
+});

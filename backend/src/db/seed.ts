@@ -1,7 +1,7 @@
 // Seeds what EVERY fresh database needs (`npm run db:seed:dev`, run by `npm run db-init`
 // after the migrations). Not fake users: real content the app can't work without.
 //
-// Nothing yet. M1.4 adds the prompt instructions as the first step.
+// The topic graph has its own seed (`npm run seed:graph`), because it lives in Neo4j.
 //
 // Rules for a step:
 //   - Safe to run twice (INSERT ... ON CONFLICT ... DO UPDATE), because db-init is re-run
@@ -10,13 +10,14 @@
 
 import type { PoolClient } from "pg";
 import pool from "./index.js";
+import { seedInstructions } from "./instructions-seed.js";
 
 interface SeedStep {
   name: string;
   run: (client: PoolClient) => Promise<void>;
 }
 
-const steps: SeedStep[] = [];
+const steps: SeedStep[] = [{ name: "prompt instructions", run: seedInstructions }];
 
 async function seed() {
   const client = await pool.connect(); // one connection: a transaction lives on one connection

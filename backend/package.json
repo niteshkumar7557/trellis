@@ -10,9 +10,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:migrate": "node dist/db/migrate.js",
     "db:migrate:dev": "tsx src/db/migrate.ts",
     "db:seed:dev": "tsx src/db/seed.ts",
+    "seed:graph": "tsx src/db/seed-graph.ts",
     "db-init": "npm run db:migrate:dev && npm run db:seed:dev"
   },
   "keywords": [],
@@ -28,6 +30,7 @@
     "express": "^5.2.1",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
+    "neo4j-driver": "^6.3.0",
     "pg": "^8.21.0",
     "tsx": "^4.22.4",
     "zod": "^4.6.7"

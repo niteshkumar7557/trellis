@@ -55,23 +55,23 @@ describe("config", () => {
     await expect(loadConfig()).rejects.toThrow(/AI_TIMEOUT_MS/);
   });
 
-  
   it("stops at boot when the confidence isn't between 0 and 1", async () => {
     vi.stubEnv("ROUTER_MIN_CONFIDENCE", "1.5");
+    await expect(loadConfig()).rejects.toThrow(/between 0 and 1/);
+
+    vi.resetModules();
+    vi.stubEnv("ROUTER_MIN_CONFIDENCE", "-1");
     await expect(loadConfig()).rejects.toThrow(/between 0 and 1/);
   });
 
   it("accepts the edges, 0 and 1", async () => {
-  vi.stubEnv("ROUTER_MIN_CONFIDENCE", "0");
+    vi.stubEnv("ROUTER_MIN_CONFIDENCE", "0");
+    let config = await loadConfig();
+    expect(config.ai.router_min_confidence).toBe(0);
 
-  let config = await loadConfig();
-  expect(config.ai.router_min_confidence).toBe(0);
-
-  vi.resetModules();
-
-  vi.stubEnv("ROUTER_MIN_CONFIDENCE", "1");
-
-  config = await loadConfig();
-  expect(config.ai.router_min_confidence).toBe(1);
-});
+    vi.resetModules();
+    vi.stubEnv("ROUTER_MIN_CONFIDENCE", "1");
+    config = await loadConfig();
+    expect(config.ai.router_min_confidence).toBe(1);
+  });
 });
