@@ -44,7 +44,7 @@ ours. Any other subject gets a "coming soon" for now.
 |---|---|
 | [`docs/design.md`](docs/design.md) | The product: rules, the map, check-ins, promises, the v1 boundary and the v2 list. **The source of truth.** |
 | [`docs/frontend.md`](docs/frontend.md) | How the frontend is built and how to change it; the data contract the backend must serve |
-| [`docs/backend-design.md`](docs/backend-design.md) | The backend system design, the build plan, and how the team splits the work |
+| [`docs/backend-design.md`](docs/backend-design.md) | The backend system design, the build plan and the progress |
 | [`docs/tech-stack.md`](docs/tech-stack.md) | The tools: in use, planned, later |
 
 ## Tech
