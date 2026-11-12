@@ -130,7 +130,11 @@ async function writeGoals(tx: ManagedTransaction) {
  * TODO(Task A): make each of Subject.id, Topic.id and Goal.id unique, using three
  * `CREATE CONSTRAINT <name> IF NOT EXISTS ...` statements, run with session.run().
  */
-async function ensureConstraints(_session: Session) {}
+async function ensureConstraints(session: Session) {
+  await session.run("CREATE CONSTRAINT subject_id IF NOT EXISTS FOR (s:Subject) REQUIRE s.id IS UNIQUE");
+  await session.run("CREATE CONSTRAINT topic_id IF NOT EXISTS FOR (t:Topic) REQUIRE t.id IS UNIQUE");
+  await session.run("CREATE CONSTRAINT goal_id IF NOT EXISTS FOR (g:Goal) REQUIRE g.id IS UNIQUE");
+}
 
 /**
  * TODO(Task A): delete what is in Neo4j but no longer in the files:
