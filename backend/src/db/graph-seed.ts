@@ -142,7 +142,31 @@ async function ensureConstraints(session: Session) {
  *   2. Relationships between surviving nodes that the files no longer contain.
  * Only touch those three labels: never anything else that may be in the database.
  */
-async function removeStale(_tx: ManagedTransaction) {}
+async function removeStale(tx: ManagedTransaction) {
+  const ids = [...subjects, ...topics, ...goals].map((n) => n.id);
+  await tx.run(
+    `MATCH (n)
+     WHERE (n:Subject OR n:Topic OR n:Goal) AND NOT n.id IN $ids
+     DETACH DELETE n`,
+    { ids },
+  );
+
+  const links = [
+    ...topics.map((t) => `${t.id}|OF|${t.subjectId}`),
+    ...topics.filter((t) => t.parentId !== null).map((t) => `${t.id}|IN|${t.parentId}`),
+    ...edges.map((e) => `${e.from}|${e.kind.toUpperCase()}|${e.to}`),
+    ...goals.map((g) => `${g.id}|FOR|${g.subjectId}`),
+    ...goals.flatMap((g) => g.targets.map((id) => `${g.id}|TARGETS|${id}`)),
+  ];
+  await tx.run(
+    `MATCH (a)-[r]->(b)
+     WHERE (a:Subject OR a:Topic OR a:Goal)
+       AND (b:Subject OR b:Topic OR b:Goal)
+       AND NOT (a.id + "|" + type(r) + "|" + b.id) IN $links
+     DELETE r`,
+    { links },
+  );
+}
 
 /**
  * TODO(Task A): throw an Error if `actual` differs from `expected` in any field, naming each
