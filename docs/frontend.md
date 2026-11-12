@@ -5,9 +5,13 @@ How the frontend is built and how to change it safely. The product rules live in
 the code map, the rules each part follows, the gotchas, and the **data contract** the
 backend must serve.
 
-**Status (3 Nov 2026):** finished (on `main`; the step-by-step history is on `redesign/frontend-v1`). It makes **no API
+**Status (12 Nov 2026):** the screens are finished and on `main`. It makes **no API
 calls**. The topic graphs are real; the student, their history and the helper's "AI" are
 stand-ins. `frontend/lib/store.tsx` is the one place to swap in the API (§11).
+
+**Still to build:** the design review of 12 Nov 2026 agreed a set of product changes. They
+are listed in **§13** and built in milestone M6 (and MS for the `shared/` rules). Sections
+1 to 12 describe the code as it is today.
 
 ## 1. Run and check
 
@@ -227,9 +231,9 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
 ### The helper (design.md §7; `shared/helper.ts` + `useHelper.ts` + `Chat.tsx`)
 
 - **The stand-in for the AI.** `respond(input, ctx)` routes by patterns (explain, app
-  guide, why stuck, skip, a report with an outcome, next) where the backend will use Jev,
-  and reads with `parse.ts` where it will use DeepSeek. `afterSave()` writes the
-  follow-up. The backend keeps both as its fallback.
+  guide, why stuck, skip, a report with an outcome, next) and reads with `parse.ts`. On the
+  backend, one GLM 5 call (Amazon Bedrock) reads each typed message instead, and these
+  rules are its fallback (backend-design.md §5). `afterSave()` writes the follow-up.
 - **The flow:** a report gets **one question** first ("What's confusing about it?" / "What's
   still unclear?" / "What felt easy, and was anything hard?" / "What made it click?"). The
   helper message carries `asks: {kind, pending}`, and the next student message is taken as
@@ -315,3 +319,49 @@ These are the shapes the screens consume (`shared/types.ts`). The backend return
 | `Status` | `new \| know \| shaky \| learning \| stuck \| done`: **derived, never stored** |
 
 The endpoints that serve these are in `backend-design.md` §4.
+
+## 13. Product changes agreed on 12 Nov 2026 (not built yet)
+
+These came out of the design review. The reasons are in `design.md` §16. Each row says
+where it is built. Until then, sections 1 to 12 describe the code as it stands.
+
+### New or changed behaviour
+
+| Change | Where it shows | Built in |
+|---|---|---|
+| **"How did it go?" on return.** If the student took a prompt and has not reported on that topic since, the helper shows one line: *"How did State go?"* with Got it · Partly · Stuck · Not yet. It shows only the latest such topic, only when the prompt was taken between 10 minutes and 14 days ago, and never says how long ago. The first three go through `helper.pick()`. "Not yet" hides it until the next visit and saves nothing | Top of the helper thread | M6.4 (`awaitingReport` in MS.3) |
+| **Taking a prompt is recorded.** Copy, ChatGPT and Claude each send the topic and how it was taken. This replaces the `used` action and the `uses` counter | `PromptView` in `Rail.tsx`, prompt cards in `Chat.tsx` | M6.4 |
+| **The stuck guess can name a done topic**, and uses the student's own words (design.md §8). The "May be underneath" rows and the trace need no new UI; a done topic simply appears there with its Done mark | Topic panel, the Stuck button, the trace | MS.1 |
+| **Prompts show what worked underneath**: up to two lines from the topic's direct prerequisites. Hard notes show only while their topic is not done | `PromptView`, under "From my own notes" | MS.2 |
+| **A short sort after a goal change**, for big topics the new goal needs that were never sorted. `/start/sort` deals only those cards | A line under the goal menu | M6.4 (`unsortedAreas` in MS.3) |
+| **"Coming soon" requests are saved** | `/start`, the "Learning something else?" form | M6.4 |
+| **Real sign-in.** Google works; password sign-up and login call the API | `AuthForm.tsx` | M6.2, M6.3 |
+| **Forgotten password.** A line on the login page: *"Forgot your password? Email the admin from the address you signed up with."* with a mail link. A new page `/reset?token=…` sets a new password | `/login`, new `/reset` | M6.2 |
+| **A landing page after Google sign-in**, `/auth/done`: it fetches a token and goes to `/start` or `/map` | New route | M6.3 |
+| **Older chat history loads on scroll**: the first load brings the latest 50 messages per subject | `Chat.tsx` | M6.1 |
+
+### Wording to change
+
+| Where | Now | Change to |
+|---|---|---|
+| Sign-up page | "No streaks, no reminders, no one watching." | Keep it, and add one line: *"What you type to the helper is read by an AI model to work out the topic. Nothing is saved until you confirm."* |
+| Settings → Privacy | "No teacher, admin, group organiser or classmate can see it…" | The exact promise in design.md §11: no other person has a screen that shows your record; the operator can technically reach the database and does not read it; helper messages are read by an AI model inside our AWS account, not used for training |
+| Settings → Delete everything | "permanently. There is no undo." | Add: *"Backups that still hold it are deleted within 14 days."* Ask for the password again when the account has one |
+| Settings → Account | Email is an editable field | Read-only in v1. Changing it needs a way to verify the new address |
+| Topic panel and design copy | "ChatGPT, Claude or Gemini" | "ChatGPT or Claude", with Copy for any other AI. Gemini has no link that pre-fills a prompt |
+
+### Planned changes to the data contract (`shared/types.ts`)
+
+| Shape | Change |
+|---|---|
+| `Experience` | `uses` is removed |
+| `Card` (confirm) | gains `proposalId`. Save, cancel and undo are addressed by it, not by message id and card position |
+| `PromptTake` (new) | `id, topicId, via: "copy" \| "chatgpt" \| "claude", at` |
+| `Student` | gains `hasPassword` (Google-only accounts have none) |
+| `ChatMessage` | student messages gain `readBy?: "tap" \| "model" \| "rules"`, for debugging only; not shown |
+| `Reading` (new, in `shared/helper.ts`) | what a message says, whoever read it (backend-design.md §5) |
+
+### Suggestions that were considered and left for later
+
+- **Try before signing up** (sort and see the map first). Left until the first feedback.
+- **A per-subtopic sort for "shaky" big topics.** The new stuck ranking covers most of it.

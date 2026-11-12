@@ -1,15 +1,26 @@
-# Trellis — backend design
+# Trellis: backend design
 
-The backend's system design, the build plan, and the workflow. Read this with
-`docs/design.md` (the product, the source of truth) and `docs/frontend.md` (the screens and
-the data contract the backend serves).
+How the backend is built and why: architecture, data model, API, auth, the helper, error
+handling, and the build plan. Every choice comes with its reason and the alternatives we
+turned down, so you can change it later knowing what you are trading.
 
-**Status (12 Nov 2026):** M0 and M1 are done and on `main`. Next is M2 (see §11). The
-frontend is finished and still runs on sample data with no API calls.
+Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
+runs) and `docs/frontend.md` (the screens and the data contract).
+
+**Status (12 Nov 2026):** M0 and M1 are done and on `main`. The design was reviewed on
+12 Nov 2026 and this file is the result. Next is M2 (§10, §11). The frontend still runs on
+sample data with no API calls. **The deadline is 21 Nov 2026**: the build is planned for
+13 to 17 Nov, then testing with real users.
+
+**Contents:** 0 Workflow and rules · 1 What the backend does · 2 Architecture · 3 Data
+model · 4 API and auth · 5 The helper · 6 Prompts · 7 Derived logic · 8 Cross-cutting ·
+9 Connecting the frontend · 10 Build plan · 11 Progress · 12 Open questions
 
 ---
 
-## 0. Workflow
+## 0. Workflow and rules
+
+### Workflow
 
 1. Read `CLAUDE.md`, this file (especially §11 **Progress**) and `git log`, and bring §11
    up to date.
@@ -18,52 +29,98 @@ frontend is finished and still runs on sample data with no API calls.
    real databases. Update the docs that change.
 3. Each milestone is built on its own branch from `main` (`backend/m2`, `backend/m3`, …).
    When it's done it merges into `main` with a **merge commit, never a squash**, so every
-   commit keeps its author in the history, and the branch is deleted.
+   commit keeps its author in the history, and the branch is deleted. Push and merge only
+   when the owner says so.
 4. Never create two branch names that differ only by case (a `Backend/m2` next to
    `backend/m2` corrupts remote-tracking refs in every clone on macOS and Windows).
+
+### Rules for every coding session
+
+The owner is a student who will read, write and debug this code himself. So:
+
+1. **Write code as if a student will maintain it.** Comments explain **why** the code is
+   there and why it is done this way. They do not describe what the syntax does.
+   - Good: `// Hashed, so a leaked database cannot be used to log in as anyone.`
+   - Bad: `// hash the token`
+2. **Keep the structure simple enough to debug by hand.** One router, one controller and
+   one repo file per area. No clever abstractions, no code generation, no framework the
+   owner has not already used. If a simpler shape does the job, use it and say what it
+   gives up.
+3. **Every decision in the docs has a reason.** When you change a decision, change the
+   reason too, and add a row to design.md §16 if it is a product decision.
+4. **The owner must be able to take over at any point.** After each task, the docs, the
+   progress table (§11) and the tests describe the true state. Never leave work that only
+   the session that wrote it can finish.
+5. **Tests ship with every task.** A task without tests is not done.
+6. **Before any AWS action, check which AWS account is active** (`docs/aws.md` §2). Never
+   act on any account except the Trellis one.
 
 ---
 
 ## 1. What the backend must do
 
-Serve the frontend's data contract (`docs/frontend.md` §Data contract) for real students:
+Serve the frontend's data contract (`docs/frontend.md` §12) for real students:
 
-1. **Accounts:** sign up, log in, stay logged in, log out, see/export/delete everything.
+1. **Accounts:** sign up, log in (password or Google), stay logged in, log out, reset a
+   password, see, export and delete everything.
 2. **Content:** the two subject maps (React Native, Redis): big topics, subtopics, links,
    goals, and the prompt instructions. The same for everyone, read-only.
-3. **Each student's record:** goals, sort claims, check-ins, experiences, opened big topics,
-   helper conversations. Private to them.
-4. **The helper:** read a message, route it, propose updates, save only on confirm, and
-   word the reply. AI is called here and nowhere else.
+3. **Each student's record:** goals, sort claims, check-ins, experiences, prompts taken,
+   opened big topics, helper conversations. Private to them.
+4. **The helper:** read a message, propose updates, save only on confirm, and build the
+   reply. AI is called here and nowhere else.
 5. **Derived facts:** statuses, next topic, skip or not, why stuck, which big topics are
    open. **Computed, never stored**, by the same code the frontend uses.
 
-Out of scope for v1 (design.md §14): reminders, notifications, groups, admin panel, students
+Out of scope for v1 (design.md §14): reminders, emails, groups, an admin panel, students
 adding subjects.
 
 ## 2. Architecture
 
 ```
- Browser ──► Next.js frontend (frontend/)
-                │  REST/JSON, Bearer access token + httpOnly refresh cookie
-                ▼
-            Express API (backend/, Node 24, TypeScript, ESM)
-             ├─ shared/  ← the same domain code the frontend runs:
-             │            types, subject data, graph logic, prompt builder, helper rules
-             ├─ Postgres  ← accounts and every student's record
-             ├─ Neo4j     ← the topic graph (content only; seeded from shared/data)
-             └─ OpenRouter
-                 ├─ Jev (TypeSafe AI)  → picks the helper's path (cheap, typed)
-                 └─ DeepSeek v4.1 flash → reads messages that need language
+                 trellis.niteshkumar.xyz  (HTTPS)
+                          │
+                    ┌─────▼─────┐
+                    │   Caddy   │   gets and renews the HTTPS certificate by itself
+                    └──┬─────┬──┘
+              /api/*   │     │   everything else
+            ┌──────────▼─┐ ┌─▼──────────┐
+            │ Express API│ │  Next.js   │
+            │ (backend/) │ │ (frontend/)│
+            └┬────┬────┬─┘ └────────────┘
+             │    │    │
+     ┌───────▼┐ ┌─▼────┴┐      ┌──────────────────────────┐
+     │Postgres│ │ Neo4j │      │ Amazon Bedrock (GLM 5)   │
+     │ record │ │ graph │      │ called by the API only   │
+     └────────┘ └───────┘      └──────────────────────────┘
+
+  All five boxes are containers on ONE server (Docker Compose). Bedrock is an AWS service
+  the API calls over the network. shared/ is compiled into both the API and the frontend.
 ```
 
-Deployed with Docker Compose (db, neo4j, backend, frontend) behind a Cloudflare Tunnel.
+### One origin
 
-### The shared domain code (decided)
+The browser talks to a single address. Caddy sends `/api/*` to the API and everything
+else to Next.
+
+- **Why:** with one origin there is no CORS to configure, and the sign-in cookie can be
+  `SameSite=Strict`, which blocks cross-site request forgery without extra code.
+- **Alternative:** the API on its own subdomain (`api.trellis…`). Rejected: it needs CORS
+  with credentials and a looser cookie, for no gain at this size.
+- **Alternative:** let Next forward `/api` to the backend in production too (its
+  `rewrites()`). Rejected: one more hop, the API would go down whenever Next does, and the
+  API would see Next's address instead of the visitor's, which breaks rate limiting.
+- **In development** there is no Caddy. Next's `rewrites()` in `frontend/next.config.ts`
+  forwards `/api/*` to the backend, so the browser still sees one origin. That rewrite
+  must keep the `/api` prefix (today it strips it; fix in M6.1).
+
+**Every backend route starts with `/api`** (auth included, at `/api/auth/*`). Today auth
+sits at `/user/*`; it moves in M2.1. Nothing calls it yet, so the move is free now.
+
+### The shared domain code
 
 The backend must give the frontend's **same answers**: if they disagree about "next topic"
-or "can I skip", the product breaks. So the domain logic lives in one place both import
-(moved out of `frontend/lib/` in M0.1, done 3 Nov 2026):
+or "can I skip", the product breaks. So the domain logic lives in one place both import:
 
 ```
 shared/
@@ -71,29 +128,24 @@ shared/
   data/             ← react-native.ts, redis.ts, build.ts, index.ts (with its checks), instructions.ts
   graph.ts          ← statuses, summaries, next, revealed, importance, suspects, past unlocks
   prompt.ts         ← the three-part prompt builder
-  parse.ts          ← keyword topic/outcome reading (the fallback reader)
-  helper.ts         ← the helper's rules: questions, proposals, replies (the fallback brain)
+  parse.ts          ← keyword topic/outcome reading (the rule-based reader)
+  helper.ts         ← the helper's rules: questions, proposals, replies
 ```
 
-- The frontend imports it through a path alias (`@shared/*` in `frontend/tsconfig.json`);
-  Next compiles it as source with `experimental.externalDir`. The frontend Docker image
-  builds from the repo root so it can copy `shared/` (`frontend/Dockerfile`,
-  `frontend/Dockerfile.dockerignore`). The backend image does the same since M0
-  (`backend/Dockerfile`, `backend/Dockerfile.dockerignore`). The backend imports it as
-  `@shared/*` too (`backend/tsconfig.json`; repeated in `backend/vitest.config.ts`).
-- Lint it with `npm run lint:shared` (in `frontend/`); `npx eslint .` there doesn't reach it.
-- The backend used to build with `tsc` (`module: nodenext`), which needs `.js` extensions
-  on relative imports, and `shared/` has none. **Decision (done in M0):** build the backend with
-  **tsup** (esbuild), which bundles `shared/` and handles extensionless imports; keep `tsx`
-  for development. This is milestone M0.
+- Both apps import it as `@shared/*`. The backend bundles it with **tsup** at build time
+  (`tsc` only type-checks); the frontend compiles it as source (`experimental.externalDir`).
+  Both Docker images build from the repo root so they can copy `shared/`.
 - `shared/` stays free of React, Next and Node-only APIs.
+- Lint it with `npm run lint:shared` (in `frontend/`).
+- **Why not an npm package or a monorepo tool:** two apps and one folder do not need one.
+  A path alias is the least machinery that works.
 
-### Where content lives (decided: Neo4j for the topic graph, owner's call, 3 Nov 2026)
+### Where content lives
 
-- **Source of truth for content:** the reviewed TypeScript files in `shared/data/`. Changes to
-  them are reviewed like code, and the checks in `shared/data/index.ts` must pass.
-- **Neo4j holds the graph**, seeded from those files by `npm run seed:graph`. The seed is
-  idempotent (`MERGE`) and deletes nodes that are no longer in the files:
+- **Source of truth:** the reviewed TypeScript files in `shared/data/`. Changes are
+  reviewed like code, and the checks in `shared/data/index.ts` must pass.
+- **Neo4j holds a copy of the graph**, seeded from those files by `npm run seed:graph`.
+  The seed is idempotent (`MERGE`) and deletes nodes that are no longer in the files:
 
   ```
   (:Subject {id, name, shortName, blurb, position})
@@ -105,49 +157,105 @@ shared/
   (:Goal)-[:TARGETS {position}]->(:Topic)
   position: where it sits in the file. A database keeps no order; the map depends on it.
   ```
-- **At boot the API loads the graph from Neo4j into memory** (227 topics, 248 links) and
-  compares it with `shared/data`. If they differ, the server refuses to start and says to run
-  `npm run seed:graph`. A reseed needs a restart. The snapshot also lets later milestones
-  check a topic id with no round trip. **`shared/graph.ts` itself still computes from the
-  files in `shared/data`, not from the snapshot** (it imports them directly, and the frontend
-  needs that): that's exactly why the drift check matters. Per-student data stays in Postgres:
-  statuses are derived, never stored in either database.
-- **Where Neo4j does real work** (so it's more than storage, and it shows):
-  - `GET /api/subjects/:id/graph` reads straight from Neo4j with Cypher.
-  - `GET /api/topics/:id/path-to/:targetId`: "what stands between this topic and that one?"
-    is a variable-length `NEEDS` path query (`allShortestPaths((target)-[:NEEDS*]->(topic))`),
-    returning the shortest chain in learning order; equally short chains are settled by file
-    order, so the answer never changes between calls. The helper can later answer "how far am
-    I from Publishing?" with it.
-  - Neo4j Browser (port 7474) is a good demo screen for the course: the whole subject as a
-    live graph.
-- **Honest note, kept for the record:** at this size Postgres tables could hold the graph,
-  and in-memory derivation means most requests never touch Neo4j. It was kept for the course
-  showcase and for v2 (concepts shared across subjects, "learning from everyone"). Keep all
-  Cypher in `src/repos/` (`graph.repo.ts`, `paths.repo.ts`) and `src/db/graph-seed.ts`, so
-  nothing else in the backend knows which database holds the graph.
+- **Where Neo4j does real work:**
+  - `GET /api/subjects` and `GET /api/subjects/:id/graph` read from it with Cypher.
+  - `GET /api/topics/:id/path-to/:targetId` is a variable-length `NEEDS` path query.
+  - Neo4j Browser (port 7474, dev only) shows the whole subject as a live graph.
 
-## 3. Postgres schema
+### Neo4j is not allowed to take the site down (changed 12 Nov 2026)
 
-Existing (keep): `users`, `refresh_tokens`, `_migrations` (the migration runner's own table).
-Existing (drop, by migration): `conversations`, `messages`, the old chat UI, plus the old seed
-data in `src/db/seed.ts`, which seeds those chats.
+**What changes:** until M2.6 the API refuses to start unless Neo4j is up and matches the
+files. After M2.6:
 
-New tables. Topic and goal ids are the string ids from `shared/data` (e.g. `rn-flatlist`).
-They are plain `TEXT` columns, checked in code against the graph, because the topics live
-in Neo4j, not Postgres.
+- The API starts whether or not Neo4j is reachable. It logs the problem and carries on.
+- The three Neo4j endpoints above answer `503 graph_unavailable` while it is down, or
+  while its contents do not match the files ("drift").
+- Everything else works, because it never needed Neo4j: `shared/graph.ts` computes from
+  the files in `shared/data`.
+- A topic id is checked against `shared/data` (`topicById`), not against the Neo4j
+  snapshot.
+- `GET /api/health` reports both databases, and only Postgres decides whether it is healthy.
+
+**Why:** nothing a student sees depends on Neo4j, so an outage there should cost two
+endpoints, not the whole product. It also removes the deploy trap where a content change
+needs "seed, then restart" in exactly the right order.
+
+**Alternatives:** keep it required at start (rejected: an outage for no user benefit);
+remove Neo4j from production (rejected by the owner: it is kept for the course and for
+v2 ideas such as concepts shared across subjects).
+
+**Honest note, kept for the record:** at this size Postgres tables could hold the graph.
+Keep all Cypher in `src/repos/` (`graph.repo.ts`, `paths.repo.ts`) and
+`src/db/graph-seed.ts`, so nothing else in the backend knows which database holds it.
+
+### The AI
+
+One model, **GLM 5 on Amazon Bedrock** (model id `zai.glm-5`, region `ap-south-1`). It is
+called once per typed helper message and nowhere else. Details in §5.
+
+## 3. Data model (Postgres)
+
+**Principles**
+
+- **Store what the student said; compute the rest.** There is no status column anywhere.
+- **Every student row has `user_id` and `ON DELETE CASCADE`**, so deleting the account
+  deletes everything in one statement, and no query can forget whose row it is.
+- **Topic and goal ids are plain `TEXT`** (e.g. `rn-flatlist`), checked in code against
+  `shared/data`. They cannot be foreign keys, because topics do not live in Postgres.
+- **The server sets every timestamp.** A client's clock is never trusted.
+- **Migrations only move forward.** Never edit a migration that has run anywhere; add a
+  new one. The runner (`src/db/migrate.ts`) applies every `.sql` file not yet recorded in
+  `_migrations`, in filename order, each in its own transaction.
+
+**What exists today:** `users`, `refresh_tokens`, `_migrations`, `prompt_instructions`
+(migration 0013). Migrations 0001 to 0006 and 0013 have run.
+
+The SQL below is the plan. Once a migration file exists, the file is the truth.
+
+### Accounts
 
 ```sql
--- 0005: widen names (VARCHAR(20) is too short) and remember when people joined
-ALTER TABLE users ALTER COLUMN name TYPE VARCHAR(60);
-ALTER TABLE users ALTER COLUMN email TYPE VARCHAR(254);
-ALTER TABLE users ADD COLUMN joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+-- 0007_auth.sql
+-- Google-only accounts have no password, so the column must allow NULL.
+ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;
+-- Google's permanent id for the account. One column, because there is one provider.
+ALTER TABLE users ADD COLUMN google_sub TEXT UNIQUE;
+-- NULL until something proves the person owns the address (Google today, an emailed
+-- code later). Sign-in rules depend on it (§4).
+ALTER TABLE users ADD COLUMN email_verified_at TIMESTAMPTZ;
+-- Emails are compared in lower case everywhere.
+UPDATE users SET email = lower(email);
 
--- 0006: the old chat UI's tables
-DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS conversations;
+-- Refresh tokens were stored as plain text. From now on only a SHA-256 hash is stored,
+-- so a copy of the database cannot be used to log in as anyone. Old rows cannot be
+-- converted, so everyone logs in once more.
+DELETE FROM refresh_tokens;
+ALTER TABLE refresh_tokens RENAME COLUMN token TO token_hash;
+ALTER TABLE refresh_tokens ALTER COLUMN expires_at TYPE TIMESTAMPTZ;
+ALTER TABLE refresh_tokens ALTER COLUMN created_at TYPE TIMESTAMPTZ;
 
--- 0007: a goal per subject
+-- One-time reset links. Made by the admin script today; by an emailed code later.
+CREATE TABLE password_resets (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,          -- the link holds the token; we keep its hash
+  expires_at TIMESTAMPTZ NOT NULL,          -- one hour after it is made
+  used_at    TIMESTAMPTZ,                   -- set once; a used link never works again
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+- **Why a `google_sub` column and not an identities table:** a separate table is the
+  general answer for many sign-in providers. With one provider it is an extra join and an
+  extra file to understand. Move to a table when a second provider arrives.
+- **Why hash refresh and reset tokens but not with bcrypt:** they are long random strings,
+  not human passwords, so a fast hash (SHA-256) is safe and lets us look a token up by its
+  hash in one indexed query.
+
+### The student's record
+
+```sql
+-- 0008_student_goals.sql: one goal per subject
 CREATE TABLE student_goals (
   user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   subject_id TEXT NOT NULL,                 -- 'react-native' | 'redis'
@@ -156,7 +264,8 @@ CREATE TABLE student_goals (
   PRIMARY KEY (user_id, subject_id)
 );
 
--- 0008: what the student said at the sort (history kept; the latest per topic counts)
+-- 0009_claims.sql: what the student said at the sort. History is kept; the latest per
+-- topic counts.
 CREATE TABLE claims (
   id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id  INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -166,46 +275,7 @@ CREATE TABLE claims (
 );
 CREATE INDEX ON claims (user_id, topic_id, at DESC);
 
--- 0009: helper conversations (one thread per subject)
-CREATE TABLE chat_messages (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  subject_id TEXT NOT NULL,
-  role       TEXT NOT NULL CHECK (role IN ('student','helper')),
-  text       TEXT NOT NULL,
-  cards      JSONB,                         -- Card[] (see frontend.md)
-  asks       JSONB,                         -- { kind, pending: Proposal }
-  at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX ON chat_messages (user_id, subject_id, at);
-
--- 0010: status changes, always on a subtopic
-CREATE TABLE check_ins (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  topic_id   TEXT NOT NULL,
-  outcome    TEXT NOT NULL CHECK (outcome IN ('got','partly','stuck')),
-  text       TEXT NOT NULL,
-  message_id UUID REFERENCES chat_messages(id) ON DELETE SET NULL,
-  at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX ON check_ins (user_id, at);
-
--- 0011: what the student said about how it went
-CREATE TABLE experiences (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  topic_id   TEXT NOT NULL,
-  kind       TEXT NOT NULL CHECK (kind IN ('easy','hard','clicked')),
-  text       TEXT NOT NULL,                 -- their words
-  line       TEXT NOT NULL,                 -- clean one line for prompts
-  uses       INT  NOT NULL DEFAULT 0,       -- prompts taken with it; a 'hard' one stops at 2
-  message_id UUID REFERENCES chat_messages(id) ON DELETE SET NULL,
-  at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX ON experiences (user_id, topic_id);
-
--- 0012: big topics opened early with "Look inside now"
+-- 0010_opened_topics.sql: big topics opened early with "Look inside now"
 CREATE TABLE opened_topics (
   user_id  INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   topic_id TEXT NOT NULL,
@@ -213,272 +283,718 @@ CREATE TABLE opened_topics (
   PRIMARY KEY (user_id, topic_id)
 );
 
--- 0013: part 3 of every prompt, seeded from shared/data/instructions.ts
-CREATE TABLE prompt_instructions (
-  id       TEXT PRIMARY KEY,
-  scope    TEXT NOT NULL CHECK (scope IN ('base','status','topic')),
-  status   TEXT,                            -- for scope 'status'
-  topic_id TEXT,                            -- for scope 'topic'
-  text     TEXT NOT NULL,                   -- may use {topic} and {gap}
-  position INT  NOT NULL DEFAULT 0
-);
-
--- 0014: every AI call, for cost and the Jev-vs-DeepSeek story in the report
-CREATE TABLE ai_calls (
-  id          BIGSERIAL PRIMARY KEY,
-  user_id     INT REFERENCES users(id) ON DELETE SET NULL,
-  model       TEXT NOT NULL,
-  purpose     TEXT NOT NULL,                -- 'route' | 'read'
-  input_tokens INT, output_tokens INT, latency_ms INT,
-  ok          BOOLEAN NOT NULL,
-  at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- 0011_subject_requests.sql: what people typed into "Learning something else?"
+CREATE TABLE subject_requests (
+  id      BIGSERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE SET NULL,   -- the request outlives the account, without the name
+  text    VARCHAR(120) NOT NULL,
+  at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
-The numbers above are the plan: each task uses the migration number listed for it.
+### The helper: messages and proposals
+
+```sql
+-- 0012_chat_messages.sql: one thread per subject
+CREATE TABLE chat_messages (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subject_id TEXT NOT NULL,
+  role       TEXT NOT NULL CHECK (role IN ('student','helper')),
+  text       TEXT NOT NULL,
+  cards      JSONB,     -- what the reply shows: prompt, choose, suggest, or {type:'confirm', proposalId}
+  asks       JSONB,     -- { kind, pending }: a question whose answer the helper is waiting for
+  read_by    TEXT CHECK (read_by IN ('tap','model','rules')),   -- student rows: who read it. For debugging
+  at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX ON chat_messages (user_id, subject_id, at);
+
+-- 0014_proposals.sql: a change the helper offers. NOTHING is written to the record until
+-- its state becomes 'saved'.
+CREATE TABLE proposals (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subject_id TEXT NOT NULL,
+  message_id UUID NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,  -- the helper message showing the card
+  state      TEXT NOT NULL DEFAULT 'open' CHECK (state IN ('open','saved','cancelled','undone')),
+  payload    JSONB NOT NULL,                -- the Proposal: { updates, experiences, said }
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  decided_at TIMESTAMPTZ
+);
+-- The database itself guarantees at most one open proposal per student and subject.
+CREATE UNIQUE INDEX proposals_one_open ON proposals (user_id, subject_id) WHERE state = 'open';
+```
+
+**Why proposals get their own table (changed 12 Nov 2026).** The earlier plan kept each
+proposal inside the message's `cards` JSON and addressed it by card position. That made
+the most important write in the system hard to do safely:
+
+- Two Save requests (a double click, a retry after a slow reply) could both pass and
+  create the check-ins twice.
+- "A new proposal cancels the older open one" meant searching inside JSON.
+
+With a table, Save is one guarded statement:
+
+```sql
+UPDATE proposals SET state = 'saved', payload = $3, decided_at = NOW()
+WHERE id = $1 AND user_id = $2 AND state = 'open'
+RETURNING *;
+-- No row back? It was already saved, cancelled or never theirs: answer 409, write nothing.
+```
+
+Cancel and Undo are the same shape (`'open' → 'cancelled'`, `'saved' → 'undone'`), and Undo
+deletes exactly the rows that carry this proposal's id.
+
+**Alternative:** keep the JSON and lock the message row (`SELECT … FOR UPDATE`). It works,
+but the logic lives in application code that every future change must get right. A state
+column and a unique index make the database refuse the mistake.
+
+### Check-ins, experiences, prompts taken
+
+```sql
+-- 0015_check_ins.sql: status changes, always on a subtopic
+CREATE TABLE check_ins (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  topic_id    TEXT NOT NULL,
+  outcome     TEXT NOT NULL CHECK (outcome IN ('got','partly','stuck')),
+  text        TEXT NOT NULL,                -- the student's words, or a short label for a tap
+  proposal_id UUID REFERENCES proposals(id) ON DELETE SET NULL,  -- what created it; Undo deletes by this
+  at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX ON check_ins (user_id, at);
+CREATE INDEX ON check_ins (proposal_id);
+
+-- 0016_experiences.sql: what the student said about how it went
+CREATE TABLE experiences (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  topic_id    TEXT NOT NULL,
+  kind        TEXT NOT NULL CHECK (kind IN ('easy','hard','clicked')),
+  text        TEXT NOT NULL,                -- their exact words
+  line        TEXT NOT NULL,                -- a clean one-line version for prompts
+  proposal_id UUID REFERENCES proposals(id) ON DELETE SET NULL,
+  at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX ON experiences (user_id, topic_id);
+CREATE INDEX ON experiences (proposal_id);
+
+-- 0017_prompt_takes.sql: a prompt was copied or opened in an AI
+CREATE TABLE prompt_takes (
+  id       BIGSERIAL PRIMARY KEY,
+  user_id  INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  topic_id TEXT NOT NULL,
+  via      TEXT NOT NULL CHECK (via IN ('copy','chatgpt','claude')),
+  at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX ON prompt_takes (user_id, at DESC);
+```
+
+- **`experiences.uses` is gone (changed 12 Nov 2026).** It counted how many prompts a hard
+  note had been in. The rule is now tied to the topic's status (§6), so nothing is counted
+  and the prompt is a pure function of the record again.
+- **`prompt_takes` is new.** It is what lets Trellis ask "how did State go?" when the
+  student comes back (design.md §7). It replaces the old `POST /api/experiences/used`.
+- The API still returns `messageId` on a check-in or experience (the frontend shows where
+  it came from). It is read through the proposal: `proposals.message_id`.
+
+### Content and bookkeeping
+
+```sql
+-- 0013 (exists): part 3 of every prompt, seeded from shared/data/instructions.ts
+-- prompt_instructions (id, scope, status, topic_id, text, position)
+
+-- 0018_ai_calls.sql: every model call. For cost, for the daily budget, and for debugging.
+CREATE TABLE ai_calls (
+  id            BIGSERIAL PRIMARY KEY,
+  user_id       INT REFERENCES users(id) ON DELETE SET NULL,
+  model         TEXT NOT NULL,              -- 'zai.glm-5'
+  purpose       TEXT NOT NULL,              -- 'read'
+  input_tokens  INT,
+  output_tokens INT,
+  cost_usd      NUMERIC(10,6),              -- worked out from the token counts and the configured prices
+  latency_ms    INT,
+  ok            BOOLEAN NOT NULL,
+  error         TEXT,                       -- a short code: 'timeout', 'throttled', 'bad_output', …
+  at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX ON ai_calls (at);
+```
+
+`ai_calls` never stores the message text. It holds numbers only.
 
 `gen_random_uuid()` is built into Postgres 13+ (the project uses Postgres 18).
 
-## 4. API
+## 4. API and auth
 
-All JSON. New routes live under **`/api`**; the existing auth stays at `/user/*`. Errors
-always look like `{ "error": { "code": "not_found", "message": "…" } }`, with sensible HTTP
-statuses (400 validation, 401 auth, 403, 404, 409 conflict, 429 rate limit, 502 AI failure).
-Every `/api` route needs the access token (`Authorization: Bearer …`) except `GET /api/subjects`
-and `GET /api/subjects/:id/graph`. Request bodies are validated with **zod**.
+All JSON, all under `/api`. Request bodies are validated with **zod** (`validateBody`).
 
-### Auth (exists; small changes)
+### Errors
 
-| Method | Path | Notes |
+Every error leaves the server in one shape:
+
+```json
+{ "error": { "code": "not_found", "message": "No such topic." } }
+```
+
+- `code` is for the frontend's code: stable, snake_case. `message` is for people.
+- Route handlers throw `HttpError(status, code, message)`; one error middleware turns
+  anything thrown into this shape. Unknown errors become `500 internal` with no details,
+  and the real error goes to the log with the request id.
+- **Why one shape:** the frontend has one place to handle failures, and no stack trace or
+  SQL ever reaches a browser.
+
+| Status | Codes | When |
 |---|---|---|
-| POST | `/user/register` | `{name, email, password}` → `{access_token, user}` + refresh cookie |
-| POST | `/user/login` | same response |
-| POST | `/user/refresh` | refresh cookie → new access token |
-| POST | `/user/logout` | clears the cookie and the stored token |
-| GET | `/user/me` | **change:** return the frontend's `Student` shape `{id, name, email, joinedAt, goals[]}` |
+| 400 | `invalid_request`, `invalid_json` | The body does not fit its schema |
+| 401 | `unauthorized`, `invalid_credentials` | No valid token; wrong email or password |
+| 403 | `forbidden` | Signed in, but not allowed |
+| 404 | `not_found` | No such route or row (also when the row is someone else's) |
+| 409 | `email_taken`, `proposal_not_open` | The request conflicts with the current state |
+| 413 | `too_large` | Body over 100 KB |
+| 429 | `rate_limited`, `daily_limit` | Too many requests |
+| 500 | `internal` | A bug or an outage on our side |
+| 503 | `graph_unavailable` | Neo4j is down or out of date; only the three graph routes |
 
-Later: Google OAuth2 (listed in tech-stack.md), not v1.
+A row that belongs to another student answers **404, not 403**, so the API never confirms
+that an id exists.
 
-### Content (public, cacheable)
+### Auth: how it works
 
-| Method | Path | Returns |
+```
+ password or Google ──► the server checks it ──► two things come back:
+   1. an ACCESS TOKEN   a signed JWT, good for 15 minutes, holding only the user id.
+                        The frontend keeps it in memory and sends it as
+                        `Authorization: Bearer …` on every /api call.
+   2. a REFRESH TOKEN   a long random string in an httpOnly cookie, good for 60 days from
+                        its last use. The browser sends it only to /api/auth/*.
+ When the access token expires, the frontend calls POST /api/auth/refresh and gets a new one.
+```
+
+| Choice | Why | Alternative and why not |
 |---|---|---|
-| GET | `/api/subjects` | `Subject[]` |
-| GET | `/api/subjects/:subjectId/graph` | `{ topics: Topic[], edges: Edge[], goals: Goal[] }`. The frontend currently imports these files directly, so it can keep doing that and use this endpoint later. |
-| GET | `/api/topics/:topicId/path-to/:targetId` | `Topic[]`: the prerequisite chain from one topic up to another, in learning order (Cypher, §2) |
-| GET | `/api/instructions` | `Instruction[]` (so the frontend assembles prompts locally, with no round trip per prompt card) |
+| Short JWT plus a stored refresh token | A normal request is checked without touching the database. Logging out or deleting the account kills the refresh token at once | A plain server session in a cookie: simpler, and a fair choice. Kept as is because the code exists and it is the pattern most APIs use |
+| The access token holds only `sub` (the user id) | A name or email inside a token goes stale when edited, and anyone holding the token can read it | The old payload `{id, role, name, email}` |
+| Access token in memory, never in localStorage | A script injected into the page cannot steal it from storage | localStorage: survives reloads, but so does a theft |
+| Refresh cookie: `HttpOnly; Secure; SameSite=Strict; Path=/api/auth` | Scripts cannot read it; other sites cannot make the browser send it | `SameSite=Lax`: needed only if the API were on another site |
+| Refresh tokens hashed in the database | A leaked database or backup cannot log in as anyone | Plain text (what exists today) |
+| 60 days, extended on each use | A student returning after six weeks is still signed in (design.md §10) | 7 days: they would meet a login wall exactly when coming back is hardest |
+| No refresh-token rotation in v1 | Each tab refreshes on load. With rotation, two tabs opening together would race and one would be logged out | Rotation with reuse detection is the stricter practice. Add it with a short grace window when there is time to test it |
+| bcrypt for passwords (cost 12) | It exists and is sound | argon2id is the newer default; not worth a migration now |
 
-### The student's record
+**Where this falls short of production practice, on purpose:** no rotation (above), and no
+email verification for password accounts until SES is added. Both are written down so
+they are choices, not surprises.
+
+**Rules the server enforces**
+
+- **Login never says which part was wrong.** An unknown email and a wrong password both
+  answer `401 invalid_credentials`. (Today the code answers 404 and 400, which tells an
+  attacker which emails have accounts.)
+- **Passwords:** 8 to 72 characters. bcrypt ignores everything after 72 bytes, so longer
+  ones are refused rather than silently cut.
+- **Emails** are trimmed and lower-cased before any lookup or insert.
+- **Rate limits** (§8) apply to every auth route.
+- **The server refuses to start** without `JWT_SECRET` (32 characters or more) and
+  `DB_URL`. A missing secret must never become a silent default.
+
+### Auth: routes
 
 | Method | Path | Body → Returns |
 |---|---|---|
-| GET | `/api/state` | → `{ student, goalIds, claims, checkIns, experiences, opened, messages }`, everything the frontend store holds, in one call |
+| POST | `/api/auth/register` | `{name, email, password}` → `{accessToken, student}` + refresh cookie |
+| POST | `/api/auth/login` | `{email, password}` → the same |
+| POST | `/api/auth/refresh` | refresh cookie → `{accessToken}` |
+| POST | `/api/auth/logout` | → `204`. Deletes the stored token and clears the cookie |
+| GET | `/api/auth/google` | → redirects to Google |
+| GET | `/api/auth/google/callback` | Google sends the browser back here → sets the refresh cookie → redirects to `/auth/done` |
+| POST | `/api/auth/reset-password` | `{token, password}` → `204`. Signs out every device |
+| GET | `/api/me` | → `Student` `{id, name, email, joinedAt, hasPassword, goals[]}` |
+| PATCH | `/api/me` | `{name}` → `Student`. The email cannot be changed in v1 (no way to verify the new one) |
+| DELETE | `/api/me` | `{password}` if the account has one → `204`. Deletes the account and everything with it |
+| GET | `/api/export` | → everything Trellis holds about the student, as one JSON download |
+
+### Sign in with Google
+
+The server-side "authorization code" flow, with the official `google-auth-library`:
+
+1. `GET /api/auth/google` makes a random `state`, stores it in a 10-minute httpOnly
+   cookie, and redirects to Google asking for `openid email profile`.
+2. Google sends the browser back to `/api/auth/google/callback?code=…&state=…`.
+3. The server checks `state` against the cookie (so the reply belongs to a sign-in this
+   browser started), swaps `code` for an ID token, and verifies that token.
+4. It requires Google's `email_verified` to be true. Then:
+   - **A user with this `google_sub` exists** → sign them in.
+   - **A user with this email exists** → link Google to it and mark the email verified.
+     If the email had **never been verified**, also remove the password and delete that
+     account's refresh tokens.
+   - **Nobody yet** → create the user, email already verified.
+5. It sets the refresh cookie and redirects to `/auth/done`, where the frontend calls
+   `/api/auth/refresh` and goes to `/start` (no goal yet) or `/map`.
+
+- **Why remove an unverified password on linking:** password sign-up does not prove you
+  own the email. Someone could register a classmate's address first, wait for them to
+  sign in with Google, and then log in with the password they chose. Removing it closes
+  that door. The real owner loses nothing, because they never set that password.
+- **Why the server-side flow:** the app keeps its own SVG button, loads no Google script,
+  and the secret stays on the server.
+- **Alternative:** Google's own button with an ID token posted from the browser. Fewer
+  routes, but it draws Google's button and loads their script on the sign-in page.
+- **Setup outside the code:** an OAuth client in Google Cloud Console (free) with the
+  redirect URIs `https://trellis.niteshkumar.xyz/api/auth/google/callback` and
+  `http://localhost:3000/api/auth/google/callback`. It gives `GOOGLE_CLIENT_ID` and
+  `GOOGLE_CLIENT_SECRET`.
+
+### Forgotten passwords
+
+**v1 (no email):**
+
+1. The login page tells the student to email the admin from their sign-up address.
+2. The admin runs `npm run reset-link -- student@example.com` on the server. It inserts a
+   `password_resets` row and prints `https://trellis.niteshkumar.xyz/reset?token=…`,
+   valid for one hour.
+3. The admin replies with the link. The student sets a new password
+   (`POST /api/auth/reset-password`), which marks the link used and deletes all of that
+   account's refresh tokens.
+
+**Why a link and not "the admin sets a password":** the admin never knows any password,
+and the link dies after one use or one hour.
+
+**Later (SES):** `POST /api/auth/forgot-password {email}` emails a six-digit code, using
+the same `password_resets` table (a code is a short token with a tighter expiry and an
+attempt limit). Sending goes through one small module, `src/mail/mailer.ts`, with a single
+function per kind of email. It does not exist yet; the name is reserved so the later
+change touches one place. See `docs/aws.md` §8.
+
+### Content (the same for everyone)
+
+| Method | Path | Returns | Sign-in |
+|---|---|---|---|
+| GET | `/api/subjects` | `Subject[]` | no |
+| GET | `/api/subjects/:subjectId/graph` | `{ topics, edges, goals }` | no |
+| GET | `/api/topics/:topicId/path-to/:targetId` | `Topic[]`: the prerequisite chain, in learning order | yes |
+| GET | `/api/instructions` | `Instruction[]`, so the frontend can assemble prompts locally | yes |
+
+The first three read Neo4j and answer `503 graph_unavailable` when it is down. The
+frontend imports the topic files directly, so it does not depend on them.
+
+### The student's record
+
+Every route needs the access token. Every query is scoped by the user id **from the
+token**, never from the body or the URL.
+
+| Method | Path | Body → Returns |
+|---|---|---|
+| GET | `/api/state` | → `{ student, goalIds, claims, checkIns, experiences, opened, promptTakes, messages, moreMessages }`: everything the store holds, in one call. `messages` is the latest 50 per subject; `promptTakes` the latest 20 |
 | PUT | `/api/goals/:subjectId` | `{goalId}` → `{subjectId, goalId, since}` |
 | POST | `/api/claims` | `{claims: [{topicId, claim}]}` → `Claim[]` (the sort; later claims win per topic) |
 | POST | `/api/opened` | `{topicId}` → `204` |
+| POST | `/api/subject-requests` | `{text}` → `204` |
+| POST | `/api/prompt-takes` | `{topicId, via}` → `201` |
 | GET | `/api/check-ins` | → `CheckIn[]`, newest first |
 | PATCH | `/api/check-ins/:id` | `{topicId?, outcome?, text?}` → `CheckIn` |
 | DELETE | `/api/check-ins/:id` | → `204` |
-| PATCH | `/api/experiences/:id` | `{text, kind?}` → `Experience`; the server re-tidies `line` |
+| PATCH | `/api/experiences/:id` | `{text, kind?}` → `Experience`. The server rebuilds `line` with the rule-based `tidy()`; no model call |
 | DELETE | `/api/experiences/:id` | → `204` |
-| POST | `/api/experiences/used` | `{ids: string[]}` → `204`, when a prompt is **taken** (Copy, ChatGPT, Claude) |
-| GET | `/api/export` | → everything above as one JSON download |
-| DELETE | `/api/me` | → `204`. Deletes the account and everything with it. There is no undo. |
 
 There is **no** "create check-in" endpoint. Updates are created only by saving a helper
 proposal, so the topic panel's buttons also go through the helper (design.md §7).
+
+**Why `/api/state` returns everything at once:** a student's whole record is small (a few
+hundred rows), the map needs all of it to compute anything, and one request means one
+loading state. Chat history is the only part that grows without limit, so it alone is
+paged.
 
 ### The helper
 
 | Method | Path | Body → Returns |
 |---|---|---|
-| GET | `/api/helper/:subjectId/messages` | → `ChatMessage[]` |
-| POST | `/api/helper/:subjectId/messages` | `{text}` **or** `{pick: {outcome, topicIds, label}}` → `{ messages: [studentMessage, helperReply] }` |
-| POST | `/api/helper/messages/:messageId/cards/:index/save` | `{proposal}` (possibly edited) → `{ checkIns, experiences, followUp: ChatMessage }` |
-| POST | `/api/helper/messages/:messageId/cards/:index/cancel` | → `{ message }` |
-| POST | `/api/helper/messages/:messageId/cards/:index/undo` | → `{ message }` (deletes what that save created) |
+| GET | `/api/helper/:subjectId/messages?before=<messageId>&limit=50` | → `{ messages, more }`, older history |
+| POST | `/api/helper/:subjectId/messages` | `{text, selected?}` **or** `{pick: {outcome, topicIds, label}}` → `{ messages: [studentMessage, helperReply] }` |
+| POST | `/api/helper/proposals/:id/save` | `{proposal}` (possibly edited) → `{ checkIns, experiences, message, followUp }` |
+| POST | `/api/helper/proposals/:id/cancel` | → `{ message }` |
+| POST | `/api/helper/proposals/:id/undo` | → `{ message }`. Deletes what that save created |
 
-Rules the server enforces (mirroring `shared/helper.ts`):
-- **Nothing is written from a message.** A message only adds chat rows. Check-ins and
-  experiences are created **only** by `save`, in one transaction.
-- A new open proposal marks older open ones in the same subject as `cancelled`.
-- Only the message's owner can save, cancel or undo it. Undo works once, only on `saved`.
-- `topicIds` in a proposal must be subtopics of that subject (checked against the graph).
+`selected` is the topic open in the side panel, so "finished it" can mean that one.
 
-## 5. The helper pipeline
+Rules the server enforces:
+
+- **A message writes only chat rows** (and a proposal). Check-ins and experiences are
+  created **only** by `save`, in one transaction.
+- **A new proposal cancels the older open one** in the same subject, in the same
+  transaction that inserts it. The unique index (§3) is the backstop.
+- **Save, cancel and undo each work once**, through the guarded update in §3. A second
+  attempt answers `409 proposal_not_open` and changes nothing.
+- **An edited proposal is checked again on save:** every topic id must be a subtopic of
+  that subject, and every text within its length limit. The client's copy is never
+  trusted because it was shown by our own UI.
+- When the API returns messages, it fills each confirm card with its proposal's current
+  `proposal`, `state` and saved ids, so the frontend's `Card` shape stays as it is.
+
+## 5. The helper
 
 ```
-POST /api/helper/:subject/messages {text}
-  1. save the student message
-  2. load state → derive statuses, next, required, revealed   (shared/graph.ts)
-  3. pending question? (the helper message just before this one has `asks`)
-  4. route:  Jev → { path, confidence }
-       paths: report | answer | next | skip | why_stuck | explain | app_help | other
-       confidence < ROUTER_MIN_CONFIDENCE  → treat as `other`
-  5. by path:
-       next / why_stuck / app_help      → shared/helper.ts replies, no text model
-       skip / explain                   → topic by keyword (shared/parse.ts);
-                                          none found → DeepSeek picks the topic
-       report / answer / other          → DeepSeek reads it (step 6)
-  6. DeepSeek (JSON schema output, topic ids limited to this subject):
-       { topicIds[], outcome?, reason?, experience?: {kind, text, line}, isQuestion }
-  7. shared/helper.ts builds the reply: the one question (with `asks`), or a confirm card
-     with the proposal, or a prompt card, or a choice of topics
-  8. save the helper message → return both messages
-  On any AI failure or timeout (8 s): use shared/helper.ts `respond()`, the rule-based
-  brain the frontend runs today. The helper keeps working, just less cleverly.
+POST /api/helper/:subject/messages
+  1. limits: 30 messages a minute and 100 typed messages a day per student (§8)
+  2. save the student's message
+  3. load the student's record → derive statuses, next, required, revealed  (shared/graph.ts)
+  4. READ the message into a small typed object, the Reading:
+        a tap ({pick})            → no reading needed; our code knows what was tapped
+        typed text, AI available  → one GLM 5 call
+        the call fails, times out, returns something invalid,
+        or today's AI budget is spent → the rule-based reader (shared/parse.ts)
+  5. shared/helper.ts turns the Reading into the reply: the one question (with `asks`),
+     a confirm card, a prompt card, a choice of topics, or an answer about the map
+  6. one transaction: cancel any older open proposal, insert the new one if there is a
+     confirm card, insert the helper message
+  7. return both messages
 ```
 
-- **The AI never decides** statuses, the next topic, skip or not, or why someone is stuck:
-  `shared/graph.ts` does. The AI only routes, picks topics, reads outcomes and writes the
-  clean `line`.
-- **What is sent to OpenRouter:** the message, the pending question if there is one, and
-  the subject's topic ids and names. Never names, emails or other students' data. Design.md
-  §11 and §12 promise this, and the Settings page must say it.
-- **Models (env):** `OPENROUTER_API_KEY`, `ROUTER_MODEL` (Jev; look up its exact slug on
-  openrouter.ai/models), `READER_MODEL` (DeepSeek v4.1 flash; check its slug the same way),
-  `ROUTER_MIN_CONFIDENCE=0.7`, `AI_TIMEOUT_MS=8000`. The client goes in
-  `backend/src/ai/` (`jev.ts` and `deepseek.ts` exist and are empty).
-- **Every call is logged** in `ai_calls` (model, purpose, tokens, latency, ok).
-- **Rate limit:** 30 helper messages per student per minute (`express-rate-limit`, in
-  memory; Redis only if the backend ever runs as several instances).
+### The Reading: one seam for the model and the rules
+
+```ts
+// What a message says, whoever read it. shared/helper.ts decides everything from this.
+interface Reading {
+  path: "report" | "answer" | "next" | "skip" | "why_stuck" | "explain" | "app_help" | "other";
+  topicIds: string[];                              // subtopics of this subject; may be empty
+  bigId: string | null;                            // a big topic named instead ("finished lists")
+  outcome: "got" | "partly" | "stuck" | null;
+  experiences: { kind: "easy" | "hard" | "clicked"; text: string; line: string }[];
+}
+```
+
+Today `shared/helper.ts respond()` reads and replies in one function. M4.1 splits it:
+
+- `readByRules(text, ctx): Reading`: the existing keyword logic, unchanged.
+- `replyFor(reading, ctx): Reply`: the existing reply logic, unchanged.
+- `respond(input, ctx)` stays, as `replyFor(readByRules(…))`, so the frontend's demo mode
+  and every existing test keep working.
+
+The backend then calls `replyFor(readByModel(…) ?? readByRules(…))`.
+
+**Why this shape:** the model and the rules become interchangeable at exactly one place.
+Whichever read the message, the same code decides the reply, so the helper cannot behave
+differently "because the AI was down". It also makes the model easy to test: feed a
+Reading, check the Reply.
+
+### The model call
+
+- **Model:** GLM 5, id `zai.glm-5`, through the Bedrock **Converse** API, in `ap-south-1`.
+- **Output:** structured output with a JSON schema for the Reading
+  (`outputConfig.textFormat`; Bedrock requires `additionalProperties: false` and allows no
+  `minimum`/`maximum`). GLM 5 supports structured output on this API but not tool calling.
+  **Before writing this code, read the current Bedrock structured-output page**; the
+  request shape is recent.
+- **What is sent:** fixed instructions (classify and extract; never explain a topic; what
+  each path means), this subject's topic ids and names (about 100 lines), the pending
+  question if there is one, the selected topic, and the student's message.
+  **Never** a name, an email, or another student's data.
+- **What comes back is checked** with zod, then against the map: unknown topic ids are
+  dropped, texts are cut to their limits. If nothing usable is left, the rules read the
+  message instead.
+- **Timeout:** 6 seconds, one attempt. A slow answer is worse than a plain one.
+- **Credentials:** the AWS SDK's default chain. On the server that is the EC2 instance
+  role; on a laptop it is the `trellis` profile. There are no AWS keys in any env file.
+- **Code:** `src/ai/bedrock.ts` (the client, the timeout, the `ai_calls` row) and
+  `src/ai/reader.ts` (the instructions, the schema, the validation). The empty
+  `src/ai/models/jev.ts` and `deepseek.ts` and the `@openrouter/sdk` package are removed.
+
+**The AI never decides** statuses, the next topic, skip or not, or why someone is stuck.
+`shared/graph.ts` does. The model only fills in the Reading.
+
+**Why one call and not two (changed 12 Nov 2026).** The earlier plan sent every message
+to a routing model (Jev) and then some to a reading model (DeepSeek), both through
+OpenRouter.
+
+- Two calls in a row could take up to 16 seconds before the fallback.
+- The saving was a fraction of a cent per message: a helper message costs about a quarter
+  of a cent on GLM 5.
+- It needed a second company and a second bill, outside the AWS credits.
+
+**Why not "rules first, model only when unsure":** it sounds cheaper, but the rules cannot
+tell when they are wrong ("I'm lost on what comes after FlatList" matches *stuck*). One
+path for all typed text is consistent and easier to debug. The rules stay as the net.
+
+### Cost limits
+
+| Limit | Default (env) | What happens at the limit |
+|---|---|---|
+| Typed messages per student per day | 100 (`HELPER_DAILY_MESSAGES`) | `429 daily_limit`; taps still work |
+| AI spend for the whole site per day | $0.50 (`AI_DAILY_BUDGET_USD`) | The rules read every message until midnight UTC |
+
+Both are counted from the database (`chat_messages`, `ai_calls`), so a restart does not
+reset them. At about $0.0025 a message, $0.50 is about 200 model-read messages a day and
+at most $15 a month.
+
+**Why this matters more than usual:** on the AWS free plan, spent credits close the
+account (`docs/aws.md` §3). A cost limit here is what keeps the site up.
 
 ### After saving
 
-`save` runs in one transaction: insert the check-ins and experiences, mark the card `saved`
-with their ids, then compute the follow-up with `shared/helper.ts afterSave()` (stuck: the
-likely cause plus a prompt; partly: the same topic; done: next topic plus "that opened X").
-The follow-up is stored as a helper message and returned.
+`save` runs in one transaction: the guarded update on the proposal, insert the check-ins
+and experiences with its id, then compute the follow-up with `shared/helper.ts afterSave()`
+(stuck: the likely cause plus a prompt; partly: the same topic; done: next topic plus "that
+opened X"). The follow-up is stored as a helper message and returned.
 
 ## 6. Prompts
 
 Assembled, never generated (design.md §9): `shared/prompt.ts buildPrompt(topic, statuses,
-checkIns, experiences, instructions)`.
-- Part 1 **known topics**: template text from statuses.
-- Part 2 **experiences**: this topic's own only, newest first, at most 4; a `hard` one is
-  left out once its `uses` reaches 2.
-- Part 3 **instructions**: from `prompt_instructions`, by layer (status, then topic incl.
-  its common mistakes, then base). The base layer always says not to remind the student
-  of past mistakes.
+checkIns, experiences, instructions)`. The frontend assembles prompts locally with the
+same function, using `/api/instructions`.
 
-The frontend assembles prompts locally with the same function, using `/api/instructions`.
-Since M0.1, `buildPrompt` takes the instructions as a parameter; the frontend passes
-`shared/data/instructions.ts` until M6 swaps in the API.
+- Part 1, **known topics**: template text from statuses.
+- Part 2, **experiences** (rules changed 12 Nov 2026, built in MS.2):
+  - this topic's own, newest first, at most 4;
+  - plus at most 2 from its **direct prerequisites**, `clicked` first, then `easy`, newest
+    first, never `hard`;
+  - a `hard` note is included only while its topic's status is not `done`.
+- Part 3, **instructions**: from `prompt_instructions`, by layer (status, then topic incl.
+  its common mistakes, then base). The base layer always says not to remind the student of
+  past mistakes, and (new, id `base-report-back`) asks the AI to end with two lines the
+  student can paste back into Trellis.
+
+`MAX_HARD_USES` and the `uses` counter are removed. Taking a prompt now records a
+`prompt_takes` row instead (§3).
 
 ## 7. Derived logic (must match the frontend exactly)
 
 All of it lives in `shared/graph.ts`; the rules are in design.md §6 and §8. In short:
+
 - A subtopic's status is its latest check-in (`got` → done, `partly` → learning, `stuck` →
   stuck), else its own claim, else its big topic's claim, else new.
-- A big topic's status: done/know when every core subtopic is done or known; stuck if any is
-  stuck; learning if any is under way; else its claim.
+- A big topic's status: done/know when every core subtopic is done or known; stuck if any
+  is stuck; learning if any is under way; else its claim.
 - A goal needs its target big topics, everything they stand on, their core subtopics, and
   anything those need.
 - Next: an in-progress ready subtopic first, else the first ready one on the route.
-- Revealed: a big topic opens on a check-in inside it, when next is inside it, when it holds
-  a stuck topic's likely cause, or when opened by hand.
-- Suspects: prerequisites up to two steps below a stuck topic, weakest first.
+- Revealed: a big topic opens on a check-in inside it, when next is inside it, when it
+  holds a stuck topic's likely cause, or when opened by hand.
 
-**Golden test** (M0.3, `backend/test/golden.test.ts`): with the sample student
-(`shared/data/student.ts`) the React Native next topic is **State**, FlatList is stuck, its
-first suspect is **State**, and **Redis has no goal**. Both apps import the same `shared/`
-files, so one test covers both. `backend/test/data-checks.test.ts` fails if any
-`console.assert` in `shared/data/index.ts` fails.
+**Changing on 12 Nov 2026** (built in MS, with tests):
+
+- **Suspects** (design.md §8). Candidates are still the prerequisites up to two steps
+  below the stuck topic. The ranking becomes:
+
+  | Rank | Status of the prerequisite |
+  |---|---|
+  | 0 | new |
+  | 1 | stuck |
+  | 2 | shaky |
+  | 3 | learning |
+  | 4 | know (claimed) |
+  | 5 | done with doubt: it has a `hard` experience, or a `stuck` or `partly` check-in before its `got` |
+  | – | done cleanly: not a suspect |
+
+  A **text match** lifts a candidate three ranks (not below 0), and makes a cleanly done
+  topic a suspect at rank 3. The text is the latest stuck check-in on the stuck topic plus
+  its `hard` experiences; it matches when it mentions the candidate's name or a keyword
+  (`parse.ts mentions()`), or shares a phrase of three or more words with one of its
+  `mistakes`. Ties: fewer steps first, then file order. The function gains two
+  parameters: `suspectsFor(stuckId, statuses, checkIns, experiences)`.
+- **`awaitingReport(promptTakes, checkIns, now)`**: the latest prompt take whose topic has
+  no check-in after it, taken between 10 minutes and 14 days ago. This is the topic the
+  helper asks about on return. `null` when there is none.
+- **`unsortedAreas(goal, claims)`**: big topics the goal needs that have no claim. Shown
+  after a goal change as an offer to sort just those.
+
+**Golden test** (`backend/test/golden.test.ts`): with the sample student
+(`shared/data/student.ts`) the React Native next topic is **State**, FlatList is stuck,
+its first suspect is **State**, and **Redis has no goal**. It must still pass after the
+suspect change, and gains cases for "done with doubt" and the text match.
+`backend/test/data-checks.test.ts` fails if any `console.assert` in `shared/data/index.ts`
+fails.
 
 ## 8. Cross-cutting
 
-- **Config:** `backend/src/config/index.ts` is the only place that reads `process.env`.
-  Add `NEO4J_URL` (e.g. `bolt://localhost:7687`), `NEO4J_USER`, `NEO4J_PASSWORD` and the AI
-  variables above.
-- **Dev env:** `docker-compose.dev.yml` maps Postgres to **5050**; `backend/example.env`
-  says so since M0 (older copies of `.env` may still say 5432).
-- **Errors:** one Express error-handling middleware producing the error shape in §4, plus
-  `async` handler wrappers (Express 5 catches rejected promises by itself).
-- **Security:** helmet and CORS (exist); bcrypt (exists); refresh token in an httpOnly
-  cookie (exists); every query scoped by `user_id` from the token, never from the body;
-  parameterised SQL only.
-- **Tests:** Vitest plus supertest, in two commands. `npm test` needs no database and takes
-  a second: pure functions, and routes with the repo replaced by a fake (`vi.mock`).
-  `npm run test:integration` runs `test/integration/` against the real dev databases, and
-  fails if they're down rather than skipping. Each task ships its own tests.
-- **Code style:** TypeScript `strict`, ESM, small files. The backend drops
-  `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` (M0.2), because `shared/`
-  fails them with 13 errors and must type-check the same way in both apps. Small files: one router, one
-  controller, one repo file per area (`src/routes/claims.routes.ts`,
-  `src/controllers/claims.controller.ts`, `src/repos/claims.repo.ts`).
-- **Observability (later, M7):** Sentry, UptimeRobot for downtime, Healthchecks for the
-  nightly database backup (tech-stack.md).
+### Config
+
+`backend/src/config/index.ts` is the only place that reads `process.env`. It runs once at
+start and **throws on a missing or bad value**.
+
+| Variable | Example | Notes |
+|---|---|---|
+| `NODE_ENV`, `PORT` | `production`, `8000` | |
+| `PUBLIC_URL` | `https://trellis.niteshkumar.xyz` | Used for the Google redirect and reset links. Replaces `CLIENT_URL` |
+| `DB_URL` | `postgresql://trellis:…@db:5432/trellisdb` | Required |
+| `JWT_SECRET` | 32+ random characters | Required. `openssl rand -hex 32` |
+| `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_DAYS` | `15m`, `60` | |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | | Google sign-in is off when they are empty |
+| `NEO4J_URL`, `NEO4J_USER`, `NEO4J_PASSWORD` | `bolt://neo4j:7687` | The site runs without Neo4j (§2) |
+| `AI_PROVIDER` | `bedrock` or `off` | `off` in development and tests: the rules read everything, and no AWS is needed |
+| `BEDROCK_REGION`, `READER_MODEL` | `ap-south-1`, `zai.glm-5` | |
+| `READER_PRICE_IN_PER_M`, `READER_PRICE_OUT_PER_M` | `1.20`, `3.84` | Dollars per million tokens, for `cost_usd` |
+| `AI_TIMEOUT_MS`, `AI_DAILY_BUDGET_USD`, `HELPER_DAILY_MESSAGES` | `6000`, `0.50`, `100` | |
+
+Removed: `OPENROUTER_API_KEY`, `ROUTER_MODEL`, `ROUTER_MIN_CONFIDENCE`, `CLIENT_URL`.
+
+**Where secrets live:** in development, `backend/.env` (git-ignored). In production, AWS
+Systems Manager Parameter Store; a small script writes them into the server's env file at
+deploy (`docs/aws.md` §6). Secrets are never committed and never baked into an image.
+
+### Security
+
+- **helmet** for safe response headers. **CORS is off in production** (one origin, §2); in
+  development the Next rewrite makes it unnecessary too.
+- **Every query is parameterised** and scoped by the token's user id.
+- **Input limits:** bodies up to 100 KB (larger answers `413`); a helper message up to
+  2,000 characters; an experience up to 500; a name up to 60.
+- **Rate limits** (`express-rate-limit`, in memory, which is correct for one server):
+
+  | Routes | Limit | Keyed by |
+  |---|---|---|
+  | `/api/auth/login`, `/register`, `/reset-password` | 10 per 15 minutes | IP address |
+  | `/api/auth/refresh` | 60 per 15 minutes | IP address |
+  | `POST /api/helper/*/messages` | 30 per minute | user id |
+  | everything else under `/api` | 300 per minute | user id, or IP when signed out |
+
+  Behind Caddy the visitor's address arrives in a header, so `app.set("trust proxy", 1)`
+  is required in production. Without it every visitor looks like Caddy and shares one
+  limit.
+- **Deleting an account** asks for the password again when the account has one.
+- **No admin routes.** There is no role check to get wrong because there is nothing only
+  an admin can call. The admin works through scripts on the server.
+
+### Logging and health
+
+- **`pino`** writes one JSON line per request to stdout: time, request id, method, path,
+  status, duration, user id. Docker keeps and rotates the files. **Never logged:** message
+  text, passwords, tokens, cookies, email addresses.
+- Every response carries `X-Request-Id`, and the same id is on its log line and on any
+  error logged for it. So "it failed at 21:40" can be traced to one request.
+- `GET /api/health` → `{ postgres: "ok", neo4j: "ok" | "down" | "drift" }`. It answers `200`
+  when Postgres is reachable and `503` when it is not. Neo4j never changes the status.
+- **Why not Sentry or a log service now:** one server and a few dozen users. `docker logs`
+  with a request id is enough, and costs nothing. Add CloudWatch or Sentry when reading
+  logs by hand stops working.
+
+### Tests
+
+Vitest plus supertest, in two commands.
+
+- `npm test` needs no database and takes seconds: pure functions, and routes with the repo
+  replaced by a fake (`vi.mock`).
+- `npm run test:integration` runs `test/integration/` against the real dev databases, and
+  fails if they are down rather than skipping.
+- Bedrock is always mocked in tests. The reader's tests feed fixed model outputs (good,
+  malformed, unknown topic ids, a timeout) and check the fallback.
+
+### Code style
+
+TypeScript `strict`, ESM, small files: one router, one controller, one repo file per area
+(`src/routes/claims.routes.ts`, `src/controllers/claims.controller.ts`,
+`src/repos/claims.repo.ts`). The backend drops `noUncheckedIndexedAccess` and
+`exactOptionalPropertyTypes`, because `shared/` fails them and must type-check the same
+way in both apps. Comments follow §0.
+
+```
+backend/src/
+  index.ts, app.ts        start-up; middleware and routes in order
+  config/                 the one place that reads process.env
+  routes/                 one file per area: which URL goes to which controller
+  controllers/            read the request, call repos and shared/, send the reply
+  repos/                  every SQL and Cypher statement lives here, nowhere else
+  middlewares/            auth, validation, errors, rate limits
+  ai/                     bedrock.ts (the client), reader.ts (message → Reading)
+  db/                     pools, migrations, seeds
+  utils/                  small helpers (tokens, HttpError, health)
+```
+
+### Deploy and backups
+
+In `docs/aws.md` §6 and §7. In short: images are built for arm64 and pushed to Amazon ECR;
+the server pulls them; migrations and the graph seed run as one-shot containers before the
+API starts; Postgres is dumped to S3 every night and the dumps expire after 14 days.
 
 ## 9. Connecting the frontend
 
-`frontend/lib/store.tsx` is the only place to change. Today it is a `useReducer` store
-persisted to localStorage (`trellis-demo-v4`). When the API is ready:
-- hydrate from `GET /api/state` instead of localStorage;
-- turn each action into its request (goal → `PUT /api/goals`, claims → `POST /api/claims`,
-  open → `POST /api/opened`, edit/remove → PATCH/DELETE, used → `POST /api/experiences/used`);
-- `components/map/useHelper.ts` calls the helper endpoints instead of `shared/helper.ts`;
-- `app/(auth)/AuthForm.tsx` calls `/user/register` and `/user/login`, and keeps the access
-  token in memory, refreshing on 401;
-- keep a "demo mode" flag that uses the sample data, so the landing page demo still works
-  without an account.
+`frontend/lib/store.tsx`, `components/map/useHelper.ts` and `app/(auth)/AuthForm.tsx` are
+the places to change. Today the store is a `useReducer` persisted to localStorage
+(`trellis-demo-v4`). When the API is ready:
 
-## 10. The build plan (milestones and tasks)
+- A small API client holds the access token in memory, sends it on every call, and on a
+  `401` calls `/api/auth/refresh` once and retries.
+- Hydrate from `GET /api/state` instead of localStorage.
+- Each action becomes its request:
 
-Each line is one task, built in order. With the deadline close,
-the order matters more than the numbering: M1 → M2 → M3 → M4 → M6 (connect the frontend)
-gives a working product without AI; M5 (AI) and M7 (deploy) come after, if time allows.
+  | Store action | Request |
+  |---|---|
+  | `goal` | `PUT /api/goals/:subjectId` |
+  | `claims` | `POST /api/claims` |
+  | `open` | `POST /api/opened` |
+  | `edit`, `remove` | `PATCH`, `DELETE /api/check-ins/:id` |
+  | `editExperience`, `removeExperience` | `PATCH`, `DELETE /api/experiences/:id` |
+  | `used` (renamed `took`) | `POST /api/prompt-takes` |
+  | `say` (through `useHelper`) | `POST /api/helper/:subjectId/messages` |
+  | `save`, `cancel`, `undo` | `POST /api/helper/proposals/:id/…` |
+  | `erase` | `DELETE /api/me` |
+
+- A `409 proposal_not_open` on save means "this was already decided": reload that message
+  rather than show an error.
+- Keep a **demo mode** on the sample data for the landing page and for signed-out
+  visitors. It keeps using `shared/helper.ts respond()` locally.
+- The product changes the frontend needs are listed in `docs/frontend.md` §13.
+
+## 10. The build plan
+
+Each line is one task, built in order, each with its tests. The dates are the plan for the
+21 Nov deadline. **If a day slips, cut M5 first** (the helper still works on the rules),
+**then M6.3** (Google sign-in).
 
 **M0: Foundations** ✅ (merged into `main`, 7 Nov 2026)
-- M0.1 Create `shared/` by moving `frontend/lib/{types,graph,prompt,parse,helper}.ts` and
-  `frontend/lib/data/*`. Add the alias to the frontend; `tsc` and `eslint` must stay clean,
-  and the app must look and behave exactly the same. Also make `buildPrompt` take the
-  instructions as a parameter (§6). Done 3 Nov 2026.
-- M0.2 Backend build: tsup for build, tsx for dev, Vitest set up, zod added, the error
-  middleware, and config for the new env vars. The backend reaches `shared/` by a relative
-  path or a tsconfig `paths` alias that tsup resolves, and its Docker build moves to the
-  repo root as the frontend's did (§2).
-- M0.3 Golden test of `shared/graph.ts` (§7).
-- M0.4 Migrations 0005 and 0006; replace the old chat seed with an empty seed script.
-
 **M1: Content (Neo4j)** ✅ (merged into `main`, 12 Nov 2026)
-- M1.1 Neo4j 5 in `docker-compose.dev.yml` (ports 7474/7687, a volume, healthcheck), the
-  `neo4j-driver` package, config, and `src/db/neo4j.ts` (driver + `verifyConnectivity` at boot).
-- M1.2 `npm run seed:graph`: `MERGE` subjects, topics, `IN`/`NEEDS`/`HELPS`, goals and
-  `TARGETS` from `shared/data`; add uniqueness constraints on `Topic.id`, `Goal.id` and
-  `Subject.id`; remove stale nodes.
-- M1.3 `src/repos/graph.repo.ts`: Cypher reads plus the in-memory snapshot at boot;
-  `GET /api/subjects`, `GET /api/subjects/:id/graph`.
-- M1.4 Migration 0013, the instructions seed, and `GET /api/instructions`.
-- M1.5 `GET /api/topics/:id/path-to/:targetId` (the Cypher path query, §2).
 
-**M2: The student's record**
-- M2.1 Migration 0007 plus `PUT /api/goals/:subjectId`; `/user/me` returns `Student`.
-- M2.2 Migration 0008 plus `POST /api/claims`.
-- M2.3 Migration 0012 plus `POST /api/opened`.
-- M2.4 `GET /api/state` (after M2.1–M2.3 and M3).
+**M2: Accounts and the student's record** (13 Nov)
+- M2.1 Migration 0007. Auth moves to `/api/auth/*`: the error shape, zod bodies, one
+  `invalid_credentials` answer, hashed refresh tokens (60 days, extended on use), the
+  `{sub}` token, auth rate limits, config that refuses to start without secrets.
+  `GET` and `PATCH /api/me`.
+- M2.2 `npm run reset-link` and `POST /api/auth/reset-password`.
+- M2.3 Migration 0008 plus `PUT /api/goals/:subjectId`.
+- M2.4 Migration 0009 plus `POST /api/claims`.
+- M2.5 Migrations 0010 and 0011 plus `POST /api/opened` and `POST /api/subject-requests`.
+- M2.6 The API starts without Neo4j; the graph routes answer 503; `/api/health` reports both;
+  topic ids are checked against `shared/data`.
 
-**M3: Check-ins and experiences**
-- M3.1 Migration 0010 plus `GET/PATCH/DELETE /api/check-ins`.
-- M3.2 Migration 0011 plus `PATCH/DELETE /api/experiences`, `POST /used`.
-- M3.3 `GET /api/export` and `DELETE /api/me`.
+**M3: Check-ins, experiences, prompts taken** (14 Nov)
+- M3.1 Migrations 0012, 0014 and 0015 plus `GET/PATCH/DELETE /api/check-ins`.
+- M3.2 Migration 0016 plus `PATCH/DELETE /api/experiences`.
+- M3.3 Migration 0017 plus `POST /api/prompt-takes`.
+- M3.4 `GET /api/state`, `GET /api/export`, `DELETE /api/me`.
 
-**M4: The helper without AI** (works end to end on the rule-based brain)
-- M4.1 Migration 0009 plus `GET/POST /api/helper/:subject/messages` using
-  `shared/helper.ts respond()`.
-- M4.2 save, cancel and undo (one transaction; retire older proposals).
+**M4: The helper on rules** (14 Nov)
+- M4.1 Split `shared/helper.ts` into `readByRules` and `replyFor` (§5). No behaviour
+  change; the frontend checks stay clean.
+- M4.2 `GET/POST /api/helper/:subject/messages` on the rules, with paging.
+- M4.3 Proposals: save, cancel, undo (the guarded update; one transaction).
 
-**M5: The helper with AI**
-- M5.1 OpenRouter client with timeout, retries and `ai_calls` logging (migration 0014).
-- M5.2 Jev routing, with the confidence threshold and fallback.
-- M5.3 DeepSeek reader with JSON-schema output and topic ids limited to the subject.
-- M5.4 Rate limit plus tests with a mocked OpenRouter.
+**M6: Connect the frontend** (15 Nov)
+- M6.1 The API client, the store on the API, loading and error states, demo mode, the
+  rewrite keeping `/api`.
+- M6.2 Real sign-up and login, the reset page, and the wording changes in frontend.md §13.
+- M6.3 Google sign-in: the two routes and the button.
+- M6.4 Prompt takes and the "how did it go?" line; subject requests; the short sort after
+  a goal change. (Needs MS.3.)
 
-**M6: Connect the frontend** (one store file)
-- M6.1 Store on the API, plus real auth, loading and error states, and demo mode.
+**MS: Rule changes in `shared/`** (16 Nov; MS.3 earlier, with M6.4)
+- MS.1 The new suspect ranking (§7), with golden-test cases.
+- MS.2 The new prompt experience rules, `base-report-back`, and removing `uses`.
+- MS.3 `awaitingReport` and `unsortedAreas`.
 
-**M7: Deploy**
-- M7.1 Production compose with Neo4j, env files and the Cloudflare Tunnel.
-- M7.2 Nightly Postgres backup, Healthchecks ping, Sentry, UptimeRobot.
+**M5: The helper with GLM 5** (16 Nov)
+- M5.1 Migration 0018, `src/ai/bedrock.ts`: the Converse call, the timeout, the `ai_calls`
+  row with its cost. Remove the OpenRouter package and files.
+- M5.2 `src/ai/reader.ts`: instructions, schema, validation, the fallback to the rules.
+  `validateBody` wraps its own errors, so a bad model reply is never reported as the
+  student's bad request.
+- M5.3 The daily message limit and the daily AI budget; tests with Bedrock mocked.
+
+**M7: Deploy** (17 Nov; the steps are in `docs/aws.md` §9)
+- M7.1 The production compose file: Caddy, Postgres, Neo4j with memory caps, the API,
+  Next, one-shot `migrate` and `seed-graph` services. Remove pgAdmin. arm64 images in ECR.
+- M7.2 The AWS resources: server, role, DNS, backup bucket, budgets.
+- M7.3 The nightly backup, one tested restore, and the smoke test.
+
+**18 to 21 Nov:** friends use it. Fix what they hit.
 
 ## 11. Progress
 
@@ -495,21 +1011,30 @@ Update this table at the start of each planning session from `git log` and merge
 | M1.3 Graph repo, snapshot, content routes | done | `main`, 12 Nov 2026 |
 | M1.4 Migration 0013, instructions seed, `GET /api/instructions` | done | `main`, 12 Nov 2026 |
 | M1.5 `GET /api/topics/:id/path-to/:targetId` | done | `main`, 12 Nov 2026 |
-| everything else | not started | — |
+| Design review; this doc, design.md v7, aws.md | done | `main`, 12 Nov 2026 |
+| M2 to M7, MS | not started | — |
 
 **Expected test counts after M1:** 37 passed in `npm test`, 26 in `npm run test:integration`,
 none skipped (checked 12 Nov 2026).
 
-**Follow-ups for a later milestone:**
-- `errorHandler` treats every `ZodError` as a bad request. Once the server validates its own
-  data with zod (M5.3, DeepSeek replies), a bad AI reply would blame the student and expose
-  internal details. Fix by M5.3 at the latest: have `validateBody` wrap its errors.
-- A body over 100 KB answers 500 instead of 413, and is logged as a server error.
-- `requireAuth` and the `/user/*` controllers still answer `{ error: "text" }`, not the error
-  shape in §4. Fix with M2.1, which changes `/user/me` anyway.
-- **Before deploying anything past M0:** the backend now needs Neo4j at boot, and
-  `docker-compose.yml` (production) doesn't have it yet. That's M7.1.
+**Known gaps in the code today, each fixed by the task named:**
+- `/user/*` routes answer `{ error: "text" }`, reveal whether an email exists, store
+  refresh tokens unhashed and put the name and email in the token. → M2.1
+- `config` starts without `JWT_SECRET` or `DB_URL`. → M2.1
+- The server will not start without Neo4j. → M2.6
+- A body over 100 KB answers 500 instead of 413. → M2.1
+- `errorHandler` treats every `ZodError` as the client's fault. → M5.2
+- `docker-compose.yml` (production) has pgAdmin, no Neo4j and no Caddy. → M7.1
+- `frontend/next.config.ts` strips `/api` when forwarding. → M6.1
+- `backend/example.env` still lists the OpenRouter variables and `JWT_SECRET=admin123`. → M2.1
 
-## 12. Open questions for the owner
+## 12. Open questions
 
-- The exact OpenRouter slugs for Jev and DeepSeek v4.1 flash (check on openrouter.ai).
+Nothing blocks M2. To settle when reached:
+
+- **Bedrock on the free plan.** The owner reports GLM 5 is available on the Trellis
+  account. Confirm with one real call before M5 (`docs/aws.md` §5). If it is refused, set
+  `AI_PROVIDER=off` and ship on the rules.
+- **The exact structured-output request for GLM 5.** Read the Bedrock page before M5.1.
+- **Memory on the 2 GB server.** If Neo4j does not fit beside everything else, it moves to
+  development only (`docs/aws.md` §4).

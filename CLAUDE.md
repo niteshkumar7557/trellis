@@ -3,44 +3,66 @@
 A study platform built around a knowledge graph ("the map"). It **never teaches**: it shows
 what to study next, what you can skip, and the earlier topic that is really why you're
 stuck, and it puts together a prompt for the student's own AI. An end-of-semester university
-project for a backend course, due around **27 Nov 2026**.
+project for a backend course, due **21 Nov 2026**. After that, real users: classmates and
+juniors first.
 
 ## Start every session here
 
 1. Read this file, then the doc for the job:
-   - `docs/design.md`: **the product (v6), the source of truth.** §7 the helper, §9 prompts,
-     §12 AI, §14 the v1 boundary, §15 v2.
-   - `docs/backend-design.md`: the backend system design, the build plan (§10), the
-     **progress table (§11)** and the workflow (§0).
-   - `docs/frontend.md`: how the frontend is built and how to change it; the data contract.
+   - `docs/design.md`: **the product (v7), the source of truth.** §5 user flows, §7 the
+     helper, §8 stuck, §9 prompts, §12 AI, §14 the v1 boundary, §16 every decision and why.
+   - `docs/backend-design.md`: the backend design with its reasons, the **rules for coding
+     sessions (§0)**, the build plan (§10) and the **progress table (§11)**.
+   - `docs/aws.md`: hosting. **§2 is the account check to run before any AWS action.**
+   - `docs/frontend.md`: how the frontend is built; the data contract; **§13 the product
+     changes agreed but not built yet**.
    - `README.md` (public overview; keep in step) and `docs/tech-stack.md`.
 2. Run `git log --oneline -15` and `git status` to see what changed since.
 
 ### When asked "what's next in the backend?"
 
 Follow `docs/backend-design.md` §0: bring §11 Progress up to date from `git log`, then take
-the next tasks from §10 in order (M2, M3, M4, M6, then M5 and M7 if time
-allows), each with its tests, and keep the docs in step.
+the next tasks from §10 in order (M2, M3, M4, M6, MS, M5, M7), each with its tests, and keep
+the docs in step. If a day slips, cut M5 first, then M6.3.
+
+## Rules for every coding session (the owner's, 12 Nov 2026)
+
+- **Write code as if a student will read and maintain it.** Comments explain **why** the
+  code is there and why it's done this way, not what the syntax does.
+- **Keep the structure simple enough that the owner can write or debug any part himself.**
+  He wants to code and debug too, and must be able to take over at any point without you.
+- **Explain the reasoning for every decision:** why it's there, what the alternatives were,
+  what the trade-off is. Don't teach the topic itself; he knows the basics.
+- **Follow production practice, and say where the design falls short of it.**
+- **Docs are for him and for sessions that start with no context.** Each doc must make
+  sense on its own and be easy for a person to read.
+- **Before any AWS action, run the account check in `docs/aws.md` §2.** The AWS tools on
+  this machine were signed in to a different account. Never act on that one.
 
 ## Where things stand (12 Nov 2026)
 
-- **Frontend: finished.** No API calls; the topic graphs are real
+- **Design:** reviewed on 12 Nov 2026. `design.md` v7, `backend-design.md` and `aws.md` are
+  the result. The docs are written; nothing in them beyond M0 and M1 is built yet.
+- **Frontend:** the screens are finished. No API calls; the topic graphs are real
   (`shared/data/react-native.ts`, `redis.ts`, from roadmap.sh). The sample student, their
-  history and the helper's AI (`shared/helper.ts`, `shared/parse.ts`) are stand-ins.
+  history and the helper's AI (`shared/helper.ts`, `shared/parse.ts`) are stand-ins. The
+  agreed changes still to build are in `docs/frontend.md` §13.
 - **`shared/`:** the domain code both apps run: types, data, graph, prompt, parse, helper.
   The frontend imports it as `@shared/*`. Keep it free of React, Next and Node-only APIs.
 - **Backend:** M0 (foundations) and M1 (Neo4j content: the graph seed, `GET /api/subjects`,
   the subject graph, `GET /api/instructions` and the path query) are done and on `main`.
-  **Next up:** M2, the student's record.
+  **Next up:** M2, accounts and the student's record.
+- **AWS:** nothing created yet. The plan and the setup steps are in `docs/aws.md`.
 - **Git:** `main` is the only branch. Each milestone gets its own branch from `main`
   (`backend/m2`, …); commit only there. **Push and merge only on the owner's say-so.** It goes
   into `main` with a **merge commit, never a squash**, and is deleted after.
   No Claude co-author line.
 
-## Decisions already made (don't re-ask)
+## Decisions already made (don't re-ask; the reasons are in design.md §16)
 
 - **Subjects:** React Native and Redis only. Topic names and grouping come from roadmap.sh;
-  summaries, links and core/optional are ours. Anything else gets a fixed "Coming soon".
+  summaries, links and core/optional are ours. Anything else gets a fixed "Coming soon", and
+  the request is saved.
 - **The map:** two levels. A big topic opens into its subtopics when the student reaches it
   (next inside, a check-in inside, the likely cause of a stuck topic, or "Look inside now").
   It starts small and only grows.
@@ -48,18 +70,33 @@ allows), each with its tests, and keep the docs in step.
 - **The helper** lives in the map's right panel, one thread per subject:
   - it **asks one question**, then shows a **confirm card**; nothing is saved without Save,
     and there's Undo after;
+  - it **asks "how did it go?"** when the student returns after taking a prompt;
   - it **never explains**: "explain X" gets a prompt;
   - the topic panel's buttons go through it too.
   - There is no general chat in v1.
-- **Prompts are assembled, never AI-generated:** known topics + **this topic's own
-  experiences** + layered instructions.
-  - A "was hard" experience is used in at most **2 prompts taken**.
-  - The instructions tell the AI not to remind the student of past mistakes.
-- **AI only in the helper:** **Jev** (TypeSafe AI) routes each message; **DeepSeek v4.1
-  flash** reads the ones that need language. Both go through OpenRouter. The rule-based
-  stand-in is the fallback.
+- **Stuck:** prerequisites up to two steps down, ranked by how weak the evidence is. A topic
+  marked done can be a suspect if it was hard, and the student's own words move a suspect
+  up. A fixed rule, never the AI's opinion.
+- **Prompts are assembled, never AI-generated:** known topics + this topic's own
+  experiences + **up to two "what worked" lines from its direct prerequisites** + layered
+  instructions.
+  - A "was hard" note stays **while its topic is not done** (there is no use counter).
+  - The instructions tell the AI not to remind the student of past mistakes, and to end
+    with two lines the student can paste back.
+- **AI only reads helper messages:** one **GLM 5** call on **Amazon Bedrock** (Mumbai) per
+  typed message; taps call no model; the rule-based reader is the fallback. **No Jev, no
+  DeepSeek, no OpenRouter.** Daily limits per student and for the whole site.
+- **Accounts:** Google sign-in plus email and password. A forgotten password is reset by the
+  admin with a one-time link. Email (Amazon SES) comes later; the design leaves room.
 - **Storage:** Postgres for accounts and every student record; **Neo4j for the topic graph**
-  (kept for v1, owner's call); statuses are derived, never stored.
+  (kept for v1, owner's call), but **the site must run without it**; statuses are derived,
+  never stored.
+- **Hosting:** AWS free plan, Mumbai. One EC2 `t4g.small` with Docker Compose and Caddy;
+  backups in S3; DNS for `trellis.niteshkumar.xyz` in Route 53 (the parent domain stays at
+  GoDaddy). The free plan ends by 12 May 2027, and **running out of credits closes the
+  account**, so cost limits are uptime limits.
+- **Privacy:** the promise names its limits (design.md §11). No admin tool that reads
+  records; no pgAdmin in production; backups expire after 14 days.
 - **Map look:**
   - arrows point **upward**, in learning order, with heads drawn along each line's last 8px;
   - links are named only on hover or selection, as tags when a line is too short, and as a
@@ -80,9 +117,9 @@ allows), each with its tests, and keep the docs in step.
   `node ~/.claude/skills/design-taste-frontend/scripts/inspect.mjs <url> [--app]`. The
   landing page always "fails" the picture checks; that's expected.
 - **Backend:** TypeScript strict ESM (tsup builds, `tsc` only type-checks), `@shared/*` for
-  the domain code, errors as `{error:{code,message}}` via `HttpError`, zod via
-  `validateBody`, parameterised SQL scoped by the
-  token's user id, one router/controller/repo file per area, tests with every task.
+  the domain code, every route under `/api`, errors as `{error:{code,message}}` via
+  `HttpError`, zod via `validateBody`, parameterised SQL scoped by the token's user id, one
+  router/controller/repo file per area, tests with every task.
 - Keep the post-semester club distribution plan **out of repo docs**; `design.md` mentions
   groups only generically.
 
