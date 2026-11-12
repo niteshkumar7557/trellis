@@ -130,7 +130,11 @@ async function writeGoals(tx: ManagedTransaction) {
  * TODO(Task A): make each of Subject.id, Topic.id and Goal.id unique, using three
  * `CREATE CONSTRAINT <name> IF NOT EXISTS ...` statements, run with session.run().
  */
-async function ensureConstraints(_session: Session) {}
+async function ensureConstraints(session: Session) {
+  await session.run("CREATE CONSTRAINT subject_id IF NOT EXISTS FOR (s:Subject) REQUIRE s.id IS UNIQUE");
+  await session.run("CREATE CONSTRAINT topic_id IF NOT EXISTS FOR (t:Topic) REQUIRE t.id IS UNIQUE");
+  await session.run("CREATE CONSTRAINT goal_id IF NOT EXISTS FOR (g:Goal) REQUIRE g.id IS UNIQUE");
+}
 
 /**
  * TODO(Task A): delete what is in Neo4j but no longer in the files:
@@ -138,13 +142,44 @@ async function ensureConstraints(_session: Session) {}
  *   2. Relationships between surviving nodes that the files no longer contain.
  * Only touch those three labels: never anything else that may be in the database.
  */
-async function removeStale(_tx: ManagedTransaction) {}
+async function removeStale(tx: ManagedTransaction) {
+  const ids = [...subjects, ...topics, ...goals].map((n) => n.id);
+  await tx.run(
+    `MATCH (n)
+     WHERE (n:Subject OR n:Topic OR n:Goal) AND NOT n.id IN $ids
+     DETACH DELETE n`,
+    { ids },
+  );
+
+  const links = [
+    ...topics.map((t) => `${t.id}|OF|${t.subjectId}`),
+    ...topics.filter((t) => t.parentId !== null).map((t) => `${t.id}|IN|${t.parentId}`),
+    ...edges.map((e) => `${e.from}|${e.kind.toUpperCase()}|${e.to}`),
+    ...goals.map((g) => `${g.id}|FOR|${g.subjectId}`),
+    ...goals.flatMap((g) => g.targets.map((id) => `${g.id}|TARGETS|${id}`)),
+  ];
+  await tx.run(
+    `MATCH (a)-[r]->(b)
+     WHERE (a:Subject OR a:Topic OR a:Goal)
+       AND (b:Subject OR b:Topic OR b:Goal)
+       AND NOT (a.id + "|" + type(r) + "|" + b.id) IN $links
+     DELETE r`,
+    { links },
+  );
+}
 
 /**
  * TODO(Task A): throw an Error if `actual` differs from `expected` in any field, naming each
  * field that differs with both numbers, e.g. "needs: expected 222, found 221".
  */
-export function assertCounts(_actual: GraphCounts, _expected: GraphCounts) {}
+export function assertCounts(actual: GraphCounts, expected: GraphCounts) {
+  const differences = (Object.keys(expected) as (keyof GraphCounts)[])
+    .filter((key) => actual[key] !== expected[key])
+    .map((key) => `${key}: expected ${expected[key]}, found ${actual[key]}`);
+  if (differences.length > 0) {
+    throw new Error(`Graph counts differ: ${differences.join("; ")}`);
+  }
+}
 
 // ---------------------------------------------------------------- the seed itself
 
