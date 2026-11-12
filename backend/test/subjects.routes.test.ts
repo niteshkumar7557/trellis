@@ -37,21 +37,39 @@ describe("GET /api/subjects", () => {
   });
 });
 
-// ---------------------------------------------------------------- Task B (7 Nov)
-// Remove `.skip` and write each body, in the same style as the test above.
 describe("GET /api/subjects/:subjectId/graph", () => {
-  it.skip("answers with the graph, marked as cacheable for an hour", async () => {
-    // TODO(Task B): make the fake getSubjectGraph return a small graph. Expect 200, that
-    // body, and res.headers["cache-control"] to be "public, max-age=3600". Also expect the
-    // fake to have been called with the subject id from the URL.
+  it("answers with the graph, marked as cacheable for an hour", async () => {
+    const graph = {
+      topics: [{ id: "rd-strings", name: "Strings" }],
+      edges: [{ from: "rd-lists", to: "rd-strings", kind: "needs" }],
+      goals: [],
+    };
+    vi.mocked(getSubjectGraph).mockResolvedValue(graph as never);
+
+    const res = await request(app).get("/api/subjects/redis/graph");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(graph);
+    expect(res.headers["cache-control"]).toBe("public, max-age=3600");
+    expect(getSubjectGraph).toHaveBeenCalledWith("redis");
   });
 
-  it.skip("answers 404 not_found for a subject that doesn't exist", async () => {
-    // TODO(Task B): the fake returns null. Expect 404 and error.code "not_found".
+  it("answers 404 not_found for a subject that doesn't exist", async () => {
+    vi.mocked(getSubjectGraph).mockResolvedValue(null);
+
+    const res = await request(app).get("/api/subjects/cobol/graph");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
   });
 
-  it.skip("answers 500 without leaking anything when the database fails", async () => {
-    // TODO(Task B): the fake rejects with new Error("secret neo4j detail"). Expect 500, and
-    // "secret" not in the body. Silence console.error as test/errors.test.ts does.
+  it("answers 500 without leaking anything when the database fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getSubjectGraph).mockRejectedValue(new Error("secret neo4j detail"));
+
+    const res = await request(app).get("/api/subjects/redis/graph");
+
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(res.body)).not.toContain("secret");
   });
 });

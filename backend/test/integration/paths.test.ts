@@ -1,46 +1,56 @@
 // The prerequisite-path query, against a real Neo4j. Run with `npm run test:integration`.
 
-import { afterAll, describe, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
+import { topicById } from "@shared/data";
 import { closeNeo4j } from "../../src/db/neo4j.js";
+import { findPath } from "../../src/repos/paths.repo.js";
 
 afterAll(closeNeo4j);
 
-// ---------------------------------------------------------------- Task C (7 Nov)
-// Remove `.skip`, import findPath from "../../src/repos/paths.repo.js", and write each body.
+const idsOf = async (fromId: string, toId: string) =>
+  (await findPath(fromId, toId))?.map((t) => t.id);
+
 describe("findPath", () => {
-  it.skip("returns the chain in learning order", async () => {
-    // TODO(Task C): rn-js to rn-jsx is a single step. rn-jsx to rn-state goes through
-    // rn-components. Expect the ids in learning order: ["rn-jsx", "rn-components", "rn-state"]
+  it("returns the chain in learning order", async () => {
+    expect(await idsOf("rn-js", "rn-jsx")).toEqual(["rn-js", "rn-jsx"]);
+    expect(await idsOf("rn-jsx", "rn-state")).toEqual(["rn-jsx", "rn-components", "rn-state"]);
   });
 
-  it.skip("returns whole topics, not just ids", async () => {
-    // TODO(Task C): take a topic from that chain, and expect it to toEqual the same topic
-    // from topicById in @shared/data.
+  it("returns whole topics, not just ids", async () => {
+    const path = await findPath("rn-jsx", "rn-state");
+    expect(path?.[1]).toEqual(topicById.get("rn-components"));
   });
 
-  it.skip("returns the shortest chain when there are several", async () => {
-    // TODO(Task C): rn-js to rn-websockets has a route of 2 steps and one of 5. Expect 3
-    // topics back (2 steps join 3 topics).
+  it("returns the shortest chain when there are several", async () => {
+    // rn-js reaches rn-websockets in 2 steps or in 5; 2 steps join 3 topics.
+    expect(await findPath("rn-js", "rn-websockets")).toHaveLength(3);
   });
 
-  it.skip("always picks the same chain when two are equally short", async () => {
-    // TODO(Task C): rn-components to rn-flatlist can go through rn-props or rn-state, both 2
-    // steps. Expect ["rn-components", "rn-props", "rn-flatlist"], ten times in a row.
+  it("always picks the same chain when two are equally short", async () => {
+    // Through rn-props or rn-state, both 2 steps: Props comes first in the file.
+    for (let i = 0; i < 10; i++) {
+      expect(await idsOf("rn-components", "rn-flatlist")).toEqual([
+        "rn-components",
+        "rn-props",
+        "rn-flatlist",
+      ]);
+    }
   });
 
-  it.skip("returns [] when the target doesn't stand on the topic, even the other way round", async () => {
-    // TODO(Task C): rn-flatlist to rn-components is the wrong direction, so [].
+  it("returns [] when the target doesn't stand on the topic, even the other way round", async () => {
+    expect(await findPath("rn-flatlist", "rn-components")).toEqual([]);
   });
 
-  it.skip("returns [] across subjects", async () => {
-    // TODO(Task C): a React Native topic to a Redis one. Both exist; no chain joins them.
+  it("returns [] across subjects", async () => {
+    expect(await findPath("rn-state", "rd-strings")).toEqual([]);
   });
 
-  it.skip("returns just the topic when both ids are the same", async () => {
-    // TODO(Task C): rn-state to rn-state gives one topic. (shortestPath alone throws here.)
+  it("returns just the topic when both ids are the same", async () => {
+    expect(await findPath("rn-state", "rn-state")).toEqual([topicById.get("rn-state")]);
   });
 
-  it.skip("returns null when either topic doesn't exist", async () => {
-    // TODO(Task C): test the made-up id in each position.
+  it("returns null when either topic doesn't exist", async () => {
+    expect(await findPath("rn-made-up", "rn-state")).toBeNull();
+    expect(await findPath("rn-state", "rn-made-up")).toBeNull();
   });
 });

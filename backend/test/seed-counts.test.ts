@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { assertCounts, expectedCounts } from "../src/db/graph-seed.js";
 
-describe("assertCounts (Task A, 7 Nov)", () => {
+describe("assertCounts", () => {
   it("accepts counts that match", () => {
     expect(() => assertCounts(expectedCounts, expectedCounts)).not.toThrow();
   });

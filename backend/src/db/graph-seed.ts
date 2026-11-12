@@ -124,11 +124,12 @@ async function writeGoals(tx: ManagedTransaction) {
   );
 }
 
-// ---------------------------------------------------------------- Task A (7 Nov) fills in
+// ---------------------------------------------------------------- keeping Neo4j exact
 
 /**
- * TODO(Task A): make each of Subject.id, Topic.id and Goal.id unique, using three
- * `CREATE CONSTRAINT <name> IF NOT EXISTS ...` statements, run with session.run().
+ * Makes each of Subject.id, Topic.id and Goal.id unique. `IF NOT EXISTS` lets this run on
+ * every seed. Schema changes can't share a transaction with data writes, so it uses
+ * session.run() directly.
  */
 async function ensureConstraints(session: Session) {
   await session.run("CREATE CONSTRAINT subject_id IF NOT EXISTS FOR (s:Subject) REQUIRE s.id IS UNIQUE");
@@ -137,7 +138,7 @@ async function ensureConstraints(session: Session) {
 }
 
 /**
- * TODO(Task A): delete what is in Neo4j but no longer in the files:
+ * Deletes what is in Neo4j but no longer in the files:
  *   1. Subject, Topic and Goal nodes whose id isn't in the files, with their relationships.
  *   2. Relationships between surviving nodes that the files no longer contain.
  * Only touch those three labels: never anything else that may be in the database.
@@ -169,8 +170,8 @@ async function removeStale(tx: ManagedTransaction) {
 }
 
 /**
- * TODO(Task A): throw an Error if `actual` differs from `expected` in any field, naming each
- * field that differs with both numbers, e.g. "needs: expected 222, found 221".
+ * Throws if `actual` differs from `expected` in any field, naming each field that differs
+ * with both numbers, e.g. "needs: expected 222, found 221".
  */
 export function assertCounts(actual: GraphCounts, expected: GraphCounts) {
   const differences = (Object.keys(expected) as (keyof GraphCounts)[])

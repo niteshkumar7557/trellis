@@ -1,26 +1,45 @@
-// findDrift is a pure function, so this needs no database.
+// findDrift is a pure function, so this needs no database. The graphs are tiny and made by
+// hand: a test you can read in one glance is the point.
 
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { findDrift, type GraphLike } from "../src/utils/graph-drift.js";
 
-// ---------------------------------------------------------------- Task B (7 Nov)
-// Remove `.skip`, import findDrift from "../src/utils/graph-drift.js", and write each body.
-// Build two small graphs by hand. Don't use the real data: a test you can read in one
-// glance is the point.
+const graph = (): GraphLike => ({
+  topics: [{ id: "a" }, { id: "b" }],
+  edges: [{ from: "b", to: "a", kind: "needs" }],
+  goals: [{ id: "g" }],
+});
+
 describe("findDrift", () => {
-  it.skip("finds nothing when both sides match, whatever their order", () => {
-    // TODO(Task B)
+  it("finds nothing when both sides match, whatever their order", () => {
+    const reordered = graph();
+    reordered.topics.reverse();
+    expect(findDrift(graph(), reordered)).toEqual([]);
   });
 
-  it.skip("finds a topic missing from either side, and says which side", () => {
-    // TODO(Task B)
+  it("finds a topic missing from either side, and says which side", () => {
+    const neo4j = graph();
+    neo4j.topics = [{ id: "a" }, { id: "x" }];
+    expect(findDrift(neo4j, graph()).sort()).toEqual([
+      "topic b is in the files but not in Neo4j",
+      "topic x is in Neo4j but not in the files",
+    ]);
   });
 
-  it.skip("finds a link missing from either side", () => {
-    // TODO(Task B): also check that a needs link and a helps link between the SAME two
-    // topics count as different links.
+  it("finds a link missing from either side", () => {
+    const neo4j = graph();
+    // Same two topics, other kind: a different link, so one missing each way.
+    neo4j.edges = [{ from: "b", to: "a", kind: "helps" }];
+    expect(findDrift(neo4j, graph()).sort()).toEqual([
+      "helps link b → a is in Neo4j but not in the files",
+      "needs link b → a is in the files but not in Neo4j",
+    ]);
   });
 
-  it.skip("finds a goal missing from either side", () => {
-    // TODO(Task B)
+  it("finds a goal missing from either side", () => {
+    const neo4j = graph();
+    neo4j.goals = [];
+    expect(findDrift(neo4j, graph())).toEqual(["goal g is in the files but not in Neo4j"]);
+    expect(findDrift(graph(), neo4j)).toEqual(["goal g is in Neo4j but not in the files"]);
   });
 });
