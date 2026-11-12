@@ -16,10 +16,11 @@ frontend is finished and still runs on sample data with no API calls.
 2. Take the next tasks from §10, in order, and build each with its tests:
    `npm run typecheck`, `npm test` and `npm run test:integration` stay green against the
    real databases. Update the docs that change.
-3. Work happens on **`backend/v1`**. At the end of a milestone it merges into `main` with a
-   **merge commit, never a squash**, so every commit keeps its author in the history.
-4. Never create two branch names that differ only by case (a `Backend/v1` next to
-   `backend/v1` corrupts remote-tracking refs in every clone on macOS and Windows).
+3. Each milestone is built on its own branch from `main` (`backend/m2`, `backend/m3`, …).
+   When it's done it merges into `main` with a **merge commit, never a squash**, so every
+   commit keeps its author in the history, and the branch is deleted.
+4. Never create two branch names that differ only by case (a `Backend/m2` next to
+   `backend/m2` corrupts remote-tracking refs in every clone on macOS and Windows).
 
 ---
 

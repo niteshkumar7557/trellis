@@ -32,8 +32,9 @@ allows), each with its tests, and keep the docs in step.
 - **Backend:** M0 (foundations) and M1 (Neo4j content: the graph seed, `GET /api/subjects`,
   the subject graph, `GET /api/instructions` and the path query) are done and on `main`.
   **Next up:** M2, the student's record.
-- **Git:** work happens on **`backend/v1`**. Commit only there. **Push and merge only on the
-  owner's say-so.** `backend/v1` goes into `main` with a **merge commit, never a squash**.
+- **Git:** `main` is the only branch. Each milestone gets its own branch from `main`
+  (`backend/m2`, …); commit only there. **Push and merge only on the owner's say-so.** It goes
+  into `main` with a **merge commit, never a squash**, and is deleted after.
   No Claude co-author line.
 
 ## Decisions already made (don't re-ask)
