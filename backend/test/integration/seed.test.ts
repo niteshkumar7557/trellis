@@ -18,32 +18,61 @@ describe("the graph seed", () => {
     expect(await cypher(`MATCH (:Topic {id: "rn-lists"})-[:IN]->(p) RETURN p`)).toEqual([]);
   });
 
-  // ---------------------------------------------------------------- Task A (7 Nov)
-  // Remove `.skip` and write each body. Whatever a test adds to the database, it must also
-  // leave the database clean: end with `await seedGraph()`.
-
-  it.skip("is idempotent: a second run changes nothing", async () => {
-    // TODO(Task A): seed twice, and expect the same counts both times.
+  it("is idempotent: a second run changes nothing", async () => {
+    expect(await seedGraph()).toEqual(expectedCounts);
+    expect(await seedGraph()).toEqual(expectedCounts);
   });
 
-  it.skip("removes a topic that's no longer in the files, with its relationships", async () => {
-    // TODO(Task A): create a :Topic with a made-up id, linked with :NEEDS to a real topic.
-    // Seed. Expect that id to be gone, and the real topic to still be there.
+  it("removes a topic that's no longer in the files, with its relationships", async () => {
+    try {
+      await cypher(`MERGE (junk:Topic {id: "task-a-stale"})
+        WITH junk MATCH (real:Topic {id: "rn-state"}) MERGE (junk)-[:NEEDS]->(real)`);
+      await seedGraph();
+      expect(await cypher(`MATCH (n:Topic {id: "task-a-stale"}) RETURN n`)).toEqual([]);
+      expect(await cypher(`MATCH (n:Topic {id: "rn-state"}) RETURN n.id AS id`))
+        .toEqual([{ id: "rn-state" }]);
+    } finally {
+      await cypher(`MATCH (n:Topic {id: "task-a-stale"}) DETACH DELETE n`);
+      await seedGraph();
+    }
   });
 
-  it.skip("removes a link that's no longer in the files, but keeps both topics", async () => {
-    // TODO(Task A): create a :HELPS between two REAL topics that don't have one in the
-    // files. Seed. Expect the link gone and both topics still there.
+  it("removes a link that's no longer in the files, but keeps both topics", async () => {
+    try {
+      await cypher(`MATCH (a:Topic {id: "rn-state"}), (b:Topic {id: "rd-expire"})
+        MERGE (a)-[:HELPS]->(b)`);
+      await seedGraph();
+      expect(await cypher(`MATCH (:Topic {id: "rn-state"})-[r:HELPS]->(:Topic {id: "rd-expire"}) RETURN r`))
+        .toEqual([]);
+      expect(await cypher(`MATCH (n:Topic) WHERE n.id IN ["rn-state", "rd-expire"]
+        RETURN n.id AS id ORDER BY id`)).toEqual([{ id: "rd-expire" }, { id: "rn-state" }]);
+    } finally {
+      await cypher(`MATCH (:Topic {id: "rn-state"})-[r:HELPS]->(:Topic {id: "rd-expire"}) DELETE r`);
+      await seedGraph();
+    }
   });
 
-  it.skip("doesn't touch nodes that aren't ours", async () => {
-    // TODO(Task A): MERGE a node with a different label, e.g. (:Scratch {id: "x"}). Seed.
-    // Expect it to still exist. Delete it in a `finally`, so that a failed run can't leave it
-    // behind for the next run to trip over.
+  it("doesn't touch nodes that aren't ours", async () => {
+    try {
+      await cypher(`MERGE (:Scratch {id: "task-a-scratch"})`);
+      await seedGraph();
+      expect(await cypher(`MATCH (n:Scratch {id: "task-a-scratch"}) RETURN n.id AS id`))
+        .toEqual([{ id: "task-a-scratch" }]);
+    } finally {
+      await cypher(`MATCH (n:Scratch {id: "task-a-scratch"}) DETACH DELETE n`);
+      await seedGraph();
+    }
   });
 
-  it.skip("refuses a second topic with the same id", async () => {
-    // TODO(Task A): expect CREATE (:Topic {id: "rn-state"}) to reject, because of the
-    // constraint. Use: await expect(cypher(...)).rejects.toThrow(/already exists/);
+  it("refuses a second topic with the same id", async () => {
+    try {
+      await expect(cypher(`CREATE (:Topic {id: "rn-state"})`)).rejects.toThrow(/already exists/);
+    } finally {
+      // Also recover if the constraint is deliberately removed for the break-it check.
+      await cypher(`MATCH (n:Topic {id: "rn-state"})
+        WITH n ORDER BY elementId(n) WITH collect(n) AS nodes
+        UNWIND tail(nodes) AS duplicate DETACH DELETE duplicate`);
+      await seedGraph();
+    }
   });
 });
