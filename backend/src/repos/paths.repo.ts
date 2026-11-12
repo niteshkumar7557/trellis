@@ -1,51 +1,83 @@
-// "What stands between this topic and that one?" This is the query Neo4j is here for: a
-// path of unknown length through NEEDS, which in SQL would take a recursive query.
+// "What stands between this topic and that one?" This is the query Neo4j is here for.
 
 import type { Topic } from "@shared/types";
 import driver from "../db/neo4j.js";
 import { TOPIC_FIELDS } from "./topic-fields.js";
 
+
+
 /**
- * The chain of prerequisites from one topic up to another, in LEARNING order: `fromId` first,
- * `toId` last, so read it top to bottom as "study this, then this, then this".
- *
- *   findPath("rn-components", "rn-flatlist") → [Components, Props, FlatList]
- *
- * Returns:
- *   - the topics of the SHORTEST chain, if there's more than one. If several are equally
- *     short, always the same one: the first when sorted by each topic's `position`, starting
- *     from toId. (rn-flatlist can go through rn-props or rn-state; Props comes first.)
- *   - [] if both topics exist but `toId` doesn't stand on `fromId`;
- *   - [the topic] if fromId and toId are the same topic;
- *   - null if either topic doesn't exist (the controller turns that into a 404).
+ * The chain of prerequisites from one topic to another, in learning order.
  */
-export async function findPath(fromId: string, toId: string): Promise<Topic[] | null> {
-  // First: do both exist? The path query alone can't tell "no such topic" from "not
-  // connected". With the same id twice, one row is enough.
-  const found = await driver.executeQuery(
-    `MATCH (t:Topic) WHERE t.id IN [$fromId, $toId]
-     RETURN ${TOPIC_FIELDS} AS topic`,
-    { fromId, toId },
-    { routing: "READ" },
-  );
-  const expected = fromId === toId ? 1 : 2;
-  if (found.records.length < expected) return null;
+export async function findPath(
+  fromId: string,
+  toId: string
+): Promise<Topic[] | null> {
 
-  // shortestPath throws when the start and end are the same node.
-  if (fromId === toId) return [found.records[0].get("topic") as Topic];
-
-  // NEEDS points from dependent to prerequisite, so the path is matched DOWN from the target
-  // and reversed afterwards. allShortestPaths gives every shortest path; sorting by the list
-  // of positions (compared item by item) and keeping the first makes the answer the same on
-  // every call.
-  const { records } = await driver.executeQuery(
-    `MATCH (target:Topic {id: $toId}), (start:Topic {id: $fromId})
-     MATCH p = allShortestPaths((target)-[:NEEDS*]->(start))
-     WITH p ORDER BY [n IN nodes(p) | n.position] LIMIT 1
-     UNWIND reverse(nodes(p)) AS t
-     RETURN ${TOPIC_FIELDS} AS topic`,
+  // 1. Check whether both topics exist.
+  const existence = await driver.executeQuery(
+    `OPTIONAL MATCH (a:Topic {id: $fromId})
+     OPTIONAL MATCH (b:Topic {id: $toId})
+     RETURN a IS NOT NULL AS fromExists,
+            b IS NOT NULL AS toExists`,
     { fromId, toId },
-    { routing: "READ" },
+    { routing: "READ" }
   );
-  return records.map((r) => r.get("topic") as Topic);
+
+  const row = existence.records[0];
+
+  if (
+    !row ||
+    !row.get("fromExists") ||
+    !row.get("toExists")
+  ) {
+    return null;
+  }
+
+  // 2. If both IDs are the same, return that topic.
+  if (fromId === toId) {
+    const result = await driver.executeQuery(
+      `MATCH (t:Topic {id: $id})
+       RETURN ${TOPIC_FIELDS} AS topic`,
+      { id: fromId },
+      { routing: "READ" }
+    );
+
+    return result.records.map(
+      (r: { get(key: string): unknown }) => r.get("topic") as Topic
+    );
+  }
+
+  // 3. Find all shortest prerequisite paths.
+  // NEEDS points from a dependent topic to its prerequisite.
+  const result = await driver.executeQuery(
+    `MATCH (target:Topic {id: $toId}),
+           (source:Topic {id: $fromId})
+     MATCH p = allShortestPaths((target)-[:NEEDS*]->(source))
+
+     WITH p
+     ORDER BY [n IN nodes(p) | n.position]
+     LIMIT 1
+
+     // Reverse the path to get learning order.
+     WITH reverse(nodes(p)) AS learningNodes
+
+     UNWIND range(0, size(learningNodes) - 1) AS i
+     WITH learningNodes[i] AS t, i
+
+     RETURN ${TOPIC_FIELDS} AS topic
+     ORDER BY i`,
+    { fromId, toId },
+    { routing: "READ" }
+  );
+
+  // 4. Both topics exist, but no prerequisite path connects them.
+  if (result.records.length === 0) {
+    return [];
+  }
+
+  // 5. Return topics in learning order.
+  return result.records.map(
+    (r: { get(key: string): unknown }) => r.get("topic") as Topic
+  );
 }

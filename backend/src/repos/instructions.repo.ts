@@ -3,29 +3,23 @@
 import type { Instruction } from "@shared/types";
 import pool from "../db/index.js";
 
-interface InstructionRow {
-  id: string;
-  scope: Instruction["scope"];
-  status: Instruction["status"] | null;
-  topic_id: string | null;
-  text: string;
-}
-
 /**
  * Every instruction, in file order.
  *
- * SQL NULL isn't "missing": a base line's row has status = null and topic_id = null, but its
- * Instruction must not have those keys at all, or the JSON would say "status": null.
+ * TODO(Task C): query prompt_instructions and turn each row into the Instruction shape in
+ * shared/types.ts. SQL NULL isn't "missing": a base line's row has status = null and
+ * topic_id = null, but its Instruction must not have those keys at all.
  */
 export async function listInstructions(): Promise<Instruction[]> {
-  const { rows } = await pool.query<InstructionRow>(
-    "SELECT id, scope, status, topic_id, text FROM prompt_instructions ORDER BY position",
-  );
-  return rows.map((r) => ({
-    id: r.id,
-    scope: r.scope,
-    ...(r.status !== null && { status: r.status }),
-    ...(r.topic_id !== null && { topicId: r.topic_id }),
-    text: r.text,
-  }));
+    const result = await pool.query(`
+        SELECT id, scope, status, topic_id, text
+        FROM prompt_instructions
+        ORDER BY position`);
+    return result.rows.map((row): Instruction => ({
+        id: row.id,
+        scope: row.scope,
+        text: row.text,
+        ...(row.status !== null ? { status: row.status } : {}),
+        ...(row.topic_id !== null ? { topicId: row.topic_id } : {}),
+    }));
 }
