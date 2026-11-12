@@ -172,7 +172,14 @@ async function removeStale(tx: ManagedTransaction) {
  * TODO(Task A): throw an Error if `actual` differs from `expected` in any field, naming each
  * field that differs with both numbers, e.g. "needs: expected 222, found 221".
  */
-export function assertCounts(_actual: GraphCounts, _expected: GraphCounts) {}
+export function assertCounts(actual: GraphCounts, expected: GraphCounts) {
+  const differences = (Object.keys(expected) as (keyof GraphCounts)[])
+    .filter((key) => actual[key] !== expected[key])
+    .map((key) => `${key}: expected ${expected[key]}, found ${actual[key]}`);
+  if (differences.length > 0) {
+    throw new Error(`Graph counts differ: ${differences.join("; ")}`);
+  }
+}
 
 // ---------------------------------------------------------------- the seed itself
 
