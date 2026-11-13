@@ -1,5 +1,5 @@
-// The student's record against the real Postgres, and what happens to it when the
-// account is deleted.
+// The student's record against the real Postgres: goals, claims, opened big topics and
+// subject requests, and what happens to each when the account is deleted.
 
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -79,12 +79,29 @@ describe("claims", () => {
   });
 });
 
+describe("opened big topics", () => {
+  it("opens a big topic, and opening it again is not an error", async () => {
+    expect((await request(app).post("/api/opened").set(auth).send({ topicId: "rn-react" })).status).toBe(204);
+    expect((await request(app).post("/api/opened").set(auth).send({ topicId: "rn-react" })).status).toBe(204);
+    const { rows } = await pool.query("SELECT topic_id FROM opened_topics WHERE user_id = $1", [userId]);
+    expect(rows).toEqual([{ topic_id: "rn-react" }]);
+  });
+});
+
 describe("deleting the account", () => {
-  it("deletes the whole record with it", async () => {
+  it("deletes the whole record, but keeps subject requests without the name", async () => {
+    await request(app).post("/api/subject-requests").set(auth).send({ text: "Docker" });
+    const made = await pool.query("SELECT id FROM subject_requests WHERE user_id = $1", [userId]);
+    const requestId = made.rows[0].id;
+
     await pool.query("DELETE FROM users WHERE id = $1", [userId]);
-    for (const table of ["student_goals", "claims", "refresh_tokens"]) {
+
+    for (const table of ["student_goals", "claims", "opened_topics", "refresh_tokens"]) {
       const { rows } = await pool.query(`SELECT count(*)::int AS n FROM ${table} WHERE user_id = $1`, [userId]);
       expect(rows[0].n, table).toBe(0);
     }
+    const { rows } = await pool.query("SELECT user_id, text FROM subject_requests WHERE id = $1", [requestId]);
+    expect(rows[0]).toEqual({ user_id: null, text: "Docker" });
+    await pool.query("DELETE FROM subject_requests WHERE id = $1", [requestId]);
   });
 });

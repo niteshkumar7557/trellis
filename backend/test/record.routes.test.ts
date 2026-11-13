@@ -8,17 +8,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { errorHandler, notFound } from "../src/middlewares/error.middleware.js";
 import { addClaims } from "../src/repos/claims.repo.js";
 import { setGoal } from "../src/repos/goals.repo.js";
+import { openTopic } from "../src/repos/opened.repo.js";
+import { addSubjectRequest } from "../src/repos/subject-requests.repo.js";
 import claimRoutes from "../src/routes/claims.routes.js";
 import goalRoutes from "../src/routes/goals.routes.js";
+import openedRoutes from "../src/routes/opened.routes.js";
+import subjectRequestRoutes from "../src/routes/subject-requests.routes.js";
 import { bearerToken } from "./auth-token.js";
 
 vi.mock("../src/repos/goals.repo.js", () => ({ setGoal: vi.fn() }));
 vi.mock("../src/repos/claims.repo.js", () => ({ addClaims: vi.fn() }));
+vi.mock("../src/repos/opened.repo.js", () => ({ openTopic: vi.fn() }));
+vi.mock("../src/repos/subject-requests.repo.js", () => ({ addSubjectRequest: vi.fn() }));
 
 const app = express();
 app.use(express.json());
 app.use("/api/goals", goalRoutes);
 app.use("/api/claims", claimRoutes);
+app.use("/api/opened", openedRoutes);
+app.use("/api/subject-requests", subjectRequestRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
@@ -32,6 +40,8 @@ describe("every record route needs a token", () => {
   it.each([
     ["put", "/api/goals/react-native"],
     ["post", "/api/claims"],
+    ["post", "/api/opened"],
+    ["post", "/api/subject-requests"],
   ] as const)("%s %s → 401", async (method, url) => {
     const res = await request(app)[method](url).send({});
     expect(res.status).toBe(401);
@@ -88,5 +98,36 @@ describe("POST /api/claims", () => {
       expect(res.status).toBe(400);
     }
     expect(addClaims).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/opened", () => {
+  it("opens a big topic", async () => {
+    const res = await request(app).post("/api/opened").set(AUTH).send({ topicId: "rn-intro" });
+    expect(res.status).toBe(204);
+    expect(openTopic).toHaveBeenCalledWith(3, "rn-intro");
+  });
+
+  it("refuses a subtopic or an unknown topic", async () => {
+    for (const topicId of ["rn-what", "rn-made-up"]) {
+      const res = await request(app).post("/api/opened").set(AUTH).send({ topicId });
+      expect(res.status).toBe(400);
+    }
+    expect(openTopic).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/subject-requests", () => {
+  it("saves the text, trimmed", async () => {
+    const res = await request(app).post("/api/subject-requests").set(AUTH).send({ text: "  Docker  " });
+    expect(res.status).toBe(204);
+    expect(addSubjectRequest).toHaveBeenCalledWith(3, "Docker");
+  });
+
+  it("refuses an empty text or one over 120 characters", async () => {
+    for (const text of ["   ", "x".repeat(121)]) {
+      const res = await request(app).post("/api/subject-requests").set(AUTH).send({ text });
+      expect(res.status).toBe(400);
+    }
   });
 });
