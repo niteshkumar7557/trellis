@@ -10,7 +10,7 @@ import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import config from "../src/config/index.js";
 import { errorHandler, notFound } from "../src/middlewares/error.middleware.js";
-import { deleteRefreshToken, saveRefreshToken, useRefreshToken } from "../src/repos/auth.repo.js";
+import { deleteRefreshToken, saveRefreshToken, usePasswordReset, useRefreshToken } from "../src/repos/auth.repo.js";
 import { createPasswordUser, findLoginByEmail, getStudent } from "../src/repos/users.repo.js";
 import authRoutes from "../src/routes/auth.routes.js";
 import { hashToken, verifyAccessToken } from "../src/utils/tokens.js";
@@ -19,6 +19,7 @@ vi.mock("../src/repos/auth.repo.js", () => ({
   saveRefreshToken: vi.fn(),
   useRefreshToken: vi.fn(),
   deleteRefreshToken: vi.fn(),
+  usePasswordReset: vi.fn(),
 }));
 vi.mock("../src/repos/users.repo.js", () => ({
   createPasswordUser: vi.fn(),
@@ -183,5 +184,30 @@ describe("POST /api/auth/logout", () => {
     const res = await request(app).post("/api/auth/logout");
     expect(res.status).toBe(204);
     expect(deleteRefreshToken).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/auth/reset-password", () => {
+  it("sets a bcrypt hash of the new password through the link's token hash", async () => {
+    vi.mocked(usePasswordReset).mockResolvedValue(true);
+    const res = await request(app).post("/api/auth/reset-password").send({ token: "tok", password: "brand new pass" });
+    expect(res.status).toBe(204);
+    const [tokenHash, hashed] = vi.mocked(usePasswordReset).mock.calls[0]!;
+    expect(tokenHash).toBe(hashToken("tok"));
+    expect(await bcrypt.compare("brand new pass", hashed)).toBe(true);
+    expect(refreshCookie(res)).toBe(""); // it does not sign this browser in
+  });
+
+  it("answers 400 reset_link_invalid for a dead link", async () => {
+    vi.mocked(usePasswordReset).mockResolvedValue(false);
+    const res = await request(app).post("/api/auth/reset-password").send({ token: "old", password: "brand new pass" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("reset_link_invalid");
+  });
+
+  it("applies the same password rules as sign-up", async () => {
+    const res = await request(app).post("/api/auth/reset-password").send({ token: "tok", password: "short" });
+    expect(res.status).toBe(400);
+    expect(usePasswordReset).not.toHaveBeenCalled();
   });
 });

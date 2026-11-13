@@ -8,7 +8,7 @@ import bcrypt from "bcrypt";
 import type { CookieOptions, Request, Response } from "express";
 import { z } from "zod";
 import config from "../config/index.js";
-import { deleteRefreshToken, saveRefreshToken, useRefreshToken } from "../repos/auth.repo.js";
+import { deleteRefreshToken, saveRefreshToken, usePasswordReset, useRefreshToken } from "../repos/auth.repo.js";
 import { createPasswordUser, findLoginByEmail, getStudent } from "../repos/users.repo.js";
 import { HttpError } from "../utils/http-error.js";
 import { hashToken, newRandomToken, signAccessToken } from "../utils/tokens.js";
@@ -35,6 +35,9 @@ export const RegisterBody = z.object({ name: Name, email: Email, password: NewPa
 // Login does not apply the 8-to-72 rule: it only checks. The max stops anyone sending a
 // megabyte for bcrypt to chew on.
 export const LoginBody = z.object({ email: Email, password: z.string().min(1).max(200) });
+
+// The token is what `npm run reset-link` put in the link: 64 hex characters.
+export const ResetPasswordBody = z.object({ token: z.string().min(1).max(200), password: NewPassword });
 
 // ------------------------------------------------------------------ the cookie
 
@@ -135,3 +138,24 @@ export async function logout(req: Request, res: Response) {
   res.sendStatus(204);
 }
 
+/**
+ * POST /api/auth/reset-password {token, password} → 204
+ *
+ * The link came from the admin (`npm run reset-link`). Setting the password signs out
+ * every device, and does NOT sign this one in: the student logs in with the new password,
+ * which proves it works and keeps this route from being a way to obtain a session.
+ */
+export async function resetPassword(req: Request, res: Response) {
+  const { token, password } = req.body as z.infer<typeof ResetPasswordBody>;
+  // Hashed before the transaction: bcrypt takes a quarter of a second, and a transaction
+  // should not hold its row locks while it waits.
+  const hashed = await bcrypt.hash(password, 12);
+  if (!(await usePasswordReset(hashToken(token), hashed))) {
+    throw new HttpError(
+      400,
+      "reset_link_invalid",
+      "This link has expired or was already used. Ask the admin for a new one.",
+    );
+  }
+  res.sendStatus(204);
+}
