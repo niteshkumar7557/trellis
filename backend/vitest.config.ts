@@ -15,5 +15,13 @@ export default defineConfig({
     include: ["test/**/*.test.ts"],
     exclude: ["test/integration/**"],
     environment: "node",
+    // Set before any test file runs. config/index.ts refuses to start without these, and
+    // these tests must not depend on anyone's backend/.env. Nothing here connects to that
+    // DB_URL: the unit tests replace every repo with a fake. TEST_JWT_SECRET in
+    // test/auth-token.ts must match.
+    env: {
+      JWT_SECRET: "test-secret-that-is-at-least-32-characters-long",
+      DB_URL: "postgresql://nobody@localhost:1/not-used-by-unit-tests",
+    },
   },
 });

@@ -155,6 +155,8 @@ export interface Student {
   name: string;
   email: string;
   joinedAt: string;
+  /** False for an account that signs in with Google only. Deleting it then asks no password. */
+  hasPassword: boolean;
   goals: { subjectId: SubjectId; goalId: string; since: string }[];
 }
 

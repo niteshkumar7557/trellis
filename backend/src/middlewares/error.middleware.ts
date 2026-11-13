@@ -36,14 +36,17 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     });
   }
 
-  if (
-    typeof err === "object" &&
-    err !== null &&
-    "type" in err &&
-    err.type === "entity.parse.failed"
-  ) {
+  // express.json() reports its own failures with a `type` field. Without these two checks
+  // they would fall through to the 500 below and look like our bug.
+  const bodyParserType = typeof err === "object" && err !== null && "type" in err ? err.type : null;
+  if (bodyParserType === "entity.parse.failed") {
     return res.status(400).json({
       error: { code: "invalid_json", message: "The request body is not valid JSON." },
+    });
+  }
+  if (bodyParserType === "entity.too.large") {
+    return res.status(413).json({
+      error: { code: "too_large", message: "The request body is too large." },
     });
   }
 

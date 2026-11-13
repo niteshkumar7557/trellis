@@ -8,9 +8,6 @@ import { findPath } from "../src/repos/paths.repo.js";
 import topicRoutes from "../src/routes/topics.routes.js";
 import { bearerToken } from "./auth-token.js";
 
-vi.hoisted(() => {
-  process.env.JWT_SECRET = "test-secret";
-});
 vi.mock("../src/repos/paths.repo.js", () => ({ findPath: vi.fn() }));
 
 const app = express();

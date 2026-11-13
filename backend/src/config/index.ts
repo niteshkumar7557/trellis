@@ -1,11 +1,26 @@
 // The ONE place the backend reads process.env. Everything else imports `config`.
-// It runs once, when first imported, and THROWS on a bad value: a typo in .env stops the
-// server at boot with a clear message, instead of failing strangely later.
+// It runs once, when first imported, and THROWS on a missing or bad value: a typo in .env
+// stops the server at boot with a clear message, instead of failing strangely later.
+// The variables and their reasons are listed in docs/backend-design.md §8 "Config".
 import "dotenv/config"; // copies backend/.env into process.env (never overwrites a set variable)
 
+/** "" counts as "not set", so a blank line in .env falls back to the default. */
 function str(name: string, fallback: string): string {
   const v = process.env[name];
-  return (v === undefined || v === "") ? fallback : v;
+  return v === undefined || v === "" ? fallback : v;
+}
+
+/**
+ * A value the server cannot run without. There is deliberately no fallback: a default
+ * JWT secret would mean every install that forgot to set one signs tokens with the same
+ * public string, and anyone could forge a login.
+ */
+function required(name: string): string {
+  const v = process.env[name];
+  if (v === undefined || v === "") {
+    throw new Error(`Config: ${name} is required. See backend/example.env.`);
+  }
+  return v;
 }
 
 function num(name: string, fallback: number): number {
@@ -18,42 +33,65 @@ function num(name: string, fallback: number): number {
   return n;
 }
 
-function fraction(name: string, fallback: number): number {
-  const n = num(name, fallback);
-  if (n < 0 || n > 1) {
-    throw new Error(`Config: ${name} must be between 0 and 1, got "${n}"`);
+function oneOf<T extends string>(name: string, allowed: readonly T[], fallback: T): T {
+  const v = str(name, fallback);
+  if (!(allowed as readonly string[]).includes(v)) {
+    throw new Error(`Config: ${name} must be one of ${allowed.join(", ")}, got "${v}"`);
   }
-  return n;
+  return v as T;
 }
+
+const jwtSecret = required("JWT_SECRET");
+// 32 characters is 128+ bits from `openssl rand -hex 32` (which gives 64). Shorter secrets
+// such as "admin123" can be guessed offline from any one token, and then every token forged.
+if (jwtSecret.length < 32) {
+  throw new Error("Config: JWT_SECRET must be at least 32 characters. Make one with `openssl rand -hex 32`.");
+}
+
+const nodeEnv = str("NODE_ENV", "development");
 
 const config = {
   server_port: num("PORT", num("SERVER_PORT", 8000)),
-  client_url: process.env.CLIENT_URL,
-  node_env: process.env.NODE_ENV,
+  node_env: nodeEnv,
+  is_production: nodeEnv === "production",
+
+  // Where the site lives, as the browser sees it. Used to build reset links (and, in M6.3,
+  // the Google redirect). Replaces CLIENT_URL: with one origin there is no separate client.
+  public_url: str("PUBLIC_URL", "http://localhost:3000").replace(/\/$/, ""),
 
   db: {
-    url: process.env.DB_URL,
+    url: required("DB_URL"),
   },
 
-  jwt_secret: process.env.JWT_SECRET,
+  jwt_secret: jwtSecret,
   access_token_ttl: str("ACCESS_TOKEN_TTL", "15m"),
-  refresh_token_days: num("REFRESH_TOKEN_DAYS", 7),
+  // 60 days from the LAST use: a student coming back after six weeks is still signed in.
+  refresh_token_days: num("REFRESH_TOKEN_DAYS", 60),
 
-  // The topic graph's database (milestone M1).
+  // Vitest sets NODE_ENV=test. Tests sign up dozens of users from one address, so the
+  // limits would make them fail for a reason that has nothing to do with what they test.
+  // The limiter itself has its own test (test/rate-limit.test.ts).
+  rate_limits: nodeEnv !== "test",
+
+  // The topic graph's database. The site runs without it (backend-design.md §2).
   neo4j: {
     url: str("NEO4J_URL", "bolt://localhost:7687"),
     user: str("NEO4J_USER", "neo4j"),
     password: process.env.NEO4J_PASSWORD, // a secret: from .env only, no default
   },
 
-  // The helper's AI, through OpenRouter (milestone M5). Model ids: openrouter.ai/models.
+  // The helper's AI: GLM 5 on Amazon Bedrock (milestone M5). "off" means the rule-based
+  // reader reads every message and no AWS is needed, which is right for development and
+  // tests. AWS credentials are never read here: the SDK finds them itself (§5).
   ai: {
-    openrouter_api_key: process.env.OPENROUTER_API_KEY, // a secret: no default
-    router_model: str("ROUTER_MODEL", ""), // Jev: picks the helper's path
-    reader_model: str("READER_MODEL", ""), // DeepSeek v4.1 flash: reads the message
-    // Below this, the router's guess is ignored. A fraction, 0 to 1.
-    router_min_confidence: fraction("ROUTER_MIN_CONFIDENCE", 0.7),
-    timeout_ms: num("AI_TIMEOUT_MS", 8000), // give up on an AI call after this long
+    provider: oneOf("AI_PROVIDER", ["bedrock", "off"] as const, "off"),
+    region: str("BEDROCK_REGION", "ap-south-1"),
+    reader_model: str("READER_MODEL", "zai.glm-5"),
+    price_in_per_m: num("READER_PRICE_IN_PER_M", 1.2), // dollars per million input tokens
+    price_out_per_m: num("READER_PRICE_OUT_PER_M", 3.84),
+    timeout_ms: num("AI_TIMEOUT_MS", 6000), // a slow answer is worse than a plain one
+    daily_budget_usd: num("AI_DAILY_BUDGET_USD", 0.5),
+    helper_daily_messages: num("HELPER_DAILY_MESSAGES", 100),
   },
 };
 

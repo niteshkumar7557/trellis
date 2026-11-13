@@ -8,9 +8,6 @@ import { listInstructions } from "../src/repos/instructions.repo.js";
 import instructionRoutes from "../src/routes/instructions.routes.js";
 import { bearerToken } from "./auth-token.js";
 
-vi.hoisted(() => {
-  process.env.JWT_SECRET = "test-secret";
-});
 vi.mock("../src/repos/instructions.repo.js", () => ({ listInstructions: vi.fn() }));
 
 const app = express();
