@@ -58,10 +58,31 @@ describe("goals", () => {
   });
 });
 
+describe("claims", () => {
+  it("saves a batch in one go and keeps history", async () => {
+    const first = await request(app)
+      .post("/api/claims")
+      .set(auth)
+      .send({ claims: [{ topicId: "rn-intro", claim: "know" }, { topicId: "rn-react", claim: "shaky" }] });
+    expect(first.status).toBe(201);
+    expect(first.body).toHaveLength(2);
+    expect(first.body[0]).toMatchObject({ topicId: "rn-intro", claim: "know", at: expect.any(String) });
+
+    await request(app).post("/api/claims").set(auth).send({ claims: [{ topicId: "rn-intro", claim: "new" }] });
+
+    // Both claims on rn-intro are kept; the newest one is the one that counts.
+    const { rows } = await pool.query(
+      "SELECT claim FROM claims WHERE user_id = $1 AND topic_id = 'rn-intro' ORDER BY at DESC",
+      [userId],
+    );
+    expect(rows.map((r) => r.claim)).toEqual(["new", "know"]);
+  });
+});
+
 describe("deleting the account", () => {
   it("deletes the whole record with it", async () => {
     await pool.query("DELETE FROM users WHERE id = $1", [userId]);
-    for (const table of ["student_goals", "refresh_tokens"]) {
+    for (const table of ["student_goals", "claims", "refresh_tokens"]) {
       const { rows } = await pool.query(`SELECT count(*)::int AS n FROM ${table} WHERE user_id = $1`, [userId]);
       expect(rows[0].n, table).toBe(0);
     }
