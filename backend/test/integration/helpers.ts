@@ -54,3 +54,14 @@ export async function insertSavedCheckIn(userId: number, topicId: string, outcom
   );
   return { checkInId: checkIn.rows[0].id as string, messageId: msg.rows[0].id as string, proposalId: proposal.rows[0].id as string };
 }
+
+/** An experience as if the helper had saved it (see insertSavedCheckIn). */
+export async function insertSavedExperience(userId: number, topicId: string, kind: string, text: string, line = text) {
+  const { proposalId, messageId } = await insertSavedCheckIn(userId, topicId, "partly", text);
+  const { rows } = await pool.query(
+    `INSERT INTO experiences (user_id, topic_id, kind, text, line, proposal_id)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [userId, topicId, kind, text, line, proposalId],
+  );
+  return { experienceId: rows[0].id as string, messageId };
+}
