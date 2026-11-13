@@ -7,10 +7,10 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (13 Nov 2026):** M0 and M1 are done and on `main`. M2 (accounts and the
-student's record) is built and tested on `backend/m2`, waiting for review. Next is M3
-(§10, §11). The frontend still runs on sample data with no API calls. **The deadline is 21 Nov 2026**: the build is planned for
-13 to 17 Nov, then testing with real users.
+**Status (13 Nov 2026):** M0, M1 and M2 are done and on `main`. M3 is in progress on
+`backend/m3` (§10, §11). The frontend still runs on sample data with no API calls.
+**The deadline is 21 Nov 2026**: the build is planned for 13 to 15 Nov (re-planned on
+13 Nov from 13 to 17 Nov), then testing with real users.
 
 **Contents:** 0 Workflow and rules · 1 What the backend does · 2 Architecture · 3 Data
 model · 4 API and auth · 5 The helper · 6 Prompts · 7 Derived logic · 8 Cross-cutting ·
@@ -960,7 +960,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 **M0: Foundations** ✅ (merged into `main`, 7 Nov 2026)
 **M1: Content (Neo4j)** ✅ (merged into `main`, 12 Nov 2026)
 
-**M2: Accounts and the student's record** (13 Nov)
+**M2: Accounts and the student's record** ✅ (merged into `main`, 13 Nov 2026)
 - M2.1 Migration 0007. Auth moves to `/api/auth/*`: the error shape, zod bodies, one
   `invalid_credentials` answer, hashed refresh tokens (60 days, extended on use), the
   `{sub}` token, auth rate limits, config that refuses to start without secrets.
@@ -972,7 +972,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M2.6 The API starts without Neo4j; the graph routes answer 503; `/api/health` reports both;
   topic ids are checked against `shared/data`.
 
-**M3: Check-ins, experiences, prompts taken** (14 Nov)
+**M3: Check-ins, experiences, prompts taken** (13 Nov)
 - M3.1 Migrations 0012, 0014 and 0015 plus `GET/PATCH/DELETE /api/check-ins`.
 - M3.2 Migration 0016 plus `PATCH/DELETE /api/experiences`.
 - M3.3 Migration 0017 plus `POST /api/prompt-takes`.
@@ -984,7 +984,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M4.2 `GET/POST /api/helper/:subject/messages` on the rules, with paging.
 - M4.3 Proposals: save, cancel, undo (the guarded update; one transaction).
 
-**M6: Connect the frontend** (15 Nov)
+**M6: Connect the frontend** (14 Nov)
 - M6.1 The API client, the store on the API, loading and error states, demo mode, the
   rewrite keeping `/api`.
 - M6.2 Real sign-up and login, the reset page, and the wording changes in frontend.md §13.
@@ -992,12 +992,12 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M6.4 Prompt takes and the "how did it go?" line; subject requests; the short sort after
   a goal change. (Needs MS.3.)
 
-**MS: Rule changes in `shared/`** (16 Nov; MS.3 earlier, with M6.4)
+**MS: Rule changes in `shared/`** (14 Nov; MS.3 before M6.4)
 - MS.1 The new suspect ranking (§7), with golden-test cases.
 - MS.2 The new prompt experience rules, `base-report-back`, and removing `uses`.
 - MS.3 `awaitingReport` and `unsortedAreas`.
 
-**M5: The helper with GLM 5** (16 Nov)
+**M5: The helper with GLM 5** (15 Nov)
 - M5.1 Migration 0018, `src/ai/bedrock.ts`: the Converse call, the timeout, the `ai_calls`
   row with its cost. Remove the OpenRouter package and files.
 - M5.2 `src/ai/reader.ts`: instructions, schema, validation, the fallback to the rules.
@@ -1005,7 +1005,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
   student's bad request.
 - M5.3 The daily message limit and the daily AI budget; tests with Bedrock mocked.
 
-**M7: Deploy** (17 Nov; the steps are in `docs/aws.md` §9)
+**M7: Deploy** (15 Nov; the steps are in `docs/aws.md` §9)
 - M7.1 The production compose file: Caddy, Postgres, Neo4j with memory caps, the API,
   Next, one-shot `migrate` and `seed-graph` services. Remove pgAdmin. arm64 images in ECR.
 - M7.2 The AWS resources: server, role, DNS, backup bucket, budgets.
@@ -1029,12 +1029,12 @@ Update this table at the start of each planning session from `git log` and merge
 | M1.4 Migration 0013, instructions seed, `GET /api/instructions` | done | `main`, 12 Nov 2026 |
 | M1.5 `GET /api/topics/:id/path-to/:targetId` | done | `main`, 12 Nov 2026 |
 | Design review; this doc, design.md v7, aws.md | done | `main`, 12 Nov 2026 |
-| M2.1 Migration 0007, `/api/auth/*`, hashed refresh tokens, config, `/api/me` | built, in review | `backend/m2` |
-| M2.2 `npm run reset-link`, `POST /api/auth/reset-password` | built, in review | `backend/m2` |
-| M2.3 Migration 0008, `PUT /api/goals/:subjectId` | built, in review | `backend/m2` |
-| M2.4 Migration 0009, `POST /api/claims` | built, in review | `backend/m2` |
-| M2.5 Migrations 0010, 0011, `POST /api/opened`, `POST /api/subject-requests` | built, in review | `backend/m2` |
-| M2.6 The API runs without Neo4j; `/api/health` | built, in review | `backend/m2` |
+| M2.1 Migration 0007, `/api/auth/*`, hashed refresh tokens, config, `/api/me` | done | `main`, 13 Nov 2026 |
+| M2.2 `npm run reset-link`, `POST /api/auth/reset-password` | done | `main`, 13 Nov 2026 |
+| M2.3 Migration 0008, `PUT /api/goals/:subjectId` | done | `main`, 13 Nov 2026 |
+| M2.4 Migration 0009, `POST /api/claims` | done | `main`, 13 Nov 2026 |
+| M2.5 Migrations 0010, 0011, `POST /api/opened`, `POST /api/subject-requests` | done | `main`, 13 Nov 2026 |
+| M2.6 The API runs without Neo4j; `/api/health` | done | `main`, 13 Nov 2026 |
 | M3 to M7, MS | not started | — |
 
 **Expected test counts after M2:** 94 passed in `npm test`, 45 in `npm run test:integration`,
