@@ -5,6 +5,7 @@
 
 import type { Student } from "@shared/types";
 import pool from "../db/index.js";
+import { listGoals } from "./goals.repo.js";
 
 export interface LoginRow {
   id: number;
@@ -59,7 +60,7 @@ export async function getStudent(userId: number): Promise<Student | null> {
     email: user.email,
     joinedAt: user.joined_at.toISOString(),
     hasPassword: user.has_password,
-    goals: [], // filled from student_goals in M2.3
+    goals: await listGoals(userId),
   };
 }
 

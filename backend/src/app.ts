@@ -9,6 +9,7 @@ import config from "./config/index.js";
 import pool from "./db/index.js";
 import { errorHandler, notFound } from "./middlewares/error.middleware.js";
 import authRoutes from "./routes/auth.routes.js";
+import goalRoutes from "./routes/goals.routes.js";
 import instructionRoutes from "./routes/instructions.routes.js";
 import meRoutes from "./routes/me.routes.js";
 import subjectRoutes from "./routes/subjects.routes.js";
@@ -38,6 +39,7 @@ app.get("/health", makeHealthHandler(() => pool.query("SELECT 1")));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/me", meRoutes);
+app.use("/api/goals", goalRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/topics", topicRoutes);
 app.use("/api/instructions", instructionRoutes);
