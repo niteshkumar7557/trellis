@@ -136,6 +136,8 @@ export type Card =
    */
   | {
       type: "confirm";
+      /** Set by the API: Save, Cancel and Undo are addressed by it. The demo store has none. */
+      proposalId?: string;
       proposal: Proposal;
       state: "open" | "saved" | "cancelled" | "undone";
       saved?: { checkIns: string[]; experiences: string[] };

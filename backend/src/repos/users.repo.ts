@@ -4,6 +4,7 @@
 // address whatever the capitals.
 
 import type { Student } from "@shared/types";
+import type { PoolClient } from "pg";
 import pool from "../db/index.js";
 import { listGoals } from "./goals.repo.js";
 
@@ -38,8 +39,8 @@ export async function createPasswordUser(name: string, email: string, hashedPass
 }
 
 /** The `Student` shape the frontend uses (shared/types.ts), or null if the account is gone. */
-export async function getStudent(userId: number): Promise<Student | null> {
-  const { rows } = await pool.query<{
+export async function getStudent(userId: number, db: Pick<PoolClient, "query"> = pool): Promise<Student | null> {
+  const { rows } = await db.query<{
     id: number;
     name: string;
     email: string;
@@ -60,7 +61,7 @@ export async function getStudent(userId: number): Promise<Student | null> {
     email: user.email,
     joinedAt: user.joined_at.toISOString(),
     hasPassword: user.has_password,
-    goals: await listGoals(userId),
+    goals: await listGoals(userId, db),
   };
 }
 
@@ -68,4 +69,47 @@ export async function getStudent(userId: number): Promise<Student | null> {
 export async function updateName(userId: number, name: string): Promise<boolean> {
   const { rowCount } = await pool.query("UPDATE users SET name = $2 WHERE id = $1", [userId, name]);
   return rowCount === 1;
+}
+
+/** The password hash, for checking it again before the account is deleted. */
+export async function findLoginById(userId: number): Promise<LoginRow | null> {
+  const { rows } = await pool.query<LoginRow>("SELECT id, hashed_password FROM users WHERE id = $1", [userId]);
+  return rows[0] ?? null;
+}
+
+/**
+ * Deletes the account. Every table of the student's record has ON DELETE CASCADE, so this
+ * one statement removes all of it, and no table can be forgotten. (subject_requests keeps
+ * its rows without the user id: ON DELETE SET NULL.) False if it was already gone.
+ */
+export async function deleteUser(userId: number): Promise<boolean> {
+  const { rowCount } = await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+  return rowCount === 1;
+}
+
+/** The account as the export shows it: everything stored, except the password hash. */
+export async function getAccountForExport(userId: number, db: Pick<PoolClient, "query"> = pool) {
+  const { rows } = await db.query<{
+    name: string;
+    email: string;
+    joined_at: Date;
+    has_password: boolean;
+    google: boolean;
+    email_verified_at: Date | null;
+  }>(
+    `SELECT name, email, joined_at, hashed_password IS NOT NULL AS has_password,
+            google_sub IS NOT NULL AS google, email_verified_at
+     FROM users WHERE id = $1`,
+    [userId],
+  );
+  const u = rows[0];
+  if (!u) return null;
+  return {
+    name: u.name,
+    email: u.email,
+    joinedAt: u.joined_at.toISOString(),
+    hasPassword: u.has_password,
+    signsInWithGoogle: u.google,
+    emailVerifiedAt: u.email_verified_at?.toISOString() ?? null,
+  };
 }

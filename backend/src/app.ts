@@ -19,6 +19,7 @@ import meRoutes from "./routes/me.routes.js";
 import openedRoutes from "./routes/opened.routes.js";
 import promptTakeRoutes from "./routes/prompt-takes.routes.js";
 import subjectRequestRoutes from "./routes/subject-requests.routes.js";
+import stateRoutes from "./routes/state.routes.js";
 import subjectRoutes from "./routes/subjects.routes.js";
 import topicRoutes from "./routes/topics.routes.js";
 import { makeHealthHandler } from "./utils/health.js";
@@ -53,6 +54,7 @@ app.use("/api/subject-requests", subjectRequestRoutes);
 app.use("/api/check-ins", checkInRoutes);
 app.use("/api/experiences", experienceRoutes);
 app.use("/api/prompt-takes", promptTakeRoutes);
+app.use("/api", stateRoutes); // /api/state and /api/export
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/topics", topicRoutes);
 app.use("/api/instructions", instructionRoutes);
