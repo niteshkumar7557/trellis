@@ -105,7 +105,7 @@ shared/                domain code the frontend and backend both run (imported a
   helper.ts            the helper chat's brain (stand-in for the AI): ask, propose, reply
   prompt.ts            the three-part prompt: known topics, experiences, instructions
 backend/
-  src/                 Express API (auth today; the v1 endpoints are next)
+  src/                 Express API (accounts and the start of the student's record; the helper is next)
 docs/                  design, backend design, AWS, frontend, tech stack
 ```
 

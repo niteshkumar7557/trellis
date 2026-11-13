@@ -51,7 +51,9 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   The frontend imports it as `@shared/*`. Keep it free of React, Next and Node-only APIs.
 - **Backend:** M0 (foundations) and M1 (Neo4j content: the graph seed, `GET /api/subjects`,
   the subject graph, `GET /api/instructions` and the path query) are done and on `main`.
-  **Next up:** M2, accounts and the student's record.
+  M2 (accounts under `/api/auth`, `/api/me`, reset links, goals, claims, opened topics,
+  subject requests, and running without Neo4j) is built on `backend/m2`, awaiting the
+  owner's review. **Next up:** M3, check-ins, experiences and prompts taken.
 - **AWS:** nothing created yet. The plan and the setup steps are in `docs/aws.md`.
 - **Git:** `main` is the only branch. Each milestone gets its own branch from `main`
   (`backend/m2`, …); commit only there. **Push and merge only on the owner's say-so.** It goes

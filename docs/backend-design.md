@@ -7,9 +7,9 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (12 Nov 2026):** M0 and M1 are done and on `main`. The design was reviewed on
-12 Nov 2026 and this file is the result. Next is M2 (§10, §11). The frontend still runs on
-sample data with no API calls. **The deadline is 21 Nov 2026**: the build is planned for
+**Status (13 Nov 2026):** M0 and M1 are done and on `main`. M2 (accounts and the
+student's record) is built and tested on `backend/m2`, waiting for review. Next is M3
+(§10, §11). The frontend still runs on sample data with no API calls. **The deadline is 21 Nov 2026**: the build is planned for
 13 to 17 Nov, then testing with real users.
 
 **Contents:** 0 Workflow and rules · 1 What the backend does · 2 Architecture · 3 Data
@@ -114,8 +114,8 @@ else to Next.
   forwards `/api/*` to the backend, so the browser still sees one origin. That rewrite
   must keep the `/api` prefix (today it strips it; fix in M6.1).
 
-**Every backend route starts with `/api`** (auth included, at `/api/auth/*`). Today auth
-sits at `/user/*`; it moves in M2.1. Nothing calls it yet, so the move is free now.
+**Every backend route starts with `/api`** (auth included, at `/api/auth/*`; moved from
+`/user/*` in M2.1, before anything called it).
 
 ### The shared domain code
 
@@ -164,8 +164,8 @@ shared/
 
 ### Neo4j is not allowed to take the site down (changed 12 Nov 2026)
 
-**What changes:** until M2.6 the API refuses to start unless Neo4j is up and matches the
-files. After M2.6:
+**Built in M2.6.** Before it, the API refused to start unless Neo4j was up and matched
+the files. Now:
 
 - The API starts whether or not Neo4j is reachable. It logs the problem and carries on.
 - The three Neo4j endpoints above answer `503 graph_unavailable` while it is down, or
@@ -175,6 +175,11 @@ files. After M2.6:
 - A topic id is checked against `shared/data` (`topicById`), not against the Neo4j
   snapshot.
 - `GET /api/health` reports both databases, and only Postgres decides whether it is healthy.
+- **How the API knows** (`src/middlewares/graph.middleware.ts`): `checkGraph()` in
+  `graph.repo.ts` answers `ok`, `down` or `drift`. The answer is remembered for 30 seconds,
+  so a Neo4j that comes back, or gets reseeded, is noticed without a restart. A Neo4j query
+  that fails mid-request with `ServiceUnavailable` also answers 503 (not 500) and forgets
+  the remembered state. The driver gives up after 3 seconds instead of its default 30.
 
 **Why:** nothing a student sees depends on Neo4j, so an outage there should cost two
 endpoints, not the whole product. It also removes the deploy trap where a content change
@@ -207,8 +212,9 @@ called once per typed helper message and nowhere else. Details in §5.
   new one. The runner (`src/db/migrate.ts`) applies every `.sql` file not yet recorded in
   `_migrations`, in filename order, each in its own transaction.
 
-**What exists today:** `users`, `refresh_tokens`, `_migrations`, `prompt_instructions`
-(migration 0013). Migrations 0001 to 0006 and 0013 have run.
+**What exists today:** `users`, `refresh_tokens`, `password_resets`, `student_goals`,
+`claims`, `opened_topics`, `subject_requests`, `prompt_instructions`, `_migrations`.
+Migrations 0001 to 0011 and 0013 exist (0012 and 0014 onwards come with M3).
 
 The SQL below is the plan. Once a migration file exists, the file is the truth.
 
@@ -446,7 +452,8 @@ Every error leaves the server in one shape:
 
 | Status | Codes | When |
 |---|---|---|
-| 400 | `invalid_request`, `invalid_json` | The body does not fit its schema |
+| 400 | `invalid_request`, `invalid_json` | The body does not fit its schema, or names an id that is not in `shared/data` |
+| 400 | `reset_link_invalid` | A reset link that is unknown, expired or already used |
 | 401 | `unauthorized`, `invalid_credentials` | No valid token; wrong email or password |
 | 403 | `forbidden` | Signed in, but not allowed |
 | 404 | `not_found` | No such route or row (also when the row is someone else's) |
@@ -494,7 +501,11 @@ they are choices, not surprises.
 - **Passwords:** 8 to 72 characters. bcrypt ignores everything after 72 bytes, so longer
   ones are refused rather than silently cut.
 - **Emails** are trimmed and lower-cased before any lookup or insert.
-- **Rate limits** (§8) apply to every auth route.
+- **Rate limits** (§8) apply to every auth route except logout (it only ever removes a
+  session).
+- **An unknown email takes as long as a wrong password.** Login compares against a fixed
+  dummy bcrypt hash when there is no account, so the reply's timing cannot reveal which
+  emails exist either.
 - **The server refuses to start** without `JWT_SECRET` (32 characters or more) and
   `DB_URL`. A missing secret must never become a silent default.
 
@@ -508,7 +519,7 @@ they are choices, not surprises.
 | POST | `/api/auth/logout` | → `204`. Deletes the stored token and clears the cookie |
 | GET | `/api/auth/google` | → redirects to Google |
 | GET | `/api/auth/google/callback` | Google sends the browser back here → sets the refresh cookie → redirects to `/auth/done` |
-| POST | `/api/auth/reset-password` | `{token, password}` → `204`. Signs out every device |
+| POST | `/api/auth/reset-password` | `{token, password}` → `204`. Signs out every device. It does not sign this browser in: the student logs in with the new password, which proves it works |
 | GET | `/api/me` | → `Student` `{id, name, email, joinedAt, hasPassword, goals[]}` |
 | PATCH | `/api/me` | `{name}` → `Student`. The email cannot be changed in v1 (no way to verify the new one) |
 | DELETE | `/api/me` | `{password}` if the account has one → `204`. Deletes the account and everything with it |
@@ -553,6 +564,9 @@ The server-side "authorization code" flow, with the official `google-auth-librar
 2. The admin runs `npm run reset-link -- student@example.com` on the server. It inserts a
    `password_resets` row and prints `https://trellis.niteshkumar.xyz/reset?token=…`,
    valid for one hour.
+   In production: `docker compose exec api node dist/db/reset-link.js student@example.com`.
+   Making a new link cancels any older unused one. The link is printed once; only its
+   hash is stored, so a lost link means making another.
 3. The admin replies with the link. The student sets a new password
    (`POST /api/auth/reset-password`), which marks the link used and deletes all of that
    account's refresh tokens.
@@ -586,9 +600,9 @@ token**, never from the body or the URL.
 | Method | Path | Body → Returns |
 |---|---|---|
 | GET | `/api/state` | → `{ student, goalIds, claims, checkIns, experiences, opened, promptTakes, messages, moreMessages }`: everything the store holds, in one call. `messages` is the latest 50 per subject; `promptTakes` the latest 20 |
-| PUT | `/api/goals/:subjectId` | `{goalId}` → `{subjectId, goalId, since}` |
-| POST | `/api/claims` | `{claims: [{topicId, claim}]}` → `Claim[]` (the sort; later claims win per topic) |
-| POST | `/api/opened` | `{topicId}` → `204` |
+| PUT | `/api/goals/:subjectId` | `{goalId}` → `{subjectId, goalId, since}`. Setting the same goal again keeps `since` |
+| POST | `/api/claims` | `{claims: [{topicId, claim}]}` → `201 Claim[]` (the sort; later claims win per topic, so a repeated topic in one request keeps only its last claim) |
+| POST | `/api/opened` | `{topicId}` → `204`. Big topics only; opening one twice is fine |
 | POST | `/api/subject-requests` | `{text}` → `204` |
 | POST | `/api/prompt-takes` | `{topicId, via}` → `201` |
 | GET | `/api/check-ins` | → `CheckIn[]`, newest first |
@@ -842,14 +856,17 @@ deploy (`docs/aws.md` §6). Secrets are never committed and never baked into an 
 
   | Routes | Limit | Keyed by |
   |---|---|---|
-  | `/api/auth/login`, `/register`, `/reset-password` | 10 per 15 minutes | IP address |
+  | `/api/auth/login`, `/register`, `/reset-password` | 10 per 15 minutes, each route counted on its own | IP address |
   | `/api/auth/refresh` | 60 per 15 minutes | IP address |
   | `POST /api/helper/*/messages` | 30 per minute | user id |
   | everything else under `/api` | 300 per minute | user id, or IP when signed out |
 
   Behind Caddy the visitor's address arrives in a header, so `app.set("trust proxy", 1)`
-  is required in production. Without it every visitor looks like Caddy and shares one
-  limit.
+  is required in production (set in `src/app.ts` when `NODE_ENV=production`). Without it
+  every visitor looks like Caddy and shares one limit.
+  The limits are off under Vitest (`config.rate_limits`), because tests sign up many
+  users from one address; `test/rate-limit.test.ts` checks the limiter itself.
+  Built so far: the auth rows. The helper and the general limit come with M4 and M5.
 - **Deleting an account** asks for the password again when the account has one.
 - **No admin routes.** There is no role check to get wrong because there is nothing only
   an admin can call. The admin works through scripts on the server.
@@ -1012,25 +1029,40 @@ Update this table at the start of each planning session from `git log` and merge
 | M1.4 Migration 0013, instructions seed, `GET /api/instructions` | done | `main`, 12 Nov 2026 |
 | M1.5 `GET /api/topics/:id/path-to/:targetId` | done | `main`, 12 Nov 2026 |
 | Design review; this doc, design.md v7, aws.md | done | `main`, 12 Nov 2026 |
-| M2 to M7, MS | not started | — |
+| M2.1 Migration 0007, `/api/auth/*`, hashed refresh tokens, config, `/api/me` | built, in review | `backend/m2` |
+| M2.2 `npm run reset-link`, `POST /api/auth/reset-password` | built, in review | `backend/m2` |
+| M2.3 Migration 0008, `PUT /api/goals/:subjectId` | built, in review | `backend/m2` |
+| M2.4 Migration 0009, `POST /api/claims` | built, in review | `backend/m2` |
+| M2.5 Migrations 0010, 0011, `POST /api/opened`, `POST /api/subject-requests` | built, in review | `backend/m2` |
+| M2.6 The API runs without Neo4j; `/api/health` | built, in review | `backend/m2` |
+| M3 to M7, MS | not started | — |
 
-**Expected test counts after M1:** 37 passed in `npm test`, 26 in `npm run test:integration`,
-none skipped (checked 12 Nov 2026).
+**Expected test counts after M2:** 94 passed in `npm test`, 45 in `npm run test:integration`,
+none skipped (checked 13 Nov 2026). After M1 they were 37 and 26.
+
+**Before running M2 locally:** `backend/.env` needs a `JWT_SECRET` of 32 characters or
+more (`openssl rand -hex 32`); the server refuses `admin123`. Then `npm run db:migrate:dev`
+to run 0007 to 0011. Migration 0007 deletes every stored refresh token (they were plain
+text and can't be converted), so everyone signs in once more.
 
 **Known gaps in the code today, each fixed by the task named:**
-- `/user/*` routes answer `{ error: "text" }`, reveal whether an email exists, store
-  refresh tokens unhashed and put the name and email in the token. → M2.1
-- `config` starts without `JWT_SECRET` or `DB_URL`. → M2.1
-- The server will not start without Neo4j. → M2.6
-- A body over 100 KB answers 500 instead of 413. → M2.1
+- `users.role` is still a column but nothing reads it (the token no longer carries it,
+  and there are no admin routes). Harmless; drop it in a later migration if it stays
+  unused.
+- `src/ai/models/jev.ts`, `deepseek.ts` and the `@openrouter/sdk` package are still
+  there. → M5.1
 - `errorHandler` treats every `ZodError` as the client's fault. → M5.2
 - `docker-compose.yml` (production) has pgAdmin, no Neo4j and no Caddy. → M7.1
 - `frontend/next.config.ts` strips `/api` when forwarding. → M6.1
-- `backend/example.env` still lists the OpenRouter variables and `JWT_SECRET=admin123`. → M2.1
 
 ## 12. Open questions
 
-Nothing blocks M2. To settle when reached:
+Nothing blocks M3. To settle when reached:
+
+- **Rate limits and a shared campus address.** The auth limits are per IP address. If a
+  class signs up together on one campus Wi-Fi, they may all share one public address,
+  and the 11th sign-up in 15 minutes gets `429`. Watch for it in the 18 Nov testing. The
+  usual fix is to key login by IP **and** email, with a looser cap per IP alone.
 
 - **Bedrock on the free plan.** The owner reports GLM 5 is available on the Trellis
   account. Confirm with one real call before M5 (`docs/aws.md` §5). If it is refused, set
