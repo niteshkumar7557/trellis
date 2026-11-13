@@ -8,10 +8,12 @@ import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { errorHandler, notFound } from "../src/middlewares/error.middleware.js";
-import { getSubjects, getSubjectGraph } from "../src/repos/graph.repo.js";
+import { forgetGraphState } from "../src/middlewares/graph.middleware.js";
+import { checkGraph, getSubjects, getSubjectGraph } from "../src/repos/graph.repo.js";
 import subjectRoutes from "../src/routes/subjects.routes.js";
 
 vi.mock("../src/repos/graph.repo.js", () => ({
+  checkGraph: vi.fn(),
   getSubjects: vi.fn(),
   getSubjectGraph: vi.fn(),
 }));
@@ -23,6 +25,29 @@ app.use(errorHandler);
 
 beforeEach(() => {
   vi.resetAllMocks();
+  forgetGraphState();
+  vi.mocked(checkGraph).mockResolvedValue({ state: "ok", problems: [] });
+});
+
+describe("while Neo4j is down or out of date", () => {
+  it.each(["down", "drift"] as const)("%s: both routes answer 503 graph_unavailable", async (state) => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(checkGraph).mockResolvedValue({ state, problems: ["test"] });
+    for (const url of ["/api/subjects", "/api/subjects/redis/graph"]) {
+      const res = await request(app).get(url);
+      expect(res.status).toBe(503);
+      expect(res.body.error.code).toBe("graph_unavailable");
+    }
+    expect(getSubjects).not.toHaveBeenCalled();
+  });
+
+  it("answers 503, not 500, when Neo4j drops in the middle of a request", async () => {
+    const outage = Object.assign(new Error("Could not perform discovery"), { code: "ServiceUnavailable" });
+    vi.mocked(getSubjects).mockRejectedValue(outage);
+    const res = await request(app).get("/api/subjects");
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe("graph_unavailable");
+  });
 });
 
 describe("GET /api/subjects", () => {

@@ -73,14 +73,9 @@ export async function getSubjectGraph(subjectId: string): Promise<SubjectGraph |
   return { topics, edges, goals };
 }
 
-// ---------------------------------------------------------------- the snapshot
+// ---------------------------------------------------------------- the health check
 
-// The graph changes only when someone reseeds, so it's read once at boot. Later checks
-// ("is this a real topic id?") then cost no database call. The price: a reseed needs a
-// server restart.
-let snapshotTopicIds: Set<string> | null = null;
-
-/** Loads every subject's graph into one, and remembers its topic ids. */
+/** Every subject's graph in one, as Neo4j holds it. */
 export async function loadGraphSnapshot(): Promise<SubjectGraph> {
   const subjects = await getSubjects();
   const graphs = await Promise.all(subjects.map((s) => getSubjectGraph(s.id)));
@@ -91,25 +86,30 @@ export async function loadGraphSnapshot(): Promise<SubjectGraph> {
     snapshot.edges.push(...g.edges);
     snapshot.goals.push(...g.goals);
   }
-  snapshotTopicIds = new Set(snapshot.topics.map((t) => t.id));
   return snapshot;
 }
 
-/** Is this a topic in the snapshot? False if nothing has been loaded yet. */
-export function topicExists(topicId: string): boolean {
-  return snapshotTopicIds?.has(topicId) ?? false;
-}
-
 /**
- * Fails fast: if Neo4j doesn't match the files, the server would give answers that don't
- * match its own map, so it refuses to start and says why.
+ * "ok": reachable and the same as shared/data.
+ * "down": can't be reached (not running, wrong password, ...).
+ * "drift": reachable, but different from the files: someone changed shared/data and
+ *   didn't run `npm run seed:graph`. Serving it would show a map that disagrees with the
+ *   answers shared/graph.ts computes from the files.
  */
-export async function checkGraphAtBoot(): Promise<void> {
-  const snapshot = await loadGraphSnapshot();
+export type GraphState = "ok" | "down" | "drift";
+
+/** Never throws: the answer is the state, plus lines saying what is wrong, for the log. */
+export async function checkGraph(): Promise<{ state: GraphState; problems: string[] }> {
+  let snapshot: SubjectGraph;
+  try {
+    await driver.verifyConnectivity();
+    snapshot = await loadGraphSnapshot();
+  } catch (err) {
+    return { state: "down", problems: [err instanceof Error ? err.message : String(err)] };
+  }
   const drift = findDrift(snapshot, { topics: fileTopics, edges: fileEdges, goals: fileGoals });
   if (drift.length > 0) {
-    throw new Error(
-      `Neo4j doesn't match shared/data. Run \`npm run seed:graph\`, then restart.\n  ${drift.join("\n  ")}`,
-    );
+    return { state: "drift", problems: ["Run `npm run seed:graph`.", ...drift] };
   }
+  return { state: "ok", problems: [] };
 }

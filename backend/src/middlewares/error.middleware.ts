@@ -9,6 +9,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { HttpError } from "../utils/http-error.js";
+import { forgetGraphState, graphUnavailableError, isGraphOutage } from "./graph.middleware.js";
 
 /** No route matched this method + path. */
 export function notFound(req: Request, res: Response) {
@@ -48,6 +49,13 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return res.status(413).json({
       error: { code: "too_large", message: "The request body is too large." },
     });
+  }
+
+  // Neo4j went down after requireGraph last saw it up. It is an outage of an optional
+  // part, not a bug: answer like requireGraph would have, and make the next request check.
+  if (isGraphOutage(err)) {
+    forgetGraphState();
+    err = graphUnavailableError();
   }
 
   if (err instanceof HttpError) {

@@ -4,13 +4,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { edges, goals, subjects, topicById, topicsOf } from "@shared/data";
 import { seedGraph } from "../../src/db/graph-seed.js";
 import { closeNeo4j } from "../../src/db/neo4j.js";
-import {
-  checkGraphAtBoot,
-  getSubjectGraph,
-  getSubjects,
-  loadGraphSnapshot,
-  topicExists,
-} from "../../src/repos/graph.repo.js";
+import { checkGraph, getSubjectGraph, getSubjects } from "../../src/repos/graph.repo.js";
 import { cypher } from "./helpers.js";
 
 afterAll(closeNeo4j);
@@ -45,18 +39,11 @@ describe("the graph repo", () => {
     }
   });
 
-  it("loads a snapshot that knows every topic, and no made-up one", async () => {
-    expect(topicExists("rn-state")).toBe(false);
-    await loadGraphSnapshot();
-    expect(topicExists("rn-state")).toBe(true);
-    expect(topicExists("rn-made-up")).toBe(false);
+  it("reports ok when Neo4j matches the files", async () => {
+    expect(await checkGraph()).toEqual({ state: "ok", problems: [] });
   });
 
-  it("passes the boot check when Neo4j matches the files", async () => {
-    await expect(checkGraphAtBoot()).resolves.toBeUndefined();
-  });
-
-  it("fails the boot check when Neo4j doesn't match, and says what to do", async () => {
+  it("reports drift when Neo4j doesn't match, and says what to do", async () => {
     const [link] = await cypher(
       `MATCH (a:Topic)-[r:HELPS]->(b:Topic)
        WITH a, b, r ORDER BY r.position LIMIT 1
@@ -64,10 +51,10 @@ describe("the graph repo", () => {
        RETURN a.id AS from, b.id AS to`,
     );
     try {
-      await expect(checkGraphAtBoot()).rejects.toThrow(/seed:graph/);
-      await expect(checkGraphAtBoot()).rejects.toThrow(
-        `helps link ${link.from} → ${link.to} is in the files but not in Neo4j`,
-      );
+      const { state, problems } = await checkGraph();
+      expect(state).toBe("drift");
+      expect(problems[0]).toMatch(/seed:graph/);
+      expect(problems).toContain(`helps link ${link.from} → ${link.to} is in the files but not in Neo4j`);
     } finally {
       await seedGraph();
     }
