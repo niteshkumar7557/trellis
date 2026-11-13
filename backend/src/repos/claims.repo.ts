@@ -1,6 +1,7 @@
 // What the student said at the sort (claims, migration 0009).
 
 import type { Claim, ClaimKind } from "@shared/types";
+import type { PoolClient } from "pg";
 import pool from "../db/index.js";
 
 /**
@@ -18,6 +19,15 @@ export async function addClaims(userId: number, claims: { topicId: string; claim
      FROM unnest($2::text[], $3::text[]) AS t(topic_id, claim)
      RETURNING topic_id, claim, at`,
     [userId, claims.map((c) => c.topicId), claims.map((c) => c.claim)],
+  );
+  return rows.map((r) => ({ topicId: r.topic_id, claim: r.claim, at: r.at.toISOString() }));
+}
+
+/** Every claim, oldest first: the history, in the order it happened. */
+export async function listClaims(userId: number, db: Pick<PoolClient, "query"> = pool): Promise<Claim[]> {
+  const { rows } = await db.query<{ topic_id: string; claim: ClaimKind; at: Date }>(
+    "SELECT topic_id, claim, at FROM claims WHERE user_id = $1 ORDER BY at, id",
+    [userId],
   );
   return rows.map((r) => ({ topicId: r.topic_id, claim: r.claim, at: r.at.toISOString() }));
 }

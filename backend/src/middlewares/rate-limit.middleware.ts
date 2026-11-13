@@ -42,5 +42,8 @@ export const registerLimiter = makeLimiter(10, 15 * MINUTE);
 export const loginLimiter = makeLimiter(10, 15 * MINUTE);
 export const resetLimiter = makeLimiter(10, 15 * MINUTE);
 
+/** Deleting the account checks the password again, so it is a guess like a login. */
+export const deleteAccountLimiter = makeLimiter(10, 15 * MINUTE);
+
 /** refresh: every open tab calls it on load and every 15 minutes, so it needs more room. */
 export const refreshLimiter = makeLimiter(60, 15 * MINUTE);

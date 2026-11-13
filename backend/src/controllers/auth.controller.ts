@@ -61,6 +61,14 @@ function refreshCookieOptions(): CookieOptions {
   };
 }
 
+/**
+ * Removes the cookie from the browser. clearCookie must be given the same path the cookie
+ * was set with, or it clears nothing. Also used when the account is deleted.
+ */
+export function clearRefreshCookie(res: Response) {
+  res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions(), maxAge: undefined });
+}
+
 /** Makes a refresh token, stores its hash, and puts the token itself in the cookie. */
 async function startSession(res: Response, userId: number) {
   const token = newRandomToken();
@@ -120,7 +128,7 @@ export async function refresh(req: Request, res: Response) {
   const userId = typeof token === "string" ? await useRefreshToken(hashToken(token)) : null;
   if (userId === null) {
     // A dead cookie is no use to the browser; remove it so it stops being sent.
-    res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions(), maxAge: undefined });
+    clearRefreshCookie(res);
     throw new HttpError(401, "unauthorized", "Please sign in again.");
   }
   // The stored expiry was just extended; send the cookie again so the browser's copy is
@@ -133,8 +141,7 @@ export async function refresh(req: Request, res: Response) {
 export async function logout(req: Request, res: Response) {
   const token: unknown = req.cookies?.[REFRESH_COOKIE];
   if (typeof token === "string") await deleteRefreshToken(hashToken(token));
-  // clearCookie must be given the same path the cookie was set with, or it clears nothing.
-  res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions(), maxAge: undefined });
+  clearRefreshCookie(res);
   res.sendStatus(204);
 }
 

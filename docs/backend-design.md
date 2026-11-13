@@ -7,10 +7,10 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (13 Nov 2026):** M0 and M1 are done and on `main`. M2 (accounts and the
-student's record) is built and tested on `backend/m2`, waiting for review. Next is M3
-(§10, §11). The frontend still runs on sample data with no API calls. **The deadline is 21 Nov 2026**: the build is planned for
-13 to 17 Nov, then testing with real users.
+**Status (13 Nov 2026):** M0, M1 and M2 are done and on `main`. M3 is built and tested on
+`backend/m3`, waiting for review. Next is M4 (§10, §11). The frontend still runs on sample data with no API calls.
+**The deadline is 21 Nov 2026**: the build is planned for 13 to 15 Nov (re-planned on
+13 Nov from 13 to 17 Nov), then testing with real users.
 
 **Contents:** 0 Workflow and rules · 1 What the backend does · 2 Architecture · 3 Data
 model · 4 API and auth · 5 The helper · 6 Prompts · 7 Derived logic · 8 Cross-cutting ·
@@ -212,9 +212,8 @@ called once per typed helper message and nowhere else. Details in §5.
   new one. The runner (`src/db/migrate.ts`) applies every `.sql` file not yet recorded in
   `_migrations`, in filename order, each in its own transaction.
 
-**What exists today:** `users`, `refresh_tokens`, `password_resets`, `student_goals`,
-`claims`, `opened_topics`, `subject_requests`, `prompt_instructions`, `_migrations`.
-Migrations 0001 to 0011 and 0013 exist (0012 and 0014 onwards come with M3).
+**What exists today:** every table below except `ai_calls` (migration 0018, M5), plus
+`prompt_instructions` and `_migrations`. Migrations 0001 to 0017 exist.
 
 The SQL below is the plan. Once a migration file exists, the file is the truth.
 
@@ -455,7 +454,7 @@ Every error leaves the server in one shape:
 | 400 | `invalid_request`, `invalid_json` | The body does not fit its schema, or names an id that is not in `shared/data` |
 | 400 | `reset_link_invalid` | A reset link that is unknown, expired or already used |
 | 401 | `unauthorized`, `invalid_credentials` | No valid token; wrong email or password |
-| 403 | `forbidden` | Signed in, but not allowed |
+| 403 | `forbidden`, `wrong_password` | Signed in, but not allowed; the password given to delete the account is wrong or missing. 403, not 401, because the frontend answers every 401 by refreshing and retrying |
 | 404 | `not_found` | No such route or row (also when the row is someone else's) |
 | 409 | `email_taken`, `proposal_not_open` | The request conflicts with the current state |
 | 413 | `too_large` | Body over 100 KB |
@@ -522,8 +521,8 @@ they are choices, not surprises.
 | POST | `/api/auth/reset-password` | `{token, password}` → `204`. Signs out every device. It does not sign this browser in: the student logs in with the new password, which proves it works |
 | GET | `/api/me` | → `Student` `{id, name, email, joinedAt, hasPassword, goals[]}` |
 | PATCH | `/api/me` | `{name}` → `Student`. The email cannot be changed in v1 (no way to verify the new one) |
-| DELETE | `/api/me` | `{password}` if the account has one → `204`. Deletes the account and everything with it |
-| GET | `/api/export` | → everything Trellis holds about the student, as one JSON download |
+| DELETE | `/api/me` | `{password}` if the account has one → `204`. Deletes the account and everything with it (one `DELETE`; every table cascades) and clears the refresh cookie. Rate-limited like login |
+| GET | `/api/export` | → everything Trellis holds about the student, as one JSON download (`Content-Disposition: attachment`), unpaged. Left out on purpose: the password hash and the token hashes |
 
 ### Sign in with Google
 
@@ -599,7 +598,7 @@ token**, never from the body or the URL.
 
 | Method | Path | Body → Returns |
 |---|---|---|
-| GET | `/api/state` | → `{ student, goalIds, claims, checkIns, experiences, opened, promptTakes, messages, moreMessages }`: everything the store holds, in one call. `messages` is the latest 50 per subject; `promptTakes` the latest 20 |
+| GET | `/api/state` | → `{ student, goalIds, claims, checkIns, experiences, opened, promptTakes, messages, moreMessages }`: everything the store holds, in one call. `messages` is the latest 50 per subject, all subjects in one list, oldest first; `moreMessages` is `{subjectId: boolean}`; `promptTakes` the latest 20. Read in one `REPEATABLE READ` snapshot (`readSnapshot` in `src/db/index.ts`), so a save landing mid-request can't give a half-updated answer |
 | PUT | `/api/goals/:subjectId` | `{goalId}` → `{subjectId, goalId, since}`. Setting the same goal again keeps `since` |
 | POST | `/api/claims` | `{claims: [{topicId, claim}]}` → `201 Claim[]` (the sort; later claims win per topic, so a repeated topic in one request keeps only its last claim) |
 | POST | `/api/opened` | `{topicId}` → `204`. Big topics only; opening one twice is fine |
@@ -608,7 +607,7 @@ token**, never from the body or the URL.
 | GET | `/api/check-ins` | → `CheckIn[]`, newest first |
 | PATCH | `/api/check-ins/:id` | `{topicId?, outcome?, text?}` → `CheckIn` |
 | DELETE | `/api/check-ins/:id` | → `204` |
-| PATCH | `/api/experiences/:id` | `{text, kind?}` → `Experience`. The server rebuilds `line` with the rule-based `tidy()`; no model call |
+| PATCH | `/api/experiences/:id` | `{text, kind?}` → `Experience`. The server rebuilds `line` with the rule-based `tidy()`; no model call, and a `line` sent by the client is ignored |
 | DELETE | `/api/experiences/:id` | → `204` |
 
 There is **no** "create check-in" endpoint. Updates are created only by saving a helper
@@ -960,7 +959,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 **M0: Foundations** ✅ (merged into `main`, 7 Nov 2026)
 **M1: Content (Neo4j)** ✅ (merged into `main`, 12 Nov 2026)
 
-**M2: Accounts and the student's record** (13 Nov)
+**M2: Accounts and the student's record** ✅ (merged into `main`, 13 Nov 2026)
 - M2.1 Migration 0007. Auth moves to `/api/auth/*`: the error shape, zod bodies, one
   `invalid_credentials` answer, hashed refresh tokens (60 days, extended on use), the
   `{sub}` token, auth rate limits, config that refuses to start without secrets.
@@ -972,7 +971,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M2.6 The API starts without Neo4j; the graph routes answer 503; `/api/health` reports both;
   topic ids are checked against `shared/data`.
 
-**M3: Check-ins, experiences, prompts taken** (14 Nov)
+**M3: Check-ins, experiences, prompts taken** (13 Nov)
 - M3.1 Migrations 0012, 0014 and 0015 plus `GET/PATCH/DELETE /api/check-ins`.
 - M3.2 Migration 0016 plus `PATCH/DELETE /api/experiences`.
 - M3.3 Migration 0017 plus `POST /api/prompt-takes`.
@@ -984,7 +983,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M4.2 `GET/POST /api/helper/:subject/messages` on the rules, with paging.
 - M4.3 Proposals: save, cancel, undo (the guarded update; one transaction).
 
-**M6: Connect the frontend** (15 Nov)
+**M6: Connect the frontend** (14 Nov)
 - M6.1 The API client, the store on the API, loading and error states, demo mode, the
   rewrite keeping `/api`.
 - M6.2 Real sign-up and login, the reset page, and the wording changes in frontend.md §13.
@@ -992,12 +991,12 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M6.4 Prompt takes and the "how did it go?" line; subject requests; the short sort after
   a goal change. (Needs MS.3.)
 
-**MS: Rule changes in `shared/`** (16 Nov; MS.3 earlier, with M6.4)
+**MS: Rule changes in `shared/`** (14 Nov; MS.3 before M6.4)
 - MS.1 The new suspect ranking (§7), with golden-test cases.
 - MS.2 The new prompt experience rules, `base-report-back`, and removing `uses`.
 - MS.3 `awaitingReport` and `unsortedAreas`.
 
-**M5: The helper with GLM 5** (16 Nov)
+**M5: The helper with GLM 5** (15 Nov)
 - M5.1 Migration 0018, `src/ai/bedrock.ts`: the Converse call, the timeout, the `ai_calls`
   row with its cost. Remove the OpenRouter package and files.
 - M5.2 `src/ai/reader.ts`: instructions, schema, validation, the fallback to the rules.
@@ -1005,7 +1004,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
   student's bad request.
 - M5.3 The daily message limit and the daily AI budget; tests with Bedrock mocked.
 
-**M7: Deploy** (17 Nov; the steps are in `docs/aws.md` §9)
+**M7: Deploy** (15 Nov; the steps are in `docs/aws.md` §9)
 - M7.1 The production compose file: Caddy, Postgres, Neo4j with memory caps, the API,
   Next, one-shot `migrate` and `seed-graph` services. Remove pgAdmin. arm64 images in ECR.
 - M7.2 The AWS resources: server, role, DNS, backup bucket, budgets.
@@ -1029,16 +1028,31 @@ Update this table at the start of each planning session from `git log` and merge
 | M1.4 Migration 0013, instructions seed, `GET /api/instructions` | done | `main`, 12 Nov 2026 |
 | M1.5 `GET /api/topics/:id/path-to/:targetId` | done | `main`, 12 Nov 2026 |
 | Design review; this doc, design.md v7, aws.md | done | `main`, 12 Nov 2026 |
-| M2.1 Migration 0007, `/api/auth/*`, hashed refresh tokens, config, `/api/me` | built, in review | `backend/m2` |
-| M2.2 `npm run reset-link`, `POST /api/auth/reset-password` | built, in review | `backend/m2` |
-| M2.3 Migration 0008, `PUT /api/goals/:subjectId` | built, in review | `backend/m2` |
-| M2.4 Migration 0009, `POST /api/claims` | built, in review | `backend/m2` |
-| M2.5 Migrations 0010, 0011, `POST /api/opened`, `POST /api/subject-requests` | built, in review | `backend/m2` |
-| M2.6 The API runs without Neo4j; `/api/health` | built, in review | `backend/m2` |
-| M3 to M7, MS | not started | — |
+| M2.1 Migration 0007, `/api/auth/*`, hashed refresh tokens, config, `/api/me` | done | `main`, 13 Nov 2026 |
+| M2.2 `npm run reset-link`, `POST /api/auth/reset-password` | done | `main`, 13 Nov 2026 |
+| M2.3 Migration 0008, `PUT /api/goals/:subjectId` | done | `main`, 13 Nov 2026 |
+| M2.4 Migration 0009, `POST /api/claims` | done | `main`, 13 Nov 2026 |
+| M2.5 Migrations 0010, 0011, `POST /api/opened`, `POST /api/subject-requests` | done | `main`, 13 Nov 2026 |
+| M2.6 The API runs without Neo4j; `/api/health` | done | `main`, 13 Nov 2026 |
+| M3.1 Migrations 0012, 0014, 0015, `GET/PATCH/DELETE /api/check-ins` | built, in review | `backend/m3` |
+| M3.2 Migration 0016, `PATCH/DELETE /api/experiences` | built, in review | `backend/m3` |
+| M3.3 Migration 0017, `POST /api/prompt-takes` | built, in review | `backend/m3` |
+| M3.4 `GET /api/state`, `GET /api/export`, `DELETE /api/me` | built, in review | `backend/m3` |
+| M4 to M7, MS | not started | — |
 
-**Expected test counts after M2:** 94 passed in `npm test`, 45 in `npm run test:integration`,
-none skipped (checked 13 Nov 2026). After M1 they were 37 and 26.
+**Expected test counts after M3:** 110 passed in `npm test`, 60 in `npm run test:integration`,
+none skipped (checked 13 Nov 2026). After M2 they were 94 and 45.
+
+**How M3 is tested without the helper:** nothing can create a check-in or an experience
+through the API until M4.3 (only saving a proposal does). The integration tests write
+those rows directly, the way a save would, with `insertSavedCheckIn` and
+`insertSavedExperience` in `test/integration/helpers.ts`. M4.3 replaces them with the
+real save.
+
+**Messages are read already, written in M4.** `src/repos/chat.repo.ts listMessages()`
+reads a thread and fills each stored `{type: "confirm", proposalId}` card from its
+proposal (payload, state, saved ids). `/api/state` uses it now; M4.2's paging route
+reuses it.
 
 **Before running M2 locally:** `backend/.env` needs a `JWT_SECRET` of 32 characters or
 more (`openssl rand -hex 32`); the server refuses `admin123`. Then `npm run db:migrate:dev`

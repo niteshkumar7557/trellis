@@ -4,11 +4,17 @@ import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { errorHandler, notFound } from "../src/middlewares/error.middleware.js";
-import { getStudent, updateName } from "../src/repos/users.repo.js";
+import bcrypt from "bcrypt";
+import { deleteUser, findLoginById, getStudent, updateName } from "../src/repos/users.repo.js";
 import meRoutes from "../src/routes/me.routes.js";
 import { bearerToken } from "./auth-token.js";
 
-vi.mock("../src/repos/users.repo.js", () => ({ getStudent: vi.fn(), updateName: vi.fn() }));
+vi.mock("../src/repos/users.repo.js", () => ({
+  getStudent: vi.fn(),
+  updateName: vi.fn(),
+  findLoginById: vi.fn(),
+  deleteUser: vi.fn(),
+}));
 
 const app = express();
 app.use(express.json());
@@ -61,5 +67,30 @@ describe("PATCH /api/me", () => {
       expect(res.status).toBe(400);
     }
     expect(updateName).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/me", () => {
+  it("deletes a password account only with the right password, and clears the cookie", async () => {
+    vi.mocked(findLoginById).mockResolvedValue({ id: 9, hashed_password: await bcrypt.hash("correct horse", 4) });
+
+    for (const body of [{}, { password: "wrong" }]) {
+      const res = await request(app).delete("/api/me").set("Authorization", bearerToken(9)).send(body);
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("wrong_password"); // not 401: the client would refresh and retry
+    }
+    expect(deleteUser).not.toHaveBeenCalled();
+
+    const ok = await request(app).delete("/api/me").set("Authorization", bearerToken(9)).send({ password: "correct horse" });
+    expect(ok.status).toBe(204);
+    expect(deleteUser).toHaveBeenCalledWith(9);
+    expect(String(ok.headers["set-cookie"])).toMatch(/^refresh_token=;.*Path=\/api\/auth/);
+  });
+
+  it("deletes a Google-only account with no password and no body at all", async () => {
+    vi.mocked(findLoginById).mockResolvedValue({ id: 9, hashed_password: null });
+    const res = await request(app).delete("/api/me").set("Authorization", bearerToken(9));
+    expect(res.status).toBe(204);
+    expect(deleteUser).toHaveBeenCalledWith(9);
   });
 });

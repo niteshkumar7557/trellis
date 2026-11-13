@@ -1,6 +1,7 @@
 // The student's goal per subject (student_goals, migration 0008).
 
 import type { SubjectId } from "@shared/types";
+import type { PoolClient } from "pg";
 import pool from "../db/index.js";
 
 export interface StudentGoal {
@@ -43,8 +44,8 @@ export async function setGoal(userId: number, subjectId: SubjectId, goalId: stri
 }
 
 /** Every goal the student has, oldest choice first. */
-export async function listGoals(userId: number): Promise<StudentGoal[]> {
-  const { rows } = await pool.query<GoalRow>(
+export async function listGoals(userId: number, db: Pick<PoolClient, "query"> = pool): Promise<StudentGoal[]> {
+  const { rows } = await db.query<GoalRow>(
     "SELECT subject_id, goal_id, since FROM student_goals WHERE user_id = $1 ORDER BY since, subject_id",
     [userId],
   );

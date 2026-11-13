@@ -49,11 +49,14 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   agreed changes still to build are in `docs/frontend.md` §13.
 - **`shared/`:** the domain code both apps run: types, data, graph, prompt, parse, helper.
   The frontend imports it as `@shared/*`. Keep it free of React, Next and Node-only APIs.
-- **Backend:** M0 (foundations) and M1 (Neo4j content: the graph seed, `GET /api/subjects`,
-  the subject graph, `GET /api/instructions` and the path query) are done and on `main`.
-  M2 (accounts under `/api/auth`, `/api/me`, reset links, goals, claims, opened topics,
-  subject requests, and running without Neo4j) is built on `backend/m2`, awaiting the
-  owner's review. **Next up:** M3, check-ins, experiences and prompts taken.
+- **Backend:** M0 (foundations), M1 (Neo4j content: the graph seed, `GET /api/subjects`,
+  the subject graph, `GET /api/instructions` and the path query) and M2 (accounts under
+  `/api/auth`, `/api/me`, reset links, goals, claims, opened topics, subject requests, and
+  running without Neo4j) are done and on `main`. M3 (check-ins, experiences, prompt takes,
+  `GET /api/state`, `GET /api/export`, `DELETE /api/me`) is built on `backend/m3`, awaiting
+  the owner's review. **Next up:** M4, the helper on rules.
+- **Plan (re-planned 13 Nov 2026):** M3 on 13 Nov; M4, M6 and MS on 14 Nov; M5 and M7 on
+  15 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** nothing created yet. The plan and the setup steps are in `docs/aws.md`.
 - **Git:** `main` is the only branch. Each milestone gets its own branch from `main`
   (`backend/m2`, …); commit only there. **Push and merge only on the owner's say-so.** It goes

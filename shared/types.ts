@@ -96,6 +96,17 @@ export interface Experience {
   uses?: number;
 }
 
+/**
+ * The student copied a prompt or opened it in an AI. Lets the helper ask "how did State
+ * go?" when they come back (design.md §7).
+ */
+export interface PromptTake {
+  id: string;
+  topicId: string;
+  via: "copy" | "chatgpt" | "claude";
+  at: string;
+}
+
 /** Fixed prompt text kept in the database, in layers. */
 export interface Instruction {
   id: string;
@@ -125,6 +136,8 @@ export type Card =
    */
   | {
       type: "confirm";
+      /** Set by the API: Save, Cancel and Undo are addressed by it. The demo store has none. */
+      proposalId?: string;
       proposal: Proposal;
       state: "open" | "saved" | "cancelled" | "undone";
       saved?: { checkIns: string[]; experiences: string[] };
