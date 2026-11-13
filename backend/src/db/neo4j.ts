@@ -13,13 +13,12 @@ const driver = neo4j.driver(
   // the driver returns special Integer objects: { low: 45, high: 0 } instead of 45. Our
   // numbers (minutes, positions) are small, so plain numbers are safe and match the shapes
   // in shared/types.ts.
-  { disableLosslessIntegers: true },
+  //
+  // The two timeouts make a Neo4j outage cost seconds, not half a minute. By default the
+  // driver waits 30 s to connect and keeps retrying a failed query for 30 s. Neo4j is
+  // optional (backend-design.md §2), so a fast 503 is better than a request that hangs.
+  { disableLosslessIntegers: true, connectionTimeout: 3000, maxTransactionRetryTime: 3000 },
 );
-
-/** Throws if Neo4j can't be reached or the password is wrong. Called once, at boot. */
-export async function verifyNeo4j() {
-  await driver.verifyConnectivity();
-}
 
 /** A script must close the driver when it's done, or Node stays alive waiting on it. */
 export async function closeNeo4j() {

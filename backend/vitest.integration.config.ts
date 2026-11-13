@@ -12,6 +12,9 @@ export default defineConfig({
   test: {
     include: ["test/integration/**/*.test.ts"],
     environment: "node",
+    // The real DB_URL comes from backend/.env. The secret is fixed so that tests which sign
+    // their own tokens (test/auth-token.ts) match the server's.
+    env: { JWT_SECRET: "test-secret-that-is-at-least-32-characters-long" },
     // Runs once, before any test file: seeds the graph, so reads have something to read.
     globalSetup: ["test/integration/global-setup.ts"],
     // One file at a time: they share one database, and some change it on purpose.

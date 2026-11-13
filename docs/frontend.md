@@ -315,7 +315,7 @@ These are the shapes the screens consume (`shared/types.ts`). The backend return
 | `ChatMessage` | `id, subjectId, at, role: "student" \| "helper", text, cards?, asks?: { kind, pending: Proposal }` |
 | `Card` | `confirm` (`proposal, state: open \| saved \| cancelled \| undone, saved?: {checkIns[], experiences[]}`) · `prompt` (`topicId`) · `choose` (`outcome, options[{label, topicIds, outcome?}]`) · `suggest` (`options[]`) |
 | `Proposal` | `updates: {topicId, outcome}[], experiences: {topicId, kind, text, line}[], said`. Nothing is written until the student saves it |
-| `Student` | `id, name, email, joinedAt, goals: {subjectId, goalId, since}[]` |
+| `Student` | `id, name, email, joinedAt, hasPassword, goals: {subjectId, goalId, since}[]` |
 | `Status` | `new \| know \| shaky \| learning \| stuck \| done`: **derived, never stored** |
 
 The endpoints that serve these are in `backend-design.md` §4.
@@ -357,7 +357,7 @@ where it is built. Until then, sections 1 to 12 describe the code as it stands.
 | `Experience` | `uses` is removed |
 | `Card` (confirm) | gains `proposalId`. Save, cancel and undo are addressed by it, not by message id and card position |
 | `PromptTake` (new) | `id, topicId, via: "copy" \| "chatgpt" \| "claude", at` |
-| `Student` | gains `hasPassword` (Google-only accounts have none) |
+| `Student` | gains `hasPassword` (Google-only accounts have none). **Done in M2.1** |
 | `ChatMessage` | student messages gain `readBy?: "tap" \| "model" \| "rules"`, for debugging only; not shown |
 | `Reading` (new, in `shared/helper.ts`) | what a message says, whoever read it (backend-design.md §5) |
 

@@ -9,6 +9,7 @@ export const student: Student = {
   name: "Nitesh",
   email: "nitesh.k@students.local",
   joinedAt: "2026-10-12",
+  hasPassword: true,
   goals: [
     { subjectId: "react-native", goalId: "goal-rn-first-app", since: "2026-10-12" },
   ],

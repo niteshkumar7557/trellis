@@ -14,7 +14,7 @@ import { validateBody } from "../src/middlewares/validate.middleware.js";
 import { HttpError } from "../src/utils/http-error.js";
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "1kb" })); // small, so the 413 test needs a small body
 app.post("/echo", validateBody(z.object({ name: z.string().min(1) })), (req, res) => {
   res.json(req.body);
 });
@@ -78,6 +78,12 @@ describe("the error shape", () => {
     const res = await request(app).post("/echo").set("Content-Type", "application/json").send('{"name": ');
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("invalid_json");
+  });
+
+  it("answers 413 too_large for a body over the limit, not 500", async () => {
+    const res = await request(app).post("/echo").send({ name: "x".repeat(2000) });
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe("too_large");
   });
 
   it("answers an HttpError with its own status, code and message", async () => {

@@ -14,6 +14,8 @@ export default defineConfig({
     "db/migrate": "src/db/migrate.ts",
     "db/seed": "src/db/seed.ts",
     "db/seed-graph": "src/db/seed-graph.ts",
+    // The admin's forgotten-password tool: `node dist/db/reset-link.js <email>`.
+    "db/reset-link": "src/db/reset-link.ts",
   },
   format: ["esm"], // package.json says "type": "module"
   platform: "node",

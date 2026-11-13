@@ -1,32 +1,52 @@
+// The Express app: middleware first, then the routes, then the 404 and error handlers.
+// Order matters: a request goes down this list until something answers it.
+// src/index.ts starts it; the tests import it without starting a server.
+
+import cookieParser from "cookie-parser";
 import express from "express";
 import helmet from "helmet";
-import cors from "cors";
 import config from "./config/index.js";
 import pool from "./db/index.js";
-import { makeHealthHandler } from "./utils/health.js";
-import userRoutes from "./routes/user.routes.js";
+import { errorHandler, notFound } from "./middlewares/error.middleware.js";
+import { graphState } from "./middlewares/graph.middleware.js";
+import authRoutes from "./routes/auth.routes.js";
+import claimRoutes from "./routes/claims.routes.js";
+import goalRoutes from "./routes/goals.routes.js";
+import instructionRoutes from "./routes/instructions.routes.js";
+import meRoutes from "./routes/me.routes.js";
+import openedRoutes from "./routes/opened.routes.js";
+import subjectRequestRoutes from "./routes/subject-requests.routes.js";
 import subjectRoutes from "./routes/subjects.routes.js";
 import topicRoutes from "./routes/topics.routes.js";
-import instructionRoutes from "./routes/instructions.routes.js";
-import cookieParser from "cookie-parser";
-import { errorHandler, notFound } from "./middlewares/error.middleware.js";
+import { makeHealthHandler } from "./utils/health.js";
 
 const app = express();
 
-app.use(helmet());
-app.use(
-  cors({
-    origin: config.client_url,
-    credentials: true,
-  }),
-);
+// In production Caddy sits in front and passes the visitor's address in X-Forwarded-For.
+// "1" means: trust exactly one proxy hop. Without it, req.ip is Caddy's address for every
+// visitor, and the rate limits would treat the whole site as one person. Not set locally,
+// where a forged X-Forwarded-For header would otherwise be believed.
+if (config.is_production) app.set("trust proxy", 1);
 
-app.use(express.json());
+app.use(helmet());
+
+// No CORS: the browser reaches the API on the same origin as the pages (Caddy in
+// production, Next's rewrite in development; backend-design.md §2). With no CORS headers
+// the browser refuses cross-site reads, which is what we want.
+
+// 100 KB is far above any real body (the largest is a helper message of 2,000
+// characters). A bigger one answers 413 too_large (error.middleware.ts).
+app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 
-app.get("/health", makeHealthHandler(() => pool.query("SELECT 1")));
+app.get("/api/health", makeHealthHandler(() => pool.query("SELECT 1"), () => graphState()));
 
-app.use("/user", userRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/me", meRoutes);
+app.use("/api/goals", goalRoutes);
+app.use("/api/claims", claimRoutes);
+app.use("/api/opened", openedRoutes);
+app.use("/api/subject-requests", subjectRequestRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/topics", topicRoutes);
 app.use("/api/instructions", instructionRoutes);
