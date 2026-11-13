@@ -7,8 +7,8 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (13 Nov 2026):** M0, M1 and M2 are done and on `main`. M3 is in progress on
-`backend/m3` (§10, §11). The frontend still runs on sample data with no API calls.
+**Status (13 Nov 2026):** M0, M1 and M2 are done and on `main`. M3 is built and tested on
+`backend/m3`, waiting for review. Next is M4 (§10, §11). The frontend still runs on sample data with no API calls.
 **The deadline is 21 Nov 2026**: the build is planned for 13 to 15 Nov (re-planned on
 13 Nov from 13 to 17 Nov), then testing with real users.
 
@@ -212,9 +212,8 @@ called once per typed helper message and nowhere else. Details in §5.
   new one. The runner (`src/db/migrate.ts`) applies every `.sql` file not yet recorded in
   `_migrations`, in filename order, each in its own transaction.
 
-**What exists today:** `users`, `refresh_tokens`, `password_resets`, `student_goals`,
-`claims`, `opened_topics`, `subject_requests`, `prompt_instructions`, `_migrations`.
-Migrations 0001 to 0011 and 0013 exist (0012 and 0014 onwards come with M3).
+**What exists today:** every table below except `ai_calls` (migration 0018, M5), plus
+`prompt_instructions` and `_migrations`. Migrations 0001 to 0017 exist.
 
 The SQL below is the plan. Once a migration file exists, the file is the truth.
 
@@ -455,7 +454,7 @@ Every error leaves the server in one shape:
 | 400 | `invalid_request`, `invalid_json` | The body does not fit its schema, or names an id that is not in `shared/data` |
 | 400 | `reset_link_invalid` | A reset link that is unknown, expired or already used |
 | 401 | `unauthorized`, `invalid_credentials` | No valid token; wrong email or password |
-| 403 | `forbidden` | Signed in, but not allowed |
+| 403 | `forbidden`, `wrong_password` | Signed in, but not allowed; the password given to delete the account is wrong or missing. 403, not 401, because the frontend answers every 401 by refreshing and retrying |
 | 404 | `not_found` | No such route or row (also when the row is someone else's) |
 | 409 | `email_taken`, `proposal_not_open` | The request conflicts with the current state |
 | 413 | `too_large` | Body over 100 KB |
@@ -522,8 +521,8 @@ they are choices, not surprises.
 | POST | `/api/auth/reset-password` | `{token, password}` → `204`. Signs out every device. It does not sign this browser in: the student logs in with the new password, which proves it works |
 | GET | `/api/me` | → `Student` `{id, name, email, joinedAt, hasPassword, goals[]}` |
 | PATCH | `/api/me` | `{name}` → `Student`. The email cannot be changed in v1 (no way to verify the new one) |
-| DELETE | `/api/me` | `{password}` if the account has one → `204`. Deletes the account and everything with it |
-| GET | `/api/export` | → everything Trellis holds about the student, as one JSON download |
+| DELETE | `/api/me` | `{password}` if the account has one → `204`. Deletes the account and everything with it (one `DELETE`; every table cascades) and clears the refresh cookie. Rate-limited like login |
+| GET | `/api/export` | → everything Trellis holds about the student, as one JSON download (`Content-Disposition: attachment`), unpaged. Left out on purpose: the password hash and the token hashes |
 
 ### Sign in with Google
 
@@ -599,7 +598,7 @@ token**, never from the body or the URL.
 
 | Method | Path | Body → Returns |
 |---|---|---|
-| GET | `/api/state` | → `{ student, goalIds, claims, checkIns, experiences, opened, promptTakes, messages, moreMessages }`: everything the store holds, in one call. `messages` is the latest 50 per subject; `promptTakes` the latest 20 |
+| GET | `/api/state` | → `{ student, goalIds, claims, checkIns, experiences, opened, promptTakes, messages, moreMessages }`: everything the store holds, in one call. `messages` is the latest 50 per subject, all subjects in one list, oldest first; `moreMessages` is `{subjectId: boolean}`; `promptTakes` the latest 20. Read in one `REPEATABLE READ` snapshot (`readSnapshot` in `src/db/index.ts`), so a save landing mid-request can't give a half-updated answer |
 | PUT | `/api/goals/:subjectId` | `{goalId}` → `{subjectId, goalId, since}`. Setting the same goal again keeps `since` |
 | POST | `/api/claims` | `{claims: [{topicId, claim}]}` → `201 Claim[]` (the sort; later claims win per topic, so a repeated topic in one request keeps only its last claim) |
 | POST | `/api/opened` | `{topicId}` → `204`. Big topics only; opening one twice is fine |
@@ -608,7 +607,7 @@ token**, never from the body or the URL.
 | GET | `/api/check-ins` | → `CheckIn[]`, newest first |
 | PATCH | `/api/check-ins/:id` | `{topicId?, outcome?, text?}` → `CheckIn` |
 | DELETE | `/api/check-ins/:id` | → `204` |
-| PATCH | `/api/experiences/:id` | `{text, kind?}` → `Experience`. The server rebuilds `line` with the rule-based `tidy()`; no model call |
+| PATCH | `/api/experiences/:id` | `{text, kind?}` → `Experience`. The server rebuilds `line` with the rule-based `tidy()`; no model call, and a `line` sent by the client is ignored |
 | DELETE | `/api/experiences/:id` | → `204` |
 
 There is **no** "create check-in" endpoint. Updates are created only by saving a helper
@@ -1035,10 +1034,25 @@ Update this table at the start of each planning session from `git log` and merge
 | M2.4 Migration 0009, `POST /api/claims` | done | `main`, 13 Nov 2026 |
 | M2.5 Migrations 0010, 0011, `POST /api/opened`, `POST /api/subject-requests` | done | `main`, 13 Nov 2026 |
 | M2.6 The API runs without Neo4j; `/api/health` | done | `main`, 13 Nov 2026 |
-| M3 to M7, MS | not started | — |
+| M3.1 Migrations 0012, 0014, 0015, `GET/PATCH/DELETE /api/check-ins` | built, in review | `backend/m3` |
+| M3.2 Migration 0016, `PATCH/DELETE /api/experiences` | built, in review | `backend/m3` |
+| M3.3 Migration 0017, `POST /api/prompt-takes` | built, in review | `backend/m3` |
+| M3.4 `GET /api/state`, `GET /api/export`, `DELETE /api/me` | built, in review | `backend/m3` |
+| M4 to M7, MS | not started | — |
 
-**Expected test counts after M2:** 94 passed in `npm test`, 45 in `npm run test:integration`,
-none skipped (checked 13 Nov 2026). After M1 they were 37 and 26.
+**Expected test counts after M3:** 110 passed in `npm test`, 60 in `npm run test:integration`,
+none skipped (checked 13 Nov 2026). After M2 they were 94 and 45.
+
+**How M3 is tested without the helper:** nothing can create a check-in or an experience
+through the API until M4.3 (only saving a proposal does). The integration tests write
+those rows directly, the way a save would, with `insertSavedCheckIn` and
+`insertSavedExperience` in `test/integration/helpers.ts`. M4.3 replaces them with the
+real save.
+
+**Messages are read already, written in M4.** `src/repos/chat.repo.ts listMessages()`
+reads a thread and fills each stored `{type: "confirm", proposalId}` card from its
+proposal (payload, state, saved ids). `/api/state` uses it now; M4.2's paging route
+reuses it.
 
 **Before running M2 locally:** `backend/.env` needs a `JWT_SECRET` of 32 characters or
 more (`openssl rand -hex 32`); the server refuses `admin123`. Then `npm run db:migrate:dev`

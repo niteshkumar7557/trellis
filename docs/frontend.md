@@ -355,8 +355,8 @@ where it is built. Until then, sections 1 to 12 describe the code as it stands.
 | Shape | Change |
 |---|---|
 | `Experience` | `uses` is removed |
-| `Card` (confirm) | gains `proposalId`. Save, cancel and undo are addressed by it, not by message id and card position |
-| `PromptTake` (new) | `id, topicId, via: "copy" \| "chatgpt" \| "claude", at` |
+| `Card` (confirm) | gains `proposalId`. Save, cancel and undo are addressed by it, not by message id and card position. **In `shared/types.ts` since M3.4** (optional: the demo store has none) |
+| `PromptTake` (new) | `id, topicId, via: "copy" \| "chatgpt" \| "claude", at`. **In `shared/types.ts` since M3.3** |
 | `Student` | gains `hasPassword` (Google-only accounts have none). **Done in M2.1** |
 | `ChatMessage` | student messages gain `readBy?: "tap" \| "model" \| "rules"`, for debugging only; not shown |
 | `Reading` (new, in `shared/helper.ts`) | what a message says, whoever read it (backend-design.md §5) |
