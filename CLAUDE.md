@@ -59,12 +59,12 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   prompt note rules) and M5 (GLM 5 on Bedrock in **Sydney**, tried against the real
   service; `AI_PROVIDER=bedrock` in `backend/.env`) are done and on `main`. **M7
   (deploy) is done: live at https://trellis.niteshkumar.xyz** since 14 Nov 2026 (Sydney,
-  behind CloudFront; on `backend/m7`, not merged). Release with `./deploy/release.sh`.
+  behind CloudFront; squashed into `main` and pushed, 14 Nov 2026). Release with `./deploy/release.sh`.
   The `trellis` AWS profile exists (account `631603562964`); still run the `docs/aws.md`
   §2 check every time.
-- **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS and M5 went into `main` as
-  one squashed commit each, on the owner's request; §0 still says merge commits. Ask
-  for M7.
+- **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5 and M7 went into `main`
+  as one squashed commit each, on the owner's request; §0 still says merge commits. Ask
+  for the next one.
 - **Plan (re-planned 13 Nov 2026):** M3 on 13 Nov; M4, M6 and MS on 14 Nov; M5 and M7 on
   15 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** everything is created and live, in Sydney; every resource id is in

@@ -10,7 +10,7 @@ runs) and `docs/frontend.md` (the screens and the data contract).
 **Status (14 Nov 2026):** M0 to M6 and MS are done and on `main` (M5 squashed in on
 14 Nov). **The helper reads typed messages with GLM 5 on Bedrock in Sydney**, tried
 against the real service (§5 "The first real call"). **M7 (deploy) is done: Trellis is live at https://trellis.niteshkumar.xyz** (14 Nov
-2026), on `backend/m7`, not merged yet. Everything runs in Sydney (the free plan allows
+2026), squashed into `main` and pushed. Everything runs in Sydney (the free plan allows
 EC2 nowhere else, `docs/aws.md` §3) behind CloudFront, which serves the pages from New
 Delhi (§4). A release is `./deploy/release.sh` (`docs/aws.md` §6).
 
@@ -1188,9 +1188,9 @@ Update this table at the start of each planning session from `git log` and merge
 | M5.2 `src/ai/reader.ts`, the fallback, the warm-up, `validateBody` wraps its errors | done | `main`, 14 Nov 2026 (squashed) |
 | M5.3 The daily message limit (the budget is in M5.2) | done | `main`, 14 Nov 2026 (squashed) |
 | M5 against the real Bedrock (§5 "The first real call"), Bedrock moved to Sydney | done | `main`, 14 Nov 2026 (squashed) |
-| M7.1 The production compose file, Caddy behind CloudFront, the deploy scripts, `TRUST_PROXY_HOPS` | done | `backend/m7`, not merged |
-| M7.2 The AWS resources (`docs/aws.md` §9), CloudFront; first release; Neo4j's limits fixed | done; **live at https://trellis.niteshkumar.xyz** | `backend/m7`, not merged |
-| M7.3 Nightly backup, restore test, smoke test | done (Google sign-in to be tried by the owner in a browser) | `backend/m7`, not merged |
+| M7.1 The production compose file, Caddy behind CloudFront, the deploy scripts, `TRUST_PROXY_HOPS` | done | `main`, 14 Nov 2026 (squashed) |
+| M7.2 The AWS resources (`docs/aws.md` §9), CloudFront; first release; Neo4j's limits fixed | done; **live at https://trellis.niteshkumar.xyz** | `main`, 14 Nov 2026 (squashed) |
+| M7.3 Nightly backup, restore test, smoke test | done (Google sign-in to be tried by the owner in a browser) | `main`, 14 Nov 2026 (squashed) |
 
 **Expected test counts after M7.1:** 250 passed in `npm test`, 86 in
 `npm run test:integration`, none skipped (checked 14 Nov 2026). After M5: 246 and 86. After MS
