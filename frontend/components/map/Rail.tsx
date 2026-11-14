@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { DifficultyTag } from "@/components/ui/Difficulty";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark, StatusPill } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
@@ -75,6 +76,7 @@ export function TopicPanel({ topic, statuses, checkIns, experiences, importance,
         <h2 className={styles.panelTitle}>{topic.name}</h2>
         <div className={styles.pills}>
           <StatusPill status={status} />
+          <DifficultyTag level={topic.difficulty} />
           {topic.optional && <span className={styles.neutralPill}>Optional</span>}
           <span className={styles.meta}>
             {subjectById.get(topic.subjectId)!.shortName} · <span className="num">~{topic.minutes} min</span>
@@ -213,6 +215,8 @@ export function BigPanel({ topic, statuses, importance, shown, required, nextId,
         <h2 className={styles.panelTitle}>{topic.name}</h2>
         <div className={styles.pills}>
           <StatusPill status={status} />
+          {/* A big topic's difficulty is its hardest core subtopic (shared/data/index.ts). */}
+          <DifficultyTag level={topic.difficulty} />
           <span className={styles.meta}>
             <span className="num">
               {p.done} of {p.total}

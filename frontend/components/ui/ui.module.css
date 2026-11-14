@@ -121,3 +121,19 @@
   color: var(--muted);
   font-size: 12px;
 }
+
+/* Difficulty: a coloured word and a meter, never a filled pill, so it can't be mistaken
+   for a status (see the tokens in globals.css). */
+.difficulty {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+.difficulty[data-level="easy"] { color: var(--easy-ink); }
+.difficulty[data-level="medium"] { color: var(--medium-ink); }
+.difficulty[data-level="hard"] { color: var(--hard-ink); }

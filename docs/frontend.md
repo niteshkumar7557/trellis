@@ -245,7 +245,8 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
 ### Editing the topic graphs
 
 - Two levels: `B(id, name, summary)` makes a **big topic**; `t(id, parentId, name, minutes,
-  optional, summary, mistakes[], keywords[])` makes a **subtopic**. Ids: `rn-…` and `rd-…`.
+  optional, summary, mistakes[], keywords[])` makes a **subtopic**. Its difficulty goes in the
+  file's difficulty table (`redisDifficulty`, `reactNativeDifficulty`); a missing one fails the data checks. Ids: `rn-…` and `rd-…`.
 - Names and grouping follow roadmap.sh; summaries, mistakes, links and core/optional marks
   are ours. Never copy roadmap.sh's descriptions. Credit lines exist on /start and in the
   landing footer.
@@ -335,7 +336,8 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
   backend, one GLM 5 call (Amazon Bedrock) reads each typed message instead, and these
   rules are its fallback (backend-design.md §5). `afterSave()` writes the follow-up.
 - **The flow:** a report gets **one question** first ("What's confusing about it?" / "What's
-  still unclear?" / "What felt easy, and was anything hard?" / "What made it click?"). The
+  still unclear?" / "What felt easy, and was anything hard?" / "What made it click?"); done
+  on an **easy** topic skips the question and goes straight to the confirm card. The
   helper message carries `asks: {kind, pending}`, and the next student message is taken as
   the answer, unless it is clearly a new question or a new report. Then comes a **confirm
   card** with the proposal: the student can change the outcome, kind or words, then Save or
@@ -454,7 +456,7 @@ These are the shapes the screens consume (`shared/types.ts`). The backend return
 | Shape | Fields |
 |---|---|
 | `Subject` | `id: "react-native" \| "redis", name, shortName, blurb` |
-| `Topic` | `id, subjectId, parentId` (null for a big topic)`, name, summary, mistakes[], minutes, optional, keywords[]` |
+| `Topic` | `id, subjectId, parentId` (null for a big topic)`, name, summary, mistakes[], minutes, optional, difficulty, keywords[]` (`difficulty`: `easy`/`medium`/`hard`; a big topic's is its hardest core subtopic) |
 | `Edge` | `from` (the dependent)`, to` (its prerequisite)`, kind: "needs" \| "helps"`: two big topics, or two subtopics |
 | `Goal` | `id, subjectId, name, blurb, targets[]` (big topics) |
 | `Claim` | `topicId, claim: "know" \| "shaky" \| "new", at`: from the sort, usually on a big topic |

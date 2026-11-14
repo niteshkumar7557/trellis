@@ -30,6 +30,14 @@
   --stuck: #c4242a;     --stuck-bg: #ffecea;     --stuck-ink: #831c1e;
   --shaky: #a26a0a;     --shaky-bg: #fbf0d9;     --shaky-ink: #5f3e05;
   --know: #151714;
+  /* How hard a topic usually is, in LeetCode's three colours (the marks use LeetCode's own
+     hex). They're a property of the topic, not of the student, so they never fill a pill
+     the way a status does: a word and a three-bar meter only. LeetCode's light colours are
+     too pale for small text on white (about 2:1), so the word uses a darker ink of the
+     same hue (about 5:1); in dark mode LeetCode's colours pass as they are. */
+  --easy: #00af9b;      --easy-ink: #007a6c;
+  --medium: #ffb800;    --medium-ink: #8f6200;
+  --hard: #ff2d55;      --hard-ink: #d70f3e;
   --edge: #b9beb4;
   --edge-soft: #d3d7cf;
 
@@ -84,6 +92,9 @@
   --stuck: #ee6b72;     --stuck-bg: #33191c;     --stuck-ink: #f7a5aa;
   --shaky: #d9a64c;     --shaky-bg: #2f2512;     --shaky-ink: #ecc983;
   --know: #f1f2f0;
+  --easy: #00b8a3;      --easy-ink: #00b8a3;
+  --medium: #ffc01e;    --medium-ink: #ffc01e;
+  --hard: #ff375f;      --hard-ink: #ff375f;
   --edge: #4b4f4a;
   --edge-soft: #343733;
 

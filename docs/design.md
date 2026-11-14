@@ -221,8 +221,14 @@ and it looks like a study diary that answers back, not like ChatGPT.
 - **Asks one question about how it went**, the moment Trellis learns about you:
   - stuck → *"What's confusing about it?"*
   - partly → *"What's still unclear?"*
-  - done → *"What felt easy, and was anything hard?"*
-  - done after being stuck → *"What made it click?"*
+  - done → *"What felt easy, and was anything hard?"*, but **only for a medium or hard
+    topic**. Done on an **easy** topic (Installing Redis, View) goes straight to the confirm
+    card: nobody has anything to say about how installing went, and asking anyway makes the
+    helper feel like a form.
+  - done after being stuck → *"What made it click?"* (asked even on an easy topic)
+
+  Stuck and partly always ask, whatever the difficulty: stuck on an easy topic is the most
+  telling case of all.
 
   One question per update, never repeated. If your message already says why (*"got
   flatlist, keys confused me"*), it skips the question and goes straight to the confirm
@@ -413,6 +419,9 @@ itself (`docs/aws.md`; the numbers and how they are counted are in
 - The map: big topics that open as you reach them, statuses, skippable topics, the next
   topic
 - "Don't skip" or "Can skip" on every topic, with the reason
+- Easy, Medium or Hard on every topic: how hard people usually find it, in LeetCode's
+  colours (a word and a three-bar meter, never a filled pill, so it can't be read as a
+  status). A big topic shows its hardest core subtopic
 - Topic page: description, common mistakes, your notes, the prompt, open-in-AI buttons
 - The helper in the map's side panel: asks how the last prompt went, asks one question,
   confirms before saving any update, hands back prompts, answers questions about the map
@@ -493,6 +502,8 @@ Each row is a choice we made, what else we could have done, and why we did not.
 | The student's words move a suspect up (v7) | Status only; or let the model pick | The words often name the trap. A keyword rule stays explainable. Letting the model pick is on the v2 list |
 | A hard note stays until its topic is done (v7) | "At most 2 prompts taken" | Copy then Open counted as two, so the note vanished while the student was still stuck. Tying it to status also removes the only stored counter |
 | Prompts include what worked underneath (v7) | This topic's notes only | A new topic has no notes of its own, so the first prompt for every topic had no memory in it |
+| Easy / Medium / Hard on every topic, rated by hand from what learners report (14 Nov 2026) | No rating; a rating from the student's own check-ins; the AI rates each topic | Asking "what felt easy, and was anything hard?" after Installing Redis made the helper look silly, and the question needs to know which topics deserve it. A fixed rating in the content is reviewable like the rest of it; the student's own record is already in their statuses and notes |
+| A big topic's difficulty is its hardest core subtopic (14 Nov 2026) | The average; set by hand | "The hardest thing you can't skip in it" is what you want to know before starting a chunk; an average hides the two hard topics in Persistence. Optional subtopics don't count |
 | One goal per subject, changeable any time | Several goals at once | One route keeps "next" unambiguous |
 | "Coming soon" requests are kept (v7) | Throw them away | It costs one small table and tells us which map to build next |
 | Sign-up stays before the sort | Sort first, sign up to keep it | Less to build this week. Revisit after the first feedback (§15) |

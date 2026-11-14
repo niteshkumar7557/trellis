@@ -97,6 +97,12 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   (next inside, a check-in inside, the likely cause of a stuck topic, or "Look inside now").
   It starts small and only grows.
 - **Skip or not:** every topic says "Don't skip" or "Can skip" with a reason.
+- **Difficulty (14 Nov 2026):** every topic is Easy, Medium or Hard (`Topic.difficulty`),
+  rated by hand in each subject file's difficulty table (`redisDifficulty`,
+  `reactNativeDifficulty`) from what learners report; a big
+  topic takes its hardest core subtopic. Shown in LeetCode's colours as a word and a bar
+  meter, never a filled pill (statuses own those). The helper doesn't ask "what felt easy,
+  and was anything hard?" after Got it on an easy topic.
 - **The helper** lives in the map's right panel, one thread per subject:
   - it **asks one question**, then shows a **confirm card**; nothing is saved without Save,
     and there's Undo after;

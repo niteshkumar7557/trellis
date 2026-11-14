@@ -1,7 +1,7 @@
 // Copies the topic graph from the reviewed files in shared/data into Neo4j.
 //
 //   (:Subject {id, name, shortName, blurb, position})
-//   (:Topic {id, name, summary, minutes, optional, big, keywords, mistakes, position})-[:OF]->(:Subject)
+//   (:Topic {id, name, summary, minutes, optional, difficulty, big, keywords, mistakes, position})-[:OF]->(:Subject)
 //   (:Topic)-[:IN]->(:Topic)                  subtopic in its big topic
 //   (:Topic)-[:NEEDS {position}]->(:Topic)    from dependent to prerequisite
 //   (:Topic)-[:HELPS {position}]->(:Topic)
@@ -69,7 +69,7 @@ async function writeTopics(tx: ManagedTransaction) {
     `UNWIND $rows AS row
      MERGE (t:Topic {id: row.id})
      SET t.name = row.name, t.summary = row.summary, t.minutes = toInteger(row.minutes),
-         t.optional = row.optional, t.big = row.big, t.keywords = row.keywords,
+         t.optional = row.optional, t.difficulty = row.difficulty, t.big = row.big, t.keywords = row.keywords,
          t.mistakes = row.mistakes, t.position = toInteger(row.position)
      WITH t, row
      MATCH (s:Subject {id: row.subjectId})

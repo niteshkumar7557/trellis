@@ -3,14 +3,14 @@
 // summaries, mistakes, links and importance are ours.
 // Reviewed content: change it in a pull request, not in passing.
 
-import type { Edge, Goal, Topic } from "../types";
-import { big, edgesFrom, sub } from "./build";
+import type { Edge, Goal } from "../types";
+import { big, edgesFrom, sub, type DifficultyTable, type RawTopic } from "./build";
 
 const S = "redis" as const;
 const B = big(S);
 const t = sub(S);
 
-export const redisTopics: Topic[] = [
+export const redisTopics: RawTopic[] = [
   // ------------------------------------------------------------ getting started
   B("rd-intro", "What is Redis?", "What Redis is, what people use it for, and when it's the wrong tool."),
   t("rd-what", "rd-intro", "An in-memory key-value store", 20, false,
@@ -485,6 +485,72 @@ export const redisTopics: Topic[] = [
     ["Assuming open-source Redis can't be run securely"],
     ["compliance"]),
 ];
+
+// How hard each subtopic usually is (shared/types.ts, Difficulty). Judged from what
+// learners report: the questions they ask on Stack Overflow and r/redis, and where Redis
+// courses and the docs slow down. The rule of thumb: easy = one command or one idea you get
+// on the first try; medium = a gotcha or a choice to make; hard = it needs a mental model
+// (concurrency, failure, distribution) that people routinely get wrong the first time.
+// Reviewed content, like the topics: change it in a pull request.
+export const redisDifficulty: DifficultyTable = {
+  // What is Redis? Reading and orientation: nothing to get wrong yet.
+  "rd-what": "easy", "rd-roles": "easy", "rd-usecases": "easy", "rd-features": "easy",
+  "rd-vs": "easy", "rd-when": "easy",
+  // Getting started: one-liners. (Windows needs WSL or Docker, still a quick fix.)
+  "rd-install": "easy", "rd-server": "easy", "rd-cli": "easy", "rd-first-commands": "easy",
+  // Basic operations. Expiry is the first gotcha: SET drops a TTL, and TTL's -1 / -2 replies.
+  "rd-keys-rw": "easy", "rd-del": "easy", "rd-expire": "medium", "rd-types": "easy",
+  // Strings: the simplest type.
+  "rd-str-setget": "easy", "rd-counters": "easy", "rd-append": "easy", "rd-str-more": "easy",
+  "rd-str-uses": "easy",
+  // Lists: push and pop are easy; LMOVE and queues bring in reliability, which isn't.
+  "rd-list-pushpop": "easy", "rd-list-read": "easy", "rd-lmove": "medium", "rd-list-more": "easy",
+  "rd-list-uses": "medium",
+  // Sets and hashes: small, familiar shapes.
+  "rd-set-addrem": "easy", "rd-set-members": "easy", "rd-set-ops": "easy", "rd-set-more": "easy",
+  "rd-set-uses": "easy",
+  "rd-hash-fields": "easy", "rd-hash-whole": "easy", "rd-hash-more": "easy", "rd-hash-uses": "easy",
+  // Sorted sets: ZRANGE's BYSCORE / REV / exclusive "(" bounds are a classic source of confusion.
+  "rd-zset-scores": "easy", "rd-zset-ranges": "medium", "rd-zset-more": "medium", "rd-zset-uses": "medium",
+  // Key management: KEYS vs SCAN (cursors, duplicates) and how expired keys really go away.
+  "rd-naming": "easy", "rd-pattern": "medium", "rd-expiration": "medium",
+  // Atomicity: needs a picture of the single-threaded loop and round trips.
+  "rd-atomicity": "medium", "rd-pipelining": "medium", "rd-batch": "easy",
+  // Transactions: no rollback surprises people; WATCH and optimistic locking are concurrency.
+  "rd-multi": "medium", "rd-watch": "hard", "rd-optimistic": "hard",
+  // Lua: a second language, KEYS vs ARGV, and what "atomic script" costs.
+  "rd-eval": "hard", "rd-evalsha": "medium", "rd-lua-uses": "medium",
+  // Pub/Sub: publishing is one command; a subscribed connection can't do anything else, and
+  // messages are fire-and-forget, which people discover in production.
+  "rd-publish": "easy", "rd-subscribe": "medium", "rd-pubsub-more": "medium", "rd-pubsub-uses": "medium",
+  // Bitmaps: thinking in bit offsets, and BITCOUNT ranges counting bytes, not bits.
+  "rd-bits": "medium", "rd-bitcount": "medium", "rd-bitop": "medium", "rd-bitmap-uses": "medium",
+  // HyperLogLog: the commands are tiny; trusting an approximate count is the new idea.
+  "rd-pfcount": "medium", "rd-pfmerge": "easy", "rd-hll-uses": "medium",
+  // Streams: IDs and blocking reads take a while; consumer groups (pending entries, XACK,
+  // claiming) are the part most people find hardest in all of Redis's data types.
+  "rd-xadd": "medium", "rd-xrange": "medium", "rd-consumer-groups": "hard", "rd-stream-uses": "medium",
+  // Geo: longitude comes before latitude, and that's most of the trouble.
+  "rd-geoadd": "easy", "rd-geosearch": "medium", "rd-geo-more": "easy", "rd-geo-uses": "easy",
+  // Persistence: fork, fsync and rewrite behaviour are operations knowledge, new to most.
+  "rd-no-persist": "easy", "rd-rdb": "medium", "rd-save-interval": "easy", "rd-rdb-practice": "medium",
+  "rd-aof": "medium", "rd-aof-rewrite": "hard", "rd-aof-corrupt": "hard", "rd-aof-uses": "medium",
+  "rd-rdb-vs-aof": "medium", "rd-hybrid": "medium",
+  // High availability: failover, quorum and hash slots are distributed systems.
+  "rd-replication": "medium", "rd-sentinel": "hard", "rd-cluster": "hard",
+  // Security: ACL rules have their own syntax; TLS means certificates, which trip everyone.
+  "rd-auth": "medium", "rd-net-security": "medium", "rd-tls": "hard",
+  // Monitoring: the tools are easy to open; reading memory use and tuning it is not.
+  "rd-info": "easy", "rd-monitor-cmd": "easy", "rd-insight": "easy", "rd-commander": "easy",
+  "rd-memory": "hard", "rd-maxmemory": "medium", "rd-slowlog": "medium", "rd-benchmark": "medium",
+  "rd-monitoring": "medium",
+  // Modules: each one is a small product; Search has its own schema and query language.
+  "rd-json": "medium", "rd-search": "hard", "rd-timeseries": "medium", "rd-bloom": "medium",
+  // Production: careful work; disaster recovery needs everything above at once.
+  "rd-conf": "medium", "rd-backup": "medium", "rd-upgrade": "medium", "rd-disaster": "hard",
+  // Enterprise: deciding is easy; Active-Active (conflict-free replicated data) is not.
+  "rd-ent-when": "easy", "rd-active-active": "hard", "rd-flash": "medium", "rd-compliance": "medium",
+};
 
 export const redisEdges: Edge[] = edgesFrom(
   [

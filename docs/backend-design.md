@@ -168,7 +168,7 @@ shared/
 
   ```
   (:Subject {id, name, shortName, blurb, position})
-  (:Topic {id, name, summary, minutes, optional, big, keywords, mistakes, position})-[:OF]->(:Subject)
+  (:Topic {id, name, summary, minutes, optional, difficulty, big, keywords, mistakes, position})-[:OF]->(:Subject)
   (:Topic)-[:IN]->(:Topic)                 subtopic in its big topic
   (:Topic)-[:NEEDS {position}]->(:Topic)   from dependent to prerequisite
   (:Topic)-[:HELPS {position}]->(:Topic)

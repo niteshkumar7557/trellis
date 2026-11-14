@@ -2,14 +2,14 @@
 // (topic names and grouping); the summaries, mistakes, links and importance are ours.
 // Reviewed content: change it in a pull request, not in passing.
 
-import type { Edge, Goal, Topic } from "../types";
-import { big, edgesFrom, sub } from "./build";
+import type { Edge, Goal } from "../types";
+import { big, edgesFrom, sub, type DifficultyTable, type RawTopic } from "./build";
 
 const S = "react-native" as const;
 const B = big(S);
 const t = sub(S);
 
-export const reactNativeTopics: Topic[] = [
+export const reactNativeTopics: RawTopic[] = [
   // ------------------------------------------------------------ foundations
   B("rn-intro", "Introduction", "What React Native is, why teams pick it, and what else they could pick."),
   t("rn-what", "rn-intro", "What is React Native?", 20, false,
@@ -368,6 +368,67 @@ export const reactNativeTopics: Topic[] = [
     ["Losing the upload key"],
     ["play store", "google play", "aab", "android release"]),
 ];
+
+// How hard each subtopic usually is (shared/types.ts, Difficulty). Judged from what
+// learners report: Stack Overflow and r/reactnative questions, the React Native and Expo
+// docs' troubleshooting pages, and where courses slow down. The rule of thumb: easy = it
+// works the first time you try it; medium = a gotcha or a choice to make; hard = native
+// tooling, platform differences or a mental model that people routinely fight with.
+// Reviewed content, like the topics: change it in a pull request.
+export const reactNativeDifficulty: DifficultyTable = {
+  // Introduction: reading and orientation.
+  "rn-what": "easy", "rn-why": "easy", "rn-alternatives": "easy",
+  // Pre-requisites: "JavaScript basics" hides closures, async code and `this`.
+  "rn-js": "medium", "rn-css": "easy",
+  // React: state is where re-renders, stale values and batching first bite.
+  "rn-jsx": "easy", "rn-components": "easy", "rn-props": "easy", "rn-state": "medium",
+  // Environment: Expo just works; the bare CLI means Xcode, Android Studio, the SDK and
+  // Gradle, the most common "I gave up" story in React Native.
+  "rn-expo": "easy", "rn-create-expo": "easy", "rn-snack": "easy", "rn-expo-tradeoffs": "medium",
+  "rn-cli": "hard", "rn-metro": "medium",
+  // Workflow: a real device needs the same network or USB debugging; the rest is built in.
+  "rn-device": "medium", "rn-devmenu": "easy", "rn-fast-refresh": "easy", "rn-logbox": "easy",
+  "rn-sourcemaps": "medium", "rn-devtools": "medium",
+  // Core components: mostly one prop away. TextInput (controlled input, the keyboard),
+  // Image (network images need a size) and Modal have gotchas; KeyboardAvoidingView behaves
+  // differently on iOS and Android and is a famous time sink.
+  "rn-view": "easy", "rn-text": "easy", "rn-textinput": "medium", "rn-button": "easy",
+  "rn-pressable": "easy", "rn-image": "medium", "rn-safearea": "easy", "rn-keyboard-avoid": "hard",
+  "rn-imagebg": "easy", "rn-switch": "easy", "rn-statusbar": "easy", "rn-spinner": "easy",
+  "rn-modal": "medium",
+  // Lists: keys, renderItem and virtualisation take a while to trust.
+  "rn-scrollview": "easy", "rn-flatlist": "medium", "rn-sectionlist": "medium", "rn-refresh": "easy",
+  // Platform code: the tools are simple; react-native-web brings a third platform's quirks.
+  "rn-platform-module": "easy", "rn-file-ext": "easy", "rn-web": "medium",
+  // Styling: flexbox defaults to a column here, and flex: 1 confuses everyone once.
+  "rn-stylesheets": "easy", "rn-flexbox": "medium", "rn-a11y": "medium",
+  // Networking: async errors, loading states and keeping a socket alive.
+  "rn-fetch": "medium", "rn-connectivity": "easy", "rn-websockets": "medium",
+  // Interactions: navigation (nested navigators, passing params) is the most asked-about
+  // topic in React Native; gestures and animations need the UI thread model.
+  "rn-navigation": "hard", "rn-touchables": "easy", "rn-gestures": "hard", "rn-scrolling": "medium",
+  "rn-animations": "hard",
+  // Storage: key-value is easy; files and SQL need async care and migrations.
+  "rn-asyncstorage": "easy", "rn-securestore": "easy", "rn-filesystem": "medium", "rn-sqlite": "medium",
+  "rn-storage-other": "medium",
+  // Push: APNs and FCM credentials, and an app that may be open, in the background or closed.
+  "rn-push-setup": "hard", "rn-push-handle": "hard",
+  // Deep links: in-app linking is configuration; universal links need a verified domain.
+  "rn-linking": "medium", "rn-universal-links": "hard",
+  // Security: sign-in flows (OAuth redirects, refreshing tokens) are hard to get right.
+  "rn-auth": "hard", "rn-net-security": "medium", "rn-secure-storage": "medium",
+  // Testing: mocking native modules for Jest; end-to-end tools need their own native setup.
+  "rn-jest": "medium", "rn-rntl": "medium", "rn-test-renderer": "medium", "rn-detox": "hard",
+  "rn-appium": "hard",
+  // Performance: finding the real cause takes measurement and knowing the threads.
+  "rn-framerate": "medium", "rn-perf-sources": "medium", "rn-flatlist-perf": "medium",
+  "rn-build-speed": "medium", "rn-ram-bundles": "hard", "rn-profiling": "hard",
+  // Native modules: Swift / Kotlin, the bridge and each platform's build system.
+  "rn-native-ios": "hard", "rn-native-android": "hard",
+  // Publishing: Apple's certificates, provisioning profiles and review are a known ordeal;
+  // Play is mostly getting the upload key right.
+  "rn-appstore": "hard", "rn-playstore": "medium",
+};
 
 export const reactNativeEdges: Edge[] = edgesFrom(
   // Big topics: which areas stand on which.

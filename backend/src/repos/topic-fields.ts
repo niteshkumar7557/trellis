@@ -18,7 +18,7 @@
 // it is safe. VALUES from a request must always go in as parameters ($id), never into text.
 
 export const TOPIC_FIELDS = `t {
-  .id, .name, .summary, .mistakes, .minutes, .optional, .keywords,
+  .id, .name, .summary, .mistakes, .minutes, .optional, .difficulty, .keywords,
   subjectId: [(t)-[:OF]->(ofSubject) | ofSubject.id][0],
   parentId: [(t)-[:IN]->(inBigTopic) | inBigTopic.id][0]
 }`;

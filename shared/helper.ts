@@ -260,17 +260,32 @@ function proposeOrAsk(outcome: Outcome, topicIds: string[], said: Reading["exper
   const q = questionFor(outcome, ids[0], ctx);
   if (said.length) {
     // Back from stuck to done: whatever they said is what made it click.
-    for (const e of said) pending.experiences.push({ topicId: ids[0], ...e, kind: q.kind === "clicked" ? "clicked" : e.kind });
+    for (const e of said) pending.experiences.push({ topicId: ids[0], ...e, kind: q?.kind === "clicked" ? "clicked" : e.kind });
     return confirm(pending, "Here's what I'll save. Change anything that's wrong.");
   }
 
   const opener =
     outcome === "stuck" ? `Sounds like you're stuck on ${name}.` : outcome === "partly" ? `Sounds like ${name} is partway there.` : `Nice, ${name} done.`;
+  if (!q) return confirm(pending, `${opener} Here's what I'll save.`);
   return { text: `${opener} ${q.text}`, asks: { kind: q.kind, pending } };
 }
 
+/**
+ * The one question to ask, or null when there's nothing worth asking.
+ *
+ * "What felt easy, and was anything hard?" after Got it on an easy topic (Installing
+ * Redis, View) has no good answer: the student was never going to struggle with it, and
+ * asking anyway makes the helper look like a form. So an easy topic done goes straight to
+ * the confirm card. Medium and hard topics still get the question: there, what was hard
+ * is exactly what the next prompt should know.
+ *
+ * Partly and Stuck always ask, whatever the difficulty: being stuck on an easy topic is
+ * the most telling case of all. And so does coming back from stuck to done ("what made it
+ * click?"), because what worked is what the prompts for later topics reuse.
+ */
 function questionFor(outcome: Outcome, topicId: string, ctx: HelperContext) {
   if (outcome === "got" && statusOf(ctx.statuses, topicId) === "stuck") return QUESTION.unstuck;
+  if (outcome === "got" && topicById.get(topicId)?.difficulty === "easy") return null;
   return QUESTION[outcome];
 }
 

@@ -11,6 +11,17 @@ export interface Subject {
 }
 
 /**
+ * How hard a topic usually is for people learning it, judged from what learners report
+ * (forums, course reviews, the questions people ask). It's about the topic, not about
+ * this student: their own experience is in check-ins and experiences.
+ *
+ * Used for two things: a label on the topic, and deciding whether the helper asks "what
+ * was hard?" after Got it. On an easy topic that question has no good answer, so it isn't
+ * asked (design.md §7).
+ */
+export type Difficulty = "easy" | "medium" | "hard";
+
+/**
  * The map has two levels. A big topic (`parentId: null`) is a chunk of the subject;
  * its subtopics are what you actually study and check in on. A big topic's subtopics
  * stay hidden until the student reaches it.
@@ -31,6 +42,12 @@ export interface Topic {
    * Core subtopics (false) are the ones not to skip.
    */
   optional: boolean;
+  /**
+   * Subtopics: set by hand in the subject file's difficulty table. Big topics: the
+   * hardest of their core subtopics, worked out in ./data/index.ts (optional ones are left
+   * out, because the student can skip them).
+   */
+  difficulty: Difficulty;
   /** Words a check-in line might use for this topic. */
   keywords: string[];
 }

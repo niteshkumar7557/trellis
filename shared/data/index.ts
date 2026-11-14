@@ -1,6 +1,7 @@
-import type { Edge, Goal, Subject, SubjectId, Topic } from "../types";
-import { reactNativeEdges, reactNativeGoals, reactNativeTopics } from "./react-native";
-import { redisEdges, redisGoals, redisTopics } from "./redis";
+import type { Difficulty, Edge, Goal, Subject, SubjectId, Topic } from "../types";
+import type { RawTopic } from "./build";
+import { reactNativeDifficulty, reactNativeEdges, reactNativeGoals, reactNativeTopics } from "./react-native";
+import { redisDifficulty, redisEdges, redisGoals, redisTopics } from "./redis";
 
 export const subjects: Subject[] = [
   {
@@ -20,20 +21,38 @@ export const subjects: Subject[] = [
 /** Where the topic lists come from. Shown wherever a map is introduced. */
 export const SOURCE = { name: "roadmap.sh", url: "https://roadmap.sh" };
 
-const raw: Topic[] = [...reactNativeTopics, ...redisTopics];
+const raw: RawTopic[] = [...reactNativeTopics, ...redisTopics];
+const difficultyOf: Record<string, Difficulty> = { ...reactNativeDifficulty, ...redisDifficulty };
 export const edges: Edge[] = [...reactNativeEdges, ...redisEdges];
 export const goals: Goal[] = [...reactNativeGoals, ...redisGoals];
 
-/** Subtopics of each big topic, in the order the subject file lists them. */
-export const childrenOf = new Map<string, Topic[]>();
-for (const t of raw) {
-  if (t.parentId) childrenOf.set(t.parentId, [...(childrenOf.get(t.parentId) ?? []), t]);
+const RANK: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
+
+/**
+ * A big topic's difficulty: the hardest of its core subtopics. "The hardest thing you
+ * can't skip in it" is what a student wants to know before starting a chunk. An average
+ * would call Persistence "medium" while it holds two hard topics; optional ones are left
+ * out because the student can skip them. A missing rating counts as medium, so a topic
+ * added without one still gets the question; the check below reports it.
+ */
+function hardestCore(inside: Topic[]): Difficulty {
+  const core = inside.filter((t) => !t.optional);
+  return (core.length ? core : inside).reduce<Difficulty>((d, t) => (RANK[t.difficulty] > RANK[d] ? t.difficulty : d), "easy");
 }
 
-// A big topic's time is the time of what's inside it.
-export const topics: Topic[] = raw.map((t) =>
-  t.parentId ? t : { ...t, minutes: (childrenOf.get(t.id) ?? []).reduce((m, c) => m + c.minutes, 0) },
-);
+const subs: Topic[] = raw.filter((t) => t.parentId).map((t) => ({ ...t, difficulty: difficultyOf[t.id] ?? "medium" }));
+
+/** Subtopics of each big topic, in the order the subject file lists them. */
+export const childrenOf = new Map<string, Topic[]>();
+for (const t of subs) childrenOf.set(t.parentId!, [...(childrenOf.get(t.parentId!) ?? []), t]);
+
+// A big topic's time is the time of what's inside it, and its difficulty the hardest core part.
+const subById = new Map(subs.map((t) => [t.id, t]));
+export const topics: Topic[] = raw.map((t) => {
+  if (t.parentId) return subById.get(t.id)!;
+  const inside = childrenOf.get(t.id) ?? [];
+  return { ...t, minutes: inside.reduce((m, c) => m + c.minutes, 0), difficulty: hardestCore(inside) };
+});
 
 export const topicById = new Map(topics.map((t) => [t.id, t]));
 export const subjectById = new Map(subjects.map((s) => [s.id, s]));
@@ -77,6 +96,12 @@ export function goalsOf(subjectId: SubjectId): Goal[] {
       console.assert(inside.length > 0, `big topic ${t.id} has no subtopics`);
       console.assert(inside.some((c) => !c.optional), `big topic ${t.id} has no core subtopic`);
     }
+  }
+
+  // Every subtopic has a difficulty rating, and every rating belongs to a subtopic.
+  for (const t of raw) if (t.parentId) console.assert(t.id in difficultyOf, `${t.id} has no difficulty rating`);
+  for (const id of Object.keys(difficultyOf)) {
+    console.assert(Boolean(topicById.get(id)?.parentId), `difficulty rating for ${id}, which isn't a subtopic`);
   }
 
   const bigNeeds = new Map<string, string[]>();

@@ -331,20 +331,23 @@ exports[`respond(): the rule-based helper > can I skip it 1`] = `
 
 exports[`respond(): the rule-based helper > done with components 1`] = `
 {
-  "asks": {
-    "kind": "easy",
-    "pending": {
-      "experiences": [],
-      "said": "done with components",
-      "updates": [
-        {
-          "outcome": "got",
-          "topicId": "rn-components",
-        },
-      ],
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [],
+        "said": "done with components",
+        "updates": [
+          {
+            "outcome": "got",
+            "topicId": "rn-components",
+          },
+        ],
+      },
+      "state": "open",
+      "type": "confirm",
     },
-  },
-  "text": "Nice, Components done. What felt easy, and was anything hard?",
+  ],
+  "text": "Nice, Components done. Here's what I'll save.",
 }
 `;
 
@@ -828,20 +831,23 @@ exports[`respond(): the rule-based helper > with FlatList open in the panel: I'm
 
 exports[`respond(): the rule-based helper > with FlatList open in the panel: done with components 1`] = `
 {
-  "asks": {
-    "kind": "easy",
-    "pending": {
-      "experiences": [],
-      "said": "done with components",
-      "updates": [
-        {
-          "outcome": "got",
-          "topicId": "rn-components",
-        },
-      ],
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [],
+        "said": "done with components",
+        "updates": [
+          {
+            "outcome": "got",
+            "topicId": "rn-components",
+          },
+        ],
+      },
+      "state": "open",
+      "type": "confirm",
     },
-  },
-  "text": "Nice, Components done. What felt easy, and was anything hard?",
+  ],
+  "text": "Nice, Components done. Here's what I'll save.",
 }
 `;
 

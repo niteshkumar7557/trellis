@@ -1,11 +1,21 @@
 // Small helpers that keep the subject files readable.
 
-import type { Edge, SubjectId, Topic } from "../types";
+import type { Difficulty, Edge, SubjectId, Topic } from "../types";
+
+/**
+ * A topic as a subject file writes it: everything but its difficulty. The difficulty
+ * lives in a separate table per subject (redisDifficulty, reactNativeDifficulty), so all the ratings
+ * sit together and can be reviewed side by side; ./index joins the two.
+ */
+export type RawTopic = Omit<Topic, "difficulty">;
+
+/** Subtopic id → how hard it usually is. Every subtopic must have one (./index checks). */
+export type DifficultyTable = Record<string, Difficulty>;
 
 /** A big topic. Its minutes are the sum of its subtopics, filled in by ./index. */
 export const big =
   (subjectId: SubjectId) =>
-  (id: string, name: string, summary: string, keywords: string[] = []): Topic => ({
+  (id: string, name: string, summary: string, keywords: string[] = []): RawTopic => ({
     id,
     subjectId,
     parentId: null,
@@ -29,7 +39,7 @@ export const sub =
     summary: string,
     mistakes: string[],
     keywords: string[],
-  ): Topic => ({ id, subjectId, parentId, name, summary, mistakes, minutes, optional, keywords });
+  ): RawTopic => ({ id, subjectId, parentId, name, summary, mistakes, minutes, optional, keywords });
 
 export function edgesFrom(needs: [string, string][], helps: [string, string][]): Edge[] {
   return [

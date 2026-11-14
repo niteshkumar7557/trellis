@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { DifficultyTag } from "@/components/ui/Difficulty";
 import { StatusMark, StatusPill } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
 import {
@@ -654,6 +655,7 @@ function Preview({ topic }: { topic: Topic }) {
       <h3 className={styles.previewTitle}>{topic.name}</h3>
       <div className={styles.previewPills}>
         <StatusPill status={statusOf(statuses, topic.id)} />
+        <DifficultyTag level={topic.difficulty} />
         {topic.optional && <span className={styles.previewTag}>Optional</span>}
         <span className={`${styles.previewTag} num`}>
           ~
