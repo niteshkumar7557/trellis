@@ -7,7 +7,6 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { Mark } from "@/components/ui/Mark";
 import ui from "@/components/ui/ui.module.css";
 import { goalById, subjects } from "@shared/data";
-import { student } from "@shared/data/student";
 import { summarise } from "@shared/graph";
 import { useStore } from "@/lib/store";
 import { useResolvedTheme, useTheme } from "@/lib/theme";
@@ -23,6 +22,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
 
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { mode } = useStore();
   // The menu belongs to the page it was opened on, so navigating closes it.
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const menuOpen = menuFor === pathname;
@@ -54,7 +54,12 @@ export function Shell({ children }: { children: ReactNode }) {
         <ThemeButton />
       </header>
 
-      <main className={styles.sheet}>{children}</main>
+      <main className={styles.sheet}>
+        <StatusBars />
+        {/* While the store finds out who is here, show nothing rather than the sample
+            student flashing up before a signed-in student's own map. */}
+        {mode === "loading" ? <div className={styles.loading} aria-busy="true" aria-label="Loading your map" /> : children}
+      </main>
     </div>
   );
 }
@@ -62,7 +67,7 @@ export function Shell({ children }: { children: ReactNode }) {
 function SidebarBody() {
   const pathname = usePathname();
   const router = useRouter();
-  const { subjectId, goalIds, statuses, dispatch } = useStore();
+  const { subjectId, goalIds, statuses, student, mode, dispatch } = useStore();
 
   const open = (id: SubjectId) => {
     dispatch({ type: "subject", subjectId: id });
@@ -125,9 +130,35 @@ function SidebarBody() {
         </span>
         <span className={styles.userText}>
           <span className={styles.userName}>{student.name}</span>
-          <span className={styles.userMail}>{student.email}</span>
+          <span className={styles.userMail}>{mode === "demo" ? "Sample student" : student.email}</span>
         </span>
       </div>
+    </>
+  );
+}
+
+/**
+ * Above the page: the last request that failed, and in demo mode a reminder that this is
+ * the sample student, so nobody thinks their changes are being kept on a server.
+ */
+function StatusBars() {
+  const { mode, error, clearError } = useStore();
+  return (
+    <>
+      {error && (
+        <div className={styles.bar} data-tone="error" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={clearError}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      {mode === "demo" && (
+        <div className={styles.bar}>
+          <span>You&rsquo;re looking at a sample student. Changes stay in this browser.</span>
+          <Link href="/signup">Start your own map</Link>
+        </div>
+      )}
     </>
   );
 }

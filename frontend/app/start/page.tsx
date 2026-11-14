@@ -13,7 +13,7 @@ import styles from "./start.module.css";
 
 export default function StartPage() {
   const router = useRouter();
-  const { subjectId: current, goalIds, statuses, dispatch } = useStore();
+  const { subjectId: current, goalIds, statuses, act } = useStore();
   const [subjectId, setSubjectId] = useState<SubjectId>(current);
   const [goalId, setGoalId] = useState<string>(goalIds[current] ?? goalsOf(current)[0].id);
   const [other, setOther] = useState("");
@@ -59,7 +59,9 @@ export default function StartPage() {
           className={styles.other}
           onSubmit={(e) => {
             e.preventDefault();
-            if (other.trim()) setAsked(other.trim());
+            if (!other.trim()) return;
+            setAsked(other.trim());
+            void act.requestSubject(other.trim());
           }}
         >
           <label htmlFor="other-subject" className={styles.otherLabel}>
@@ -113,8 +115,8 @@ export default function StartPage() {
           <button
             type="button"
             className={ui.primary}
-            onClick={() => {
-              dispatch({ type: "goal", subjectId, goalId: goal.id });
+            onClick={async () => {
+              await act.setGoal(subjectId, goal.id);
               router.push("/start/sort");
             }}
           >

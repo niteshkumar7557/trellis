@@ -15,9 +15,10 @@ to your own AI (ChatGPT, Claude, Gemini), from what you know, what you've said a
 and fixed instructions; no AI writes it. The learning happens there; Trellis does the part your AI
 can't: it knows the shape of the subject and your history inside it.
 
-**Status:** v1 in progress. The frontend's screens are complete: its topic maps are real; the
-student and the helper's AI are stand-ins. The backend is designed (`docs/backend-design.md`),
-its first two milestones are built, and the rest is being built now. It will be hosted on AWS
+**Status:** v1 in progress. The frontend is connected to the backend: accounts (email and
+password, Google to come), each student's record, and the helper on its rule-based reader.
+Signed-out visitors get a demo on a sample student. Still to come: the AI reader for the
+helper, two rule changes, and hosting. It will be hosted on AWS
 at `trellis.niteshkumar.xyz` (`docs/aws.md`).
 
 ---

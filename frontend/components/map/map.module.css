@@ -637,3 +637,15 @@ button.finding:hover { border-color: var(--control); color: var(--text); }
   background: var(--text);
   color: var(--surface);
 }
+
+/* "This goal needs 4 areas you haven't sorted yet. Sort them" under the goal menu. */
+.unsorted {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.unsorted a {
+  color: var(--text);
+  font-weight: 500;
+}

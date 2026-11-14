@@ -6,7 +6,7 @@
 // status is summed up from its subtopics.
 
 import { bigOf, edges, isBig, kids, subtopicsOf, topicById, topics } from "./data";
-import type { CheckIn, Claim, Experience, Goal, Status, SubjectId, Topic } from "./types";
+import type { CheckIn, Claim, Experience, Goal, PromptTake, Status, SubjectId, Topic } from "./types";
 
 const needsOut = new Map<string, string[]>();
 const helpsOut = new Map<string, string[]>();
@@ -349,4 +349,45 @@ export function lastExperience(experiences: Experience[], topicId: string, kind?
   return [...experiences]
     .filter((e) => e.topicId === topicId && (!kind || e.kind === kind))
     .sort((a, b) => b.at.localeCompare(a.at))[0];
+}
+
+// ---------------------------------------------------------------- coming back (MS.3)
+
+const MINUTE_MS = 60 * 1000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
+
+/**
+ * The topic to ask "how did it go?" about when the student comes back (design.md §7):
+ * the latest prompt they took on a subtopic that has had no check-in since, taken between
+ * 10 minutes and 14 days ago. Null when there is none.
+ *
+ * - 10 minutes: right after taking a prompt they are still working on it; asking then
+ *   would nag.
+ * - 14 days: after that the question is stale, and design.md §10 says a returning student
+ *   gets one next step, not a backlog.
+ * - Subtopics only: the answer becomes a check-in, and check-ins are on subtopics.
+ *
+ * Pass the takes of one subject: the helper asks inside that subject's thread.
+ */
+export function awaitingReport(promptTakes: PromptTake[], checkIns: CheckIn[], now: Date): PromptTake | null {
+  const t = now.getTime();
+  const newestFirst = [...promptTakes].sort((a, b) => b.at.localeCompare(a.at));
+  for (const take of newestFirst) {
+    const age = t - new Date(take.at).getTime();
+    if (age < 10 * MINUTE_MS) continue;
+    if (age > 14 * DAY_MS) break; // sorted newest first: everything after is older still
+    if (!topicById.get(take.topicId)?.parentId) continue;
+    const reported = checkIns.some((c) => c.topicId === take.topicId && c.at > take.at);
+    if (!reported) return take;
+  }
+  return null;
+}
+
+/**
+ * Big topics a goal needs that the student never sorted (no claim on them), in route
+ * order. After a goal change, these are offered as a short sort instead of the whole deck.
+ */
+export function unsortedAreas(goal: Goal, claims: Claim[]): Topic[] {
+  const claimed = new Set(claims.map((c) => c.topicId));
+  return sortByRoute([...requiredFor(goal)].map((id) => topicById.get(id)!).filter((t) => isBig(t) && !claimed.has(t.id)));
 }

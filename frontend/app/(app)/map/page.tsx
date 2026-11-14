@@ -13,7 +13,6 @@ import { Icon } from "@/components/ui/Icon";
 import { StatusMark } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
 import { goalsOf, isBig, subjectById, topicById } from "@shared/data";
-import { TODAY } from "@shared/data/student";
 import {
   daysBetween,
   importanceOf,
@@ -24,11 +23,12 @@ import {
   statusOf,
   suspectsFor,
   summarise,
+  unsortedAreas,
 } from "@shared/graph";
 import { useStore } from "@/lib/store";
 
 export default function MapPage() {
-  const { subjectId, goal, statuses, checkIns, experiences, opened, selected, dispatch } = useStore();
+  const { subjectId, goal, statuses, claims, checkIns, experiences, opened, selected, today, dispatch, act } = useStore();
   const [view, setView] = useState<"map" | "list">("map");
   const [tracing, setTracing] = useState(false);
   const narrow = useNarrow();
@@ -114,7 +114,7 @@ export default function MapPage() {
           <h1 className={styles.title}>{subject.name}</h1>
           <label className={styles.goalSelect}>
             <span className="visually-hidden">Goal</span>
-            <select value={goal.id} onChange={(e) => dispatch({ type: "goal", subjectId, goalId: e.target.value })}>
+            <select value={goal.id} onChange={(e) => void act.setGoal(subjectId, e.target.value)}>
               {goalsOf(subjectId).map((g) => (
                 <option key={g.id} value={g.id}>
                   Goal: {g.name}
@@ -124,6 +124,21 @@ export default function MapPage() {
             <Icon name="chevron" />
           </label>
         </div>
+
+        {/* After a goal change: the new goal's areas that were never sorted, offered as a
+            short sort. Only for a student who sorted this subject before; a first sort
+            happens on /start. */}
+        {(() => {
+          const unsorted = unsortedAreas(goal, claims);
+          const sortedBefore = claims.some((c) => topicById.get(c.topicId)?.subjectId === subjectId);
+          if (!unsorted.length || !sortedBefore) return null;
+          return (
+            <p className={styles.unsorted}>
+              This goal needs <span className="num">{unsorted.length}</span> {unsorted.length === 1 ? "area" : "areas"} you
+              haven&rsquo;t sorted yet. <Link href="/start/sort?only=unsorted">Sort them</Link>
+            </p>
+          );
+        })()}
 
         {/* What the overview used to say, as three buttons: each opens its topic. */}
         <div className={styles.findings}>
@@ -140,7 +155,7 @@ export default function MapPage() {
             >
               <StatusMark status="stuck" />
               <span>
-                <strong>Stuck: {stuck.name}</strong> · <span className="num">{daysBetween(stuckSince.at, TODAY)}</span> days
+                <strong>Stuck: {stuck.name}</strong> · <span className="num">{daysBetween(stuckSince.at, today)}</span> days
                 {suspects[0] && <> · may be {suspects[0].topic.name}</>}
               </span>
             </button>
@@ -236,7 +251,7 @@ export default function MapPage() {
                 required={required}
                 nextId={next?.id ?? null}
                 onOpen={openTopic}
-                onLookInside={(id) => dispatch({ type: "open", topicId: id })}
+                onLookInside={(id) => void act.open(id)}
                 onClose={close}
               />
             ) : (

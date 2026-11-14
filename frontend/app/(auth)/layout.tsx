@@ -13,7 +13,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             Trellis
           </Link>
           <div className={styles.form}>{children}</div>
-          <p className={styles.fine}>Your record is private. Nobody else ever sees it.</p>
+          <p className={styles.fine}>Your record is private: no other student, teacher or group can see it.</p>
         </div>
         <figure className={styles.plate}>
           <Espalier className={styles.art} tiers={[4, 4, 3, 3, 2]} ripeness={0.55} seed={11} />

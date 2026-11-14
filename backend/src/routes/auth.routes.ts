@@ -3,6 +3,8 @@ import {
   LoginBody,
   RegisterBody,
   ResetPasswordBody,
+  googleCallback,
+  googleStart,
   login,
   logout,
   refresh,
@@ -19,6 +21,10 @@ authRoutes.post("/register", registerLimiter, validateBody(RegisterBody), regist
 authRoutes.post("/login", loginLimiter, validateBody(LoginBody), login);
 authRoutes.post("/refresh", refreshLimiter, refresh);
 authRoutes.post("/reset-password", resetLimiter, validateBody(ResetPasswordBody), resetPassword);
+// Sign in with Google. The start is limited like login; the callback carries a one-time
+// code that only Google can produce.
+authRoutes.get("/google", loginLimiter, googleStart);
+authRoutes.get("/google/callback", googleCallback);
 // Not limited: it only ever removes a session.
 authRoutes.post("/logout", logout);
 

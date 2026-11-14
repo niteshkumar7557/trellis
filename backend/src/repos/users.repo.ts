@@ -113,3 +113,63 @@ export async function getAccountForExport(userId: number, db: Pick<PoolClient, "
     emailVerifiedAt: u.email_verified_at?.toISOString() ?? null,
   };
 }
+
+/**
+ * The account for a Google sign-in, found, linked or created (backend-design.md §4):
+ *   - a user with this google_sub exists      → that user
+ *   - a user with this email exists           → link Google to it and mark the email
+ *     verified. If it had NEVER been verified, also remove its password and sign it out
+ *     everywhere: password sign-up doesn't prove you own the address, so someone could
+ *     have registered a classmate's email first and would otherwise keep a way in.
+ *   - nobody                                  → a new user, email verified, no password
+ * One transaction, with the email row locked, so two sign-ins at once can't both create.
+ */
+export async function signInWithGoogle(profile: { sub: string; email: string; name: string | null }): Promise<number> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const bySub = await client.query<{ id: number }>("SELECT id FROM users WHERE google_sub = $1", [profile.sub]);
+    let userId = bySub.rows[0]?.id;
+
+    if (userId === undefined) {
+      const byEmail = await client.query<{ id: number; email_verified_at: Date | null }>(
+        "SELECT id, email_verified_at FROM users WHERE email = $1 FOR UPDATE",
+        [profile.email],
+      );
+      const existing = byEmail.rows[0];
+      if (existing) {
+        userId = existing.id;
+        if (existing.email_verified_at === null) {
+          await client.query("UPDATE users SET hashed_password = NULL WHERE id = $1", [userId]);
+          await client.query("DELETE FROM refresh_tokens WHERE user_id = $1", [userId]);
+        }
+        await client.query(
+          "UPDATE users SET google_sub = $2, email_verified_at = COALESCE(email_verified_at, NOW()) WHERE id = $1",
+          [userId, profile.sub],
+        );
+      } else {
+        // A name for the sidebar: Google's, else the part of the email before the @.
+        const name = (profile.name?.trim() || profile.email.split("@")[0]!).slice(0, 60);
+        const created = await client.query<{ id: number }>(
+          `INSERT INTO users (name, email, google_sub, email_verified_at) VALUES ($1, $2, $3, NOW())
+           ON CONFLICT (email) DO NOTHING RETURNING id`,
+          [name, profile.email, profile.sub],
+        );
+        // Lost a race with a sign-up for the same address in the last millisecond: try
+        // again, and the row now exists to be linked.
+        if (!created.rows[0]) {
+          await client.query("ROLLBACK");
+          return signInWithGoogle(profile);
+        }
+        userId = created.rows[0].id;
+      }
+    }
+    await client.query("COMMIT");
+    return userId;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

@@ -5,9 +5,10 @@ How the frontend is built and how to change it safely. The product rules live in
 the code map, the rules each part follows, the gotchas, and the **data contract** the
 backend must serve.
 
-**Status (12 Nov 2026):** the screens are finished and on `main`. It makes **no API
-calls**. The topic graphs are real; the student, their history and the helper's "AI" are
-stand-ins. `frontend/lib/store.tsx` is the one place to swap in the API (§11).
+**Status (14 Nov 2026):** the screens are finished and connected to the API (M6, on
+`backend/m6`). A signed-in student is **live**: their record comes from the backend.
+A visitor who isn't signed in sees a **demo** on the sample student, kept in this
+browser. How the two modes work is in §10 and §11.
 
 **Still to build:** the design review of 12 Nov 2026 agreed a set of product changes. They
 are listed in **§13** and built in milestone M6 (and MS for the `shared/` rules). Sections
@@ -25,7 +26,9 @@ The inspector writes to `.taste-skill/` (git-ignored). Expected results: app scr
 with at most a "tiny text" warning on the map (node labels); the landing page always fails
 "few pictures" and "no footage", because every picture is SVG by the owner's rule.
 
-The sample student is saved in localStorage under **`trellis-demo-v4`**. Settings →
+Demo mode (signed out) saves the sample student in localStorage under **`trellis-demo-v5`**.
+Live mode keeps nothing in localStorage. Run the backend too (`CLAUDE.md`, "Run") to sign
+in; `next.config.ts` forwards `/api/*` to it. Settings →
 "Restore the sample data" resets it. Bump the key in `lib/store.tsx` whenever the saved
 shape or the sample changes, so old saves don't load.
 
@@ -62,7 +65,9 @@ dependencies. `next.config.ts` sets `devIndicators: false`.
 | Route | Screen | File |
 |---|---|---|
 | `/` | Landing | `app/page.tsx` → `components/landing/Landing.tsx` |
-| `/login`, `/signup` | Auth (fake for now) | `app/(auth)/AuthForm.tsx` |
+| `/login`, `/signup` | Email and password; Google when it is turned on | `app/(auth)/AuthForm.tsx` |
+| `/reset?token=…` | Set a new password with the admin's one-time link | `app/(auth)/reset/` |
+| `/auth/done` | Where Google sign-in lands; sends on to `/start` or `/map` | `app/auth/done/page.tsx` |
 | `/start` | Pick subject and goal; anything else typed gets a fixed "Coming soon" | `app/start/page.tsx` |
 | `/start/sort` | Sort the **big topics**, one card each (keys 1/2/3, Backspace) | `app/start/sort/page.tsx` |
 | `/map` | The map (home) | `app/(app)/map/page.tsx` |
@@ -279,24 +284,50 @@ Esc closes):
 
 ## 10. The store (`lib/store.tsx`)
 
-A `useReducer` context persisted to localStorage. State: `claims, checkIns, experiences,
-messages, subjectId, goalIds, opened`, plus unsaved `selected`, `asking`. Derived on every
-change: `statuses` (from `deriveStatuses`) and `goal`.
+A `useReducer` context with **two modes** (`mode`):
 
-Actions: `hydrate, select, ask, subject, goal, claims, open, add, edit, remove, say, save,
-cancel, undo, editExperience, removeExperience, used, erase, reset`.
-- `save` turns a proposal into check-ins and experiences (ids `c…`, `e…`) and marks the card
-  saved with those ids; `undo` deletes them.
-- **StrictMode gotcha:** the save effect skips the untouched `initial` state; otherwise, in
-  development, the sample overwrote saved data before it loaded. `reset` returns a copy of
-  `initial` for the same reason.
-- `clean()` drops saved rows that point at topics or goals that no longer exist.
+| Mode | Who | Where the record comes from | Where changes go |
+|---|---|---|---|
+| `loading` | everyone, for a moment | — | — (the shell shows a blank sheet, so the sample never flashes up) |
+| `demo` | not signed in | the sample student, or this browser's saved copy (`trellis-demo-v5`) | the reducer, then localStorage |
+| `live` | signed in | `GET /api/state` | the API; the reducer applies the server's answer |
 
-## 11. Swapping in the backend
+On load it tries one `POST /api/auth/refresh` (the refresh cookie). Success: live.
+Failure: demo. A refresh that fails later (signed out elsewhere) drops back to demo.
 
-Only `lib/store.tsx`, `components/map/useHelper.ts` and `app/(auth)/AuthForm.tsx` should
-change. The endpoint-by-endpoint mapping is in `backend-design.md` §9. Keep a demo mode on
-the sample data for visitors without an account.
+State: `student, claims, checkIns, experiences, messages, moreMessages, promptTakes,
+subjectId, goalIds, opened`, plus unsaved `selected`, `asking`. Derived on every change:
+`statuses`, `goal`, and `today` (the sample's fixed day in demo, the real date live).
+
+**Screens call `act.*`, never `dispatch` for record changes:** `setGoal, addClaims, open,
+editCheckIn, removeCheckIn, editExperience, removeExperience, tookPrompt, rename,
+requestSubject, loadOlder, goLive, signOut, erase, reset`. Each does the local change in
+demo mode, or the request and then the server's answer in live mode. A failed request
+shows in the shell's error bar (`error`, `fail()`). `dispatch` stays for screen state:
+`select`, `ask`, `subject`.
+
+- Demo `save` turns a proposal into check-ins and experiences (ids `c…`, `e…`); live `saved`
+  applies the server's rows and follow-up. Undo removes the saved ids either way.
+- **StrictMode gotcha:** the save effect skips the untouched `demoInitial` state; otherwise,
+  in development, the sample overwrote saved data before it loaded.
+- `clean()` drops saved demo rows that point at topics or goals that no longer exist.
+
+## 11. The API client and the helper
+
+- **`lib/api.ts`**: every request goes to `/api/...` on this origin. The access token lives
+  in memory only; a 401 refreshes once (shared by parallel requests) and retries. Errors
+  arrive as `ApiError(status, code, message)`; the messages are written for people and are
+  shown as they are.
+- **`useHelper`**: demo mode runs `shared/helper.ts` here; live mode sends messages, taps,
+  save, cancel and undo to `/api/helper/...`. A `409 proposal_not_open` reloads the record
+  rather than showing an error (the card was decided in another tab).
+- **Older chat** loads with "Show earlier messages" (live mode only; the first load brings
+  the latest 50 per subject).
+- **"How did State go?"** (`HowDidItGo` in `Chat.tsx`) uses `awaitingReport()`; the short
+  sort after a goal change uses `unsortedAreas()` and `/start/sort?only=unsorted`.
+- **Settings in live mode:** the name saves to the server, the email is read-only, Download
+  uses `GET /api/export`, Delete asks for the password on password accounts, and there is
+  Log out. "Restore the sample data" exists only in demo mode.
 
 ## 12. Data contract
 
@@ -329,18 +360,20 @@ where it is built. Until then, sections 1 to 12 describe the code as it stands.
 
 | Change | Where it shows | Built in |
 |---|---|---|
-| **"How did it go?" on return.** If the student took a prompt and has not reported on that topic since, the helper shows one line: *"How did State go?"* with Got it · Partly · Stuck · Not yet. It shows only the latest such topic, only when the prompt was taken between 10 minutes and 14 days ago, and never says how long ago. The first three go through `helper.pick()`. "Not yet" hides it until the next visit and saves nothing | Top of the helper thread | M6.4 (`awaitingReport` in MS.3) |
-| **Taking a prompt is recorded.** Copy, ChatGPT and Claude each send the topic and how it was taken. This replaces the `used` action and the `uses` counter | `PromptView` in `Rail.tsx`, prompt cards in `Chat.tsx` | M6.4 |
+| **"How did it go?" on return.** If the student took a prompt and has not reported on that topic since, the helper shows one line: *"How did State go?"* with Got it · Partly · Stuck · Not yet. It shows only the latest such topic, only when the prompt was taken between 10 minutes and 14 days ago, and never says how long ago. The first three go through `helper.pick()`. "Not yet" hides it until the next visit and saves nothing | Top of the helper thread | M6.4 (`awaitingReport` in MS.3) **Built in M6.** |
+| **Taking a prompt is recorded.** Copy, ChatGPT and Claude each send the topic and how it was taken. This replaces the `used` action and the `uses` counter | `PromptView` in `Rail.tsx`, prompt cards in `Chat.tsx` | M6.4 **Built in M6.** The demo still counts `uses` until MS.2 removes it from the prompt rules. |
 | **The stuck guess can name a done topic**, and uses the student's own words (design.md §8). The "May be underneath" rows and the trace need no new UI; a done topic simply appears there with its Done mark | Topic panel, the Stuck button, the trace | MS.1 |
 | **Prompts show what worked underneath**: up to two lines from the topic's direct prerequisites. Hard notes show only while their topic is not done | `PromptView`, under "From my own notes" | MS.2 |
-| **A short sort after a goal change**, for big topics the new goal needs that were never sorted. `/start/sort` deals only those cards | A line under the goal menu | M6.4 (`unsortedAreas` in MS.3) |
-| **"Coming soon" requests are saved** | `/start`, the "Learning something else?" form | M6.4 |
-| **Real sign-in.** Google works; password sign-up and login call the API | `AuthForm.tsx` | M6.2, M6.3 |
-| **Forgotten password.** A line on the login page: *"Forgot your password? Email the admin from the address you signed up with."* with a mail link. A new page `/reset?token=…` sets a new password | `/login`, new `/reset` | M6.2 |
-| **A landing page after Google sign-in**, `/auth/done`: it fetches a token and goes to `/start` or `/map` | New route | M6.3 |
-| **Older chat history loads on scroll**: the first load brings the latest 50 messages per subject | `Chat.tsx` | M6.1 |
+| **A short sort after a goal change**, for big topics the new goal needs that were never sorted. `/start/sort` deals only those cards | A line under the goal menu | M6.4 (`unsortedAreas` in MS.3) **Built in M6.** |
+| **"Coming soon" requests are saved** | `/start`, the "Learning something else?" form | M6.4 **Built in M6.** |
+| **Real sign-in.** Google works; password sign-up and login call the API | `AuthForm.tsx` | M6.2, M6.3 **Built in M6.** |
+| **Forgotten password.** A line on the login page: *"Forgot your password? Email the admin from the address you signed up with."* with a mail link. A new page `/reset?token=…` sets a new password | `/login`, new `/reset` | M6.2 **Built in M6.** |
+| **A landing page after Google sign-in**, `/auth/done`: it fetches a token and goes to `/start` or `/map` | New route | M6.3 **Built in M6.** |
+| **Older chat history loads on scroll**: the first load brings the latest 50 messages per subject | `Chat.tsx` | M6.1 **Built in M6, as a "Show earlier messages" button rather than on scroll:** predictable, works by keyboard, and never moves the thread while it is read. |
 
 ### Wording to change
+
+Done in M6.2, except the topic-panel wording: no "Gemini" was left in the UI.
 
 | Where | Now | Change to |
 |---|---|---|

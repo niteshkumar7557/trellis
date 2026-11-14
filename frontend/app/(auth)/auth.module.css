@@ -144,3 +144,10 @@
   .formSide { padding: 20px 16px; }
   .plate { display: none; }
 }
+
+/* A refused login or sign-up, in the API's own words. */
+.error {
+  margin: 0;
+  color: var(--stuck);
+  font-size: 13px;
+}

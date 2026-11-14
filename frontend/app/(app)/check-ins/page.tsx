@@ -6,7 +6,6 @@ import { StatusPill } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
 import { TopicOptions } from "@/components/map/TopicOptions";
 import { subjectById, subjects, topicById } from "@shared/data";
-import { TODAY } from "@shared/data/student";
 import { relativeDay } from "@shared/graph";
 import { useStore } from "@/lib/store";
 import { tidy } from "@shared/parse";
@@ -16,7 +15,7 @@ import styles from "./checkins.module.css";
 const OUTCOME_STATUS = { got: "done", partly: "learning", stuck: "stuck" } as const;
 
 export default function CheckInsPage() {
-  const { checkIns, experiences, dispatch } = useStore();
+  const { checkIns, experiences, today, act } = useStore();
 
   /** What the student said about a check-in: from the same chat message, or the same topic just after. */
   const notesFor = (c: CheckIn) =>
@@ -89,7 +88,7 @@ export default function CheckInsPage() {
       {days.map(({ day, items }) => (
         <section key={day} className={styles.day}>
           <h2 className={styles.dayTitle}>
-            {relativeDay(day, TODAY)}
+            {relativeDay(day, today)}
             <span>{new Date(day + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</span>
           </h2>
           <ul className={styles.rows}>
@@ -100,7 +99,7 @@ export default function CheckInsPage() {
                   checkIn={c}
                   onCancel={() => setEditing(null)}
                   onSave={(next) => {
-                    dispatch({ type: "edit", checkIn: next });
+                    void act.editCheckIn(next);
                     setEditing(null);
                   }}
                 />
@@ -115,7 +114,7 @@ export default function CheckInsPage() {
                       {topicById.get(c.topicId)?.name} · {topicById.get(topicById.get(c.topicId)?.parentId ?? "")?.name ?? subjectById.get(topicById.get(c.topicId)!.subjectId)?.shortName}
                     </span>
                     {notesFor(c).map((e) => (
-                      <NoteRow key={e.id} experience={e} onSave={(x) => dispatch({ type: "editExperience", experience: x })} onDelete={() => dispatch({ type: "removeExperience", id: e.id })} />
+                      <NoteRow key={e.id} experience={e} onSave={(x) => void act.editExperience(x)} onDelete={() => void act.removeExperience(e.id)} />
                     ))}
                   </span>
                   <StatusPill status={OUTCOME_STATUS[c.outcome]} />
@@ -129,7 +128,7 @@ export default function CheckInsPage() {
                       aria-label="Delete this check-in"
                       onClick={() => {
                         if (confirm(`Delete “${c.text}”? Your map will be worked out again without it.`)) {
-                          dispatch({ type: "remove", id: c.id });
+                          void act.removeCheckIn(c.id);
                         }
                       }}
                     >

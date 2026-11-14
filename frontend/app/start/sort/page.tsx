@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
 import { kids, subjectById, topicById } from "@shared/data";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
-import { needsOf, summarise } from "@shared/graph";
+import { needsOf, summarise, unsortedAreas } from "@shared/graph";
 import { useStore } from "@/lib/store";
 import type { ClaimKind } from "@shared/types";
 import styles from "../start.module.css";
@@ -19,15 +19,21 @@ const CHOICES: { kind: ClaimKind; label: string; key: string }[] = [
   { kind: "new", label: "New to me", key: "3" },
 ];
 
-export default function SortPage() {
+// /start/sort deals one card per big topic on the goal's route. /start/sort?only=unsorted
+// (linked from the map after a goal change) deals only the ones never sorted, so changing
+// goal doesn't mean sorting everything again.
+export default function SortPage({ searchParams }: { searchParams: Promise<{ only?: string }> }) {
   const router = useRouter();
-  const { goal, statuses, dispatch } = useStore();
+  const onlyUnsorted = use(searchParams).only === "unsorted";
+  const { goal, statuses, claims, dispatch, act } = useStore();
   const deck = useMemo(() => {
     if (!goal) return [];
+    if (onlyUnsorted) return unsortedAreas(goal, claims);
     // One card per big topic on the route. Its subtopics inherit the answer.
     return summarise(goal, statuses).areas;
+    // The deck is dealt once per goal: answering cards must not reshuffle it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goal?.id]);
+  }, [goal?.id, onlyUnsorted]);
   const [answers, setAnswers] = useState<ClaimKind[]>([]);
   const card = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -93,9 +99,8 @@ export default function SortPage() {
 
   const count = (k: ClaimKind) => answers.filter((a) => a === k).length;
 
-  const finish = () => {
-    const at = new Date().toISOString().slice(0, 10);
-    dispatch({ type: "claims", claims: deck.map((t, i) => ({ topicId: t.id, claim: answers[i], at })) });
+  const finish = async () => {
+    await act.addClaims(deck.map((t, i) => ({ topicId: t.id, claim: answers[i] })));
     dispatch({ type: "select", topicId: null });
     router.push("/map");
   };

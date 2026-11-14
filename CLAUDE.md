@@ -43,19 +43,20 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 - **Design:** reviewed on 12 Nov 2026. `design.md` v7, `backend-design.md` and `aws.md` are
   the result. The docs are written; nothing in them beyond M0 and M1 is built yet.
-- **Frontend:** the screens are finished. No API calls; the topic graphs are real
-  (`shared/data/react-native.ts`, `redis.ts`, from roadmap.sh). The sample student, their
-  history and the helper's AI (`shared/helper.ts`, `shared/parse.ts`) are stand-ins. The
-  agreed changes still to build are in `docs/frontend.md` §13.
+- **Frontend:** the screens are finished and connected to the API (M6, on `backend/m6`):
+  signed in is **live** (the record from the backend), signed out is a **demo** on the
+  sample student. The topic graphs are real (`shared/data/react-native.ts`, `redis.ts`,
+  from roadmap.sh). See `docs/frontend.md` §10 and §11.
 - **`shared/`:** the domain code both apps run: types, data, graph, prompt, parse, helper.
   The frontend imports it as `@shared/*`. Keep it free of React, Next and Node-only APIs.
 - **Backend:** M0 (foundations), M1 (Neo4j content: the graph seed, `GET /api/subjects`,
   the subject graph, `GET /api/instructions` and the path query) and M2 (accounts under
   `/api/auth`, `/api/me`, reset links, goals, claims, opened topics, subject requests, and
   running without Neo4j) and M3 (check-ins, experiences, prompt takes, `GET /api/state`,
-  `GET /api/export`, `DELETE /api/me`) are done and on `main`. M4 (the helper on rules:
-  `readByRules`/`replyFor`, the message routes, save/cancel/undo) is built on
-  `backend/m4`, awaiting the owner's review. **Next up:** M6, connecting the frontend.
+  `GET /api/export`, `DELETE /api/me`) and M4 (the helper on rules) are done and on
+  `main`. M6 (the frontend on the API, real sign-in, Google sign-in (off until the OAuth
+  client exists), the reset page, "how did it go?", the short sort) and MS.3 are built on
+  `backend/m6`, awaiting the owner's review. **Next up:** MS.1 and MS.2.
 - **Plan (re-planned 13 Nov 2026):** M3 on 13 Nov; M4, M6 and MS on 14 Nov; M5 and M7 on
   15 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** nothing created yet. The plan and the setup steps are in `docs/aws.md`.
@@ -141,4 +142,4 @@ The dev compose file maps Postgres to **5050** (`backend/example.env` says so; a
 `backend/.env` may still say 5432; it also needs `NEO4J_PASSWORD=trellis-dev-pass`). Backend
 checks: `npm run typecheck`, `npm test` (no database) and `npm run test:integration` (real ones).
 The frontend demo state is in localStorage
-`trellis-demo-v4`; Settings → "Restore the sample data" resets it.
+`trellis-demo-v5` (demo mode, signed out); Settings → "Restore the sample data" resets it.

@@ -7,8 +7,9 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (14 Nov 2026):** M0 to M3 are done and on `main`. M4 is built and tested on
-`backend/m4`, waiting for review. Next is M6, then MS (§10, §11). The frontend still runs on sample data with no API calls.
+**Status (14 Nov 2026):** M0 to M4 are done and on `main`. M6 (connecting the frontend)
+and MS.3 are built and tested on `backend/m6`, waiting for review. Next are MS.1 and MS.2
+(§10, §11). The frontend still runs on sample data with no API calls.
 **The deadline is 21 Nov 2026**: the build is planned for 13 to 15 Nov (re-planned on
 13 Nov from 13 to 17 Nov), then testing with real users.
 
@@ -30,7 +31,8 @@ model · 4 API and auth · 5 The helper · 6 Prompts · 7 Derived logic · 8 Cro
 3. Each milestone is built on its own branch from `main` (`backend/m2`, `backend/m3`, …).
    When it's done it merges into `main` with a **merge commit, never a squash**, so every
    commit keeps its author in the history, and the branch is deleted. Push and merge only
-   when the owner says so.
+   when the owner says so. (The owner chose a squash for M4 on 14 Nov 2026; that was a
+   one-off unless the owner changes this rule.)
 4. Never create two branch names that differ only by case (a `Backend/m2` next to
    `backend/m2` corrupts remote-tracking refs in every clone on macOS and Windows).
 
@@ -942,9 +944,15 @@ API starts; Postgres is dumped to S3 every night and the dumps expire after 14 d
 
 ## 9. Connecting the frontend
 
+**Built in M6 (14 Nov 2026).** How it works now is in `docs/frontend.md` §10 and §11; the
+plan it followed is kept below. Two places differ from the plan: the store's actions are
+called as `act.*` methods instead of being dispatched, and the confirm card is addressed by
+`proposalId` (the screens still pass a message id and card index; `useHelper` looks up the
+id).
+
 `frontend/lib/store.tsx`, `components/map/useHelper.ts` and `app/(auth)/AuthForm.tsx` are
-the places to change. Today the store is a `useReducer` persisted to localStorage
-(`trellis-demo-v4`). When the API is ready:
+the places to change. Before M6 the store was a `useReducer` persisted to localStorage
+(`trellis-demo-v4`). The plan:
 
 - A small API client holds the access token in memory, sends it on every call, and on a
   `401` calls `/api/auth/refresh` once and retries.
@@ -996,7 +1004,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M3.3 Migration 0017 plus `POST /api/prompt-takes`.
 - M3.4 `GET /api/state`, `GET /api/export`, `DELETE /api/me`.
 
-**M4: The helper on rules** (14 Nov)
+**M4: The helper on rules** ✅ (merged into `main` as one squashed commit, 14 Nov 2026)
 - M4.1 Split `shared/helper.ts` into `readByRules` and `replyFor` (§5). No behaviour
   change; the frontend checks stay clean.
 - M4.2 `GET/POST /api/helper/:subject/messages` on the rules, with paging.
@@ -1008,7 +1016,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M6.2 Real sign-up and login, the reset page, and the wording changes in frontend.md §13.
 - M6.3 Google sign-in: the two routes and the button.
 - M6.4 Prompt takes and the "how did it go?" line; subject requests; the short sort after
-  a goal change. (Needs MS.3.)
+  a goal change. (Needs MS.3, which was built just before it on `backend/m6`.)
 
 **MS: Rule changes in `shared/`** (14 Nov; MS.3 before M6.4)
 - MS.1 The new suspect ranking (§7), with golden-test cases.
@@ -1057,13 +1065,28 @@ Update this table at the start of each planning session from `git log` and merge
 | M3.2 Migration 0016, `PATCH/DELETE /api/experiences` | done | `main`, 13 Nov 2026 |
 | M3.3 Migration 0017, `POST /api/prompt-takes` | done | `main`, 13 Nov 2026 |
 | M3.4 `GET /api/state`, `GET /api/export`, `DELETE /api/me` | done | `main`, 13 Nov 2026 |
-| M4.1 Split `respond()` into `readByRules` and `replyFor` | built, in review | `backend/m4` |
-| M4.2 `GET/POST /api/helper/:subjectId/messages` on the rules | built, in review | `backend/m4` |
-| M4.3 Save, cancel, undo | built, in review | `backend/m4` |
-| M6, MS, M5, M7 | not started | — |
+| M4.1 Split `respond()` into `readByRules` and `replyFor` | done | `main`, 14 Nov 2026 (squashed) |
+| M4.2 `GET/POST /api/helper/:subjectId/messages` on the rules | done | `main`, 14 Nov 2026 (squashed) |
+| M4.3 Save, cancel, undo | done | `main`, 14 Nov 2026 (squashed) |
+| M6.1 The API client, the store on the API, demo mode, the rewrite | built, in review | `backend/m6` |
+| M6.2 Real sign-up and login, the reset page, the wording changes | built, in review | `backend/m6` |
+| M6.3 Google sign-in | built, in review; **off until the owner creates the Google OAuth client** | `backend/m6` |
+| M6.4 "How did it go?", subject requests, the short sort | built, in review | `backend/m6` |
+| MS.3 `awaitingReport`, `unsortedAreas` | built, in review | `backend/m6` |
+| MS.1, MS.2, M5, M7 | not started | — |
 
-**Expected test counts after M4:** 178 passed in `npm test`, 77 in `npm run test:integration`,
-none skipped (checked 14 Nov 2026). After M3 they were 110 and 60.
+**Expected test counts after M6:** 193 passed in `npm test`, 81 in `npm run test:integration`,
+none skipped (checked 14 Nov 2026). After M4 they were 178 and 77. M6 was also checked by
+hand in a browser against the real API (sign-up to delete, a reset link, the helper's
+question, Save, reload); the frontend has no automated tests of its own yet.
+
+**Turning on Google sign-in (the owner, once):** in Google Cloud Console create an OAuth
+client ("Web application") with the redirect URIs
+`http://localhost:3000/api/auth/google/callback` and
+`https://trellis.niteshkumar.xyz/api/auth/google/callback`. Put its id and secret in
+`backend/.env` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) and set
+`NEXT_PUBLIC_GOOGLE_SIGNIN=on` in `frontend/.env`. Until then the routes answer 404 and
+the button is hidden. Not tested against Google itself yet: the tests fake it.
 
 **How M3 is tested without the helper:** nothing can create a check-in or an experience
 through the API until M4.3 (only saving a proposal does). The integration tests write

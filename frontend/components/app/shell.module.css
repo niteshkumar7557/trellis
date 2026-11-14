@@ -237,3 +237,37 @@
     border-radius: 0;
   }
 }
+
+/* While the store decides between the sample and a signed-in student's map. */
+.loading {
+  flex: 1;
+}
+
+/* One line above the page: the demo note, or a request that failed. */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px var(--pad);
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.bar[data-tone="error"] {
+  color: var(--stuck);
+}
+
+.bar a,
+.bar button {
+  margin-left: auto;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

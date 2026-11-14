@@ -9,7 +9,8 @@ import type { CookieOptions, Request, Response } from "express";
 import { z } from "zod";
 import config from "../config/index.js";
 import { deleteRefreshToken, saveRefreshToken, usePasswordReset, useRefreshToken } from "../repos/auth.repo.js";
-import { createPasswordUser, findLoginByEmail, getStudent } from "../repos/users.repo.js";
+import { createPasswordUser, findLoginByEmail, getStudent, signInWithGoogle } from "../repos/users.repo.js";
+import { googleEnabled, googleProfile, googleSignInUrl } from "../utils/google.js";
 import { HttpError } from "../utils/http-error.js";
 import { hashToken, newRandomToken, signAccessToken } from "../utils/tokens.js";
 
@@ -165,4 +166,63 @@ export async function resetPassword(req: Request, res: Response) {
     );
   }
   res.sendStatus(204);
+}
+
+// ------------------------------------------------------------------ Sign in with Google
+
+const STATE_COOKIE = "google_state";
+
+/**
+ * The `state` cookie proves Google's reply belongs to a sign-in THIS browser started.
+ * Without it, someone could send a victim a callback link with the attacker's own code,
+ * and the victim would end up signed in to the attacker's account.
+ *
+ * SameSite=Lax, not Strict like the refresh cookie: Google sends the browser back with a
+ * cross-site navigation, and browsers never send a Strict cookie on one, so the check
+ * would always fail. Lax is sent on a top-level GET like this, and only on that.
+ */
+function stateCookieOptions(): CookieOptions {
+  return { httpOnly: true, secure: config.is_production, sameSite: "lax", path: "/api/auth/google", maxAge: 10 * 60 * 1000 };
+}
+
+/** GET /api/auth/google → 302 to Google. 404 while Google sign-in isn't configured. */
+export function googleStart(_req: Request, res: Response) {
+  if (!googleEnabled()) throw new HttpError(404, "not_found", "Google sign-in is not set up.");
+  const state = newRandomToken();
+  res.cookie(STATE_COOKIE, state, stateCookieOptions());
+  res.redirect(googleSignInUrl(state));
+}
+
+/**
+ * GET /api/auth/google/callback?code=…&state=… → 302 to /auth/done, signed in.
+ *
+ * This is a page the browser navigates to, not an API call from our code, so failures
+ * redirect to the login page with a short reason instead of answering JSON.
+ */
+export async function googleCallback(req: Request, res: Response) {
+  if (!googleEnabled()) throw new HttpError(404, "not_found", "Google sign-in is not set up.");
+  const fail = (reason: string) => res.redirect(`${config.public_url}/login?error=${reason}`);
+
+  const expected: unknown = req.cookies?.[STATE_COOKIE];
+  res.clearCookie(STATE_COOKIE, { ...stateCookieOptions(), maxAge: undefined });
+  const { code, state } = req.query;
+  if (typeof code !== "string" || typeof state !== "string" || typeof expected !== "string" || state !== expected) {
+    return fail("google");
+  }
+
+  let profile;
+  try {
+    profile = await googleProfile(code);
+  } catch (err) {
+    // A bad or reused code, or Google unreachable: log it for us, tell the student to retry.
+    console.error("Google sign-in failed", err);
+    return fail("google");
+  }
+  // An address Google hasn't verified proves nothing about who owns it.
+  if (!profile.emailVerified) return fail("google_unverified");
+
+  const userId = await signInWithGoogle(profile);
+  await startSession(res, userId);
+  // The frontend's /auth/done page turns the new refresh cookie into an access token.
+  res.redirect(`${config.public_url}/auth/done`);
 }

@@ -7,7 +7,7 @@ import { StatusMark } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
 import { topicById } from "@shared/data";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
-import { shortDate, statusOf } from "@shared/graph";
+import { awaitingReport, shortDate, statusOf } from "@shared/graph";
 import { tidy } from "@shared/parse";
 import { instructions } from "@shared/data/instructions";
 import { buildPrompt, chatGptUrl, claudeUrl } from "@shared/prompt";
@@ -65,8 +65,18 @@ export function Chat({ helper, onOpen }: { helper: Helper; onOpen: (id: string) 
 
   return (
     <div className={styles.chat}>
+      <HowDidItGo helper={helper} />
       <div ref={scroller} className={styles.scroll}>
         <ol ref={thread} className={styles.thread} aria-live="polite">
+          {helper.more && (
+            <li className={styles.item}>
+              {/* A button, not load-on-scroll: it is predictable, works by keyboard, and
+                  never moves the thread under the student's eyes while they read. */}
+              <button type="button" className={styles.older} onClick={helper.loadOlder}>
+                Show earlier messages
+              </button>
+            </li>
+          )}
           {count === 0 && (
             <li className={styles.item}>
               <Entry role="helper" at={null}>
@@ -184,6 +194,45 @@ function Cards({ cards, message, helper, onOpen }: { cards?: Card[]; message: Ch
   );
 }
 
+// ------------------------------------------------------------ "How did State go?"
+
+/**
+ * When the student comes back after taking a prompt and hasn't said how it went, one line
+ * asks (design.md §7, frontend.md §13). Got it / Partly / Stuck go through the helper like
+ * the topic panel's buttons, so the one question and the confirm card still follow.
+ * "Not yet" hides it for this visit and saves nothing. It never says how long ago: "you
+ * took this 9 days ago" reads as a reproach.
+ */
+function HowDidItGo({ helper }: { helper: Helper }) {
+  const { promptTakes, checkIns, subjectId } = useStore();
+  const [hidden, setHidden] = useState<string | null>(null);
+  // Re-read each render: a take becomes due 10 minutes after it was taken.
+  const mine = promptTakes.filter((t) => topicById.get(t.topicId)?.subjectId === subjectId);
+  const take = awaitingReport(mine, checkIns, new Date());
+  if (!take || take.id === hidden) return null;
+  const name = topicById.get(take.topicId)!.name;
+
+  return (
+    <div className={styles.followUp} role="region" aria-label="How did it go?">
+      <p>How did {name} go?</p>
+      {OUTCOMES.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          className={ui.btn}
+          disabled={helper.thinking}
+          onClick={() => helper.pick(o.value, [take.topicId], `${o.label}: ${name}`)}
+        >
+          {o.label}
+        </button>
+      ))}
+      <button type="button" className={ui.ghost} onClick={() => setHidden(take.id)}>
+        Not yet
+      </button>
+    </div>
+  );
+}
+
 // ------------------------------------------------------------ "Here's what I'll save"
 
 function ConfirmCard({
@@ -295,14 +344,14 @@ function ConfirmCard({
 
 /** A prompt, folded to one line: copy or open it straight away, or unfold to read it. */
 function PromptCard({ topicId, onOpen }: { topicId: string; onOpen: (id: string) => void }) {
-  const { statuses, checkIns, experiences, dispatch } = useStore();
+  const { statuses, checkIns, experiences, act } = useStore();
   const [unfolded, setUnfolded] = useState(false);
   const [copied, setCopied] = useState(false);
   const topic = topicById.get(topicId);
   if (!topic) return null;
   const prompt = buildPrompt(topic, statuses, checkIns, experiences, instructions);
-  // Taking the prompt counts; looking at it doesn't.
-  const took = () => prompt.experienceIds.length && dispatch({ type: "used", experienceIds: prompt.experienceIds });
+  // Taking the prompt is recorded (so the helper can ask how it went); looking at it isn't.
+  const took = (via: "copy" | "chatgpt" | "claude") => void act.tookPrompt(topicId, via, prompt.experienceIds);
 
   return (
     <div className={styles.promptCard} data-open={unfolded || undefined}>
@@ -320,17 +369,17 @@ function PromptCard({ topicId, onOpen }: { topicId: string; onOpen: (id: string)
               aria-label={copied ? "Copied" : `Copy the prompt for ${topic.name}`}
               onClick={() => {
                 navigator.clipboard?.writeText(prompt.text).catch(() => {});
-                took();
+                took("copy");
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1600);
               }}
             >
               <Icon name={copied ? "check" : "copy"} size={15} />
             </button>
-            <a className={styles.promptLink} href={chatGptUrl(prompt.text)} target="_blank" rel="noreferrer" onClick={took}>
+            <a className={styles.promptLink} href={chatGptUrl(prompt.text)} target="_blank" rel="noreferrer" onClick={() => took("chatgpt")}>
               ChatGPT
             </a>
-            <a className={styles.promptLink} href={claudeUrl(prompt.text)} target="_blank" rel="noreferrer" onClick={took}>
+            <a className={styles.promptLink} href={claudeUrl(prompt.text)} target="_blank" rel="noreferrer" onClick={() => took("claude")}>
               Claude
             </a>
           </span>
@@ -338,7 +387,7 @@ function PromptCard({ topicId, onOpen }: { topicId: string; onOpen: (id: string)
       </div>
       {unfolded && (
         <>
-          <PromptView prompt={prompt} compact />
+          <PromptView prompt={prompt} topicId={topicId} compact />
           <button type="button" className={styles.promptOpen} onClick={() => onOpen(topicId)}>
             Open {topic.name}
             <Icon name="forward" size={14} />

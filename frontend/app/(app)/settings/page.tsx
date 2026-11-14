@@ -6,34 +6,56 @@ import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import ui from "@/components/ui/ui.module.css";
 import { goalById, subjectById } from "@shared/data";
-import { student } from "@shared/data/student";
+import { ApiError, api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { useTheme, type ThemePref } from "@/lib/theme";
 import styles from "./settings.module.css";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { claims, checkIns, experiences, messages, goalIds, dispatch } = useStore();
+  const { claims, checkIns, experiences, messages, goalIds, student, mode, act, fail } = useStore();
   const { pref, setPref } = useTheme();
   const [name, setName] = useState(student.name);
-  const [email, setEmail] = useState(student.email);
   const [accountSaved, setAccountSaved] = useState(false);
   const [themeSaved, setThemeSaved] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [password, setPassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const notes = experiences.length;
   const goals = Object.entries(goalIds).filter(([, g]) => g);
+  const live = mode === "live";
+  // Deleting a password account asks for the password again (backend-design.md §4).
+  const needsPassword = live && student.hasPassword;
 
-  const exportData = () => {
-    const blob = new Blob([JSON.stringify({ student: { name, email }, goals: goalIds, claims, checkIns, experiences, messages }, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
+  const download = (data: unknown, filename: string) => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "trellis-record.json";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Live: the server's export, which is everything it holds (not just what this page has
+  // loaded: older chat messages are included). Demo: what this browser holds.
+  const exportData = async () => {
+    if (!live) return download({ student, goals: goalIds, claims, checkIns, experiences, messages }, "trellis-sample.json");
+    try {
+      download(await api("/export"), `trellis-export-${new Date().toISOString().slice(0, 10)}.json`);
+    } catch (err) {
+      fail(err);
+    }
+  };
+
+  const deleteRecord = async () => {
+    setDeleteError(null);
+    try {
+      await act.erase(needsPassword ? password : undefined);
+      router.push(live ? "/" : "/start");
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Something went wrong.");
+    }
   };
 
   return (
@@ -49,8 +71,9 @@ export default function SettingsPage() {
         </div>
         <form
           className={styles.panel}
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
+            await act.rename(name.trim());
             setAccountSaved(true);
             setTimeout(() => setAccountSaved(false), 2000);
           }}
@@ -61,11 +84,25 @@ export default function SettingsPage() {
           </label>
           <label className={styles.field}>
             <span>Email</span>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+            {/* Read-only: changing it needs a way to prove the new address is yours, which
+                comes with email in a later version (backend-design.md §4). */}
+            <input type="email" value={student.email} readOnly aria-readonly="true" />
           </label>
           <div className={styles.panelFoot}>
             {accountSaved && <span className={styles.stamp}>Saved</span>}
-            <button type="submit" className={ui.primary}>
+            {live && (
+              <button
+                type="button"
+                className={ui.ghost}
+                onClick={async () => {
+                  await act.signOut();
+                  router.push("/");
+                }}
+              >
+                Log out
+              </button>
+            )}
+            <button type="submit" className={ui.primary} disabled={!name.trim() || name.trim() === student.name}>
               Save
             </button>
           </div>
@@ -149,10 +186,15 @@ export default function SettingsPage() {
           <p>A design rule, not a policy.</p>
         </div>
         <div className={styles.panel}>
+          {/* The exact promise from design.md §11, limits included. */}
           <p className={styles.prose}>
-            Your record is yours alone. No teacher, admin, group organiser or classmate can see it — not now, and not as a
-            “reporting feature” later. If a group you study with ever sees anything, it is anonymous totals of five people or
-            more, and you can opt out of those completely.
+            Your record is private. No other student, teacher or group sees it, and Trellis has no screen that shows one
+            person&rsquo;s record to another.
+          </p>
+          <p className={styles.prose}>
+            To be exact about the limits: the person who runs Trellis can technically reach the database, as on any hosted
+            service. They do not read records, and there is no admin screen for it. What you type to the helper is read by an
+            AI model inside our own AWS account; it is not used to train models and is not shared with the model&rsquo;s maker.
           </p>
         </div>
       </section>
@@ -160,32 +202,45 @@ export default function SettingsPage() {
       <section className={styles.section} data-danger>
         <div className={styles.label}>
           <h2>Delete everything</h2>
-          <p>Removes your goals, your sort, every check-in and every note, permanently. There is no undo.</p>
+          <p>
+            Removes your account, your goals, your sort, every check-in and every note, permanently. There is no undo. Backups
+            that still hold it are deleted within 14 days.
+          </p>
         </div>
         <div className={styles.panel}>
           <label className={styles.field}>
             <span>Type “delete my record” to confirm</span>
             <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoComplete="off" />
           </label>
+          {needsPassword && (
+            <label className={styles.field}>
+              <span>Your password</span>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+            </label>
+          )}
+          {deleteError && (
+            <p className={styles.prose} role="alert">
+              {deleteError}
+            </p>
+          )}
           <div className={styles.panelFoot}>
-            <button
-              type="button"
-              className={ui.ghost}
-              onClick={() => {
-                dispatch({ type: "reset" });
-                router.push("/map");
-              }}
-            >
-              Restore the sample data
-            </button>
+            {!live && (
+              <button
+                type="button"
+                className={ui.ghost}
+                onClick={() => {
+                  act.reset();
+                  router.push("/map");
+                }}
+              >
+                Restore the sample data
+              </button>
+            )}
             <button
               type="button"
               className={ui.danger}
-              disabled={confirmText.trim().toLowerCase() !== "delete my record"}
-              onClick={() => {
-                dispatch({ type: "erase" });
-                router.push("/start");
-              }}
+              disabled={confirmText.trim().toLowerCase() !== "delete my record" || (needsPassword && !password)}
+              onClick={deleteRecord}
             >
               <Icon name="trash" />
               Delete my record

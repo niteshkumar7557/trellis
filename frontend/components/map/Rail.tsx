@@ -109,7 +109,7 @@ export function TopicPanel({ topic, statuses, checkIns, experiences, importance,
 
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Your prompt</h3>
-        <PromptView prompt={prompt} />
+        <PromptView prompt={prompt} topicId={topic.id} />
       </section>
 
       <section className={styles.section}>
@@ -278,11 +278,11 @@ const KIND_LABEL = { easy: "Felt easy", hard: "Was hard", clicked: "Made it clic
 const OUTCOME_WORD = { got: "done", partly: "partly", stuck: "stuck" } as const;
 
 /** The prompt in its three parts, so it's clear where each line comes from. */
-export function PromptView({ prompt, compact = false }: { prompt: Prompt; compact?: boolean }) {
+export function PromptView({ prompt, topicId, compact = false }: { prompt: Prompt; topicId: string; compact?: boolean }) {
   const [copied, copy] = useCopy();
-  const { dispatch } = useStore();
-  // Taking the prompt counts; looking at it doesn't.
-  const took = () => prompt.experienceIds.length && dispatch({ type: "used", experienceIds: prompt.experienceIds });
+  const { act } = useStore();
+  // Taking the prompt is recorded (so the helper can ask how it went); looking at it isn't.
+  const took = (via: "copy" | "chatgpt" | "claude") => void act.tookPrompt(topicId, via, prompt.experienceIds);
   return (
     <div className={styles.promptView} data-compact={compact || undefined}>
       <div className={styles.prompt}>
@@ -322,17 +322,17 @@ export function PromptView({ prompt, compact = false }: { prompt: Prompt; compac
           className={ui.primary}
           onClick={() => {
             copy(prompt.text);
-            took();
+            took("copy");
           }}
         >
           <Icon name={copied ? "check" : "copy"} />
           {copied ? "Copied" : "Copy"}
         </button>
-        <a className={ui.btn} href={chatGptUrl(prompt.text)} target="_blank" rel="noreferrer" onClick={took}>
+        <a className={ui.btn} href={chatGptUrl(prompt.text)} target="_blank" rel="noreferrer" onClick={() => took("chatgpt")}>
           ChatGPT
           <Icon name="external" size={14} />
         </a>
-        <a className={ui.btn} href={claudeUrl(prompt.text)} target="_blank" rel="noreferrer" onClick={took}>
+        <a className={ui.btn} href={claudeUrl(prompt.text)} target="_blank" rel="noreferrer" onClick={() => took("claude")}>
           Claude
           <Icon name="external" size={14} />
         </a>

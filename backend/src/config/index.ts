@@ -73,6 +73,13 @@ const config = {
   // The limiter itself has its own test (test/rate-limit.test.ts).
   rate_limits: nodeEnv !== "test",
 
+  // Sign in with Google (backend-design.md §4). Off while either is empty: the routes
+  // answer 404 and the frontend hides the button. Made in Google Cloud Console.
+  google: {
+    client_id: str("GOOGLE_CLIENT_ID", ""),
+    client_secret: str("GOOGLE_CLIENT_SECRET", ""), // a secret: from .env only
+  },
+
   // The topic graph's database. The site runs without it (backend-design.md §2).
   neo4j: {
     url: str("NEO4J_URL", "bolt://localhost:7687"),

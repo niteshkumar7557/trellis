@@ -1,13 +1,15 @@
 /* The helper: a study diary that answers back. Not chat bubbles — entries down one rule. */
 
+/* A column: the optional "how did it go?" strip, the thread (takes the rest), compose. */
 .chat {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   height: 100%;
 }
 
 .scroll {
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: 8px 0 16px;
@@ -314,3 +316,37 @@
 .compose textarea::placeholder { color: var(--faint); }
 .compose textarea:focus { outline: 2px solid var(--text); outline-offset: -1px; border-color: transparent; }
 .compose button { height: 40px; width: 40px; padding: 0; justify-content: center; }
+
+/* Live mode: the first load brings the latest 50 messages; older ones load on request. */
+.older {
+  display: block;
+  margin: 0 auto;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: var(--fs-small);
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.older:hover {
+  color: var(--text);
+}
+
+/* "How did State go?": one line pinned above the thread when the student comes back. */
+.followUp {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--fs-small);
+}
+
+.followUp p {
+  margin: 0 auto 0 0;
+  font-weight: 500;
+}
