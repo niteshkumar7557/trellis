@@ -28,6 +28,6 @@
     // tsup and tsx read this alias from here; Vitest needs it repeated (vitest.config.ts).
     "paths": { "@shared/*": ["../shared/*"] }
   },
-  "include": ["src", "test", "../shared", "*.config.ts"],
+  "include": ["src", "test", "tools", "../shared", "*.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

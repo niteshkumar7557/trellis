@@ -1,29 +1,36 @@
 import type { Difficulty, Edge, Goal, Subject, SubjectId, Topic } from "../types";
-import type { RawTopic } from "./build";
-import { reactNativeDifficulty, reactNativeEdges, reactNativeGoals, reactNativeTopics } from "./react-native";
-import { redisDifficulty, redisEdges, redisGoals, redisTopics } from "./redis";
+import type { RawTopic, SubjectFile } from "./build";
+import { reactNative } from "./react-native";
+import { redis } from "./redis";
 
-export const subjects: Subject[] = [
-  {
-    id: "react-native",
-    name: "React Native",
-    shortName: "React Native",
-    blurb: "Mobile apps in JavaScript, from your first screen to the app stores.",
-  },
-  {
-    id: "redis",
-    name: "Redis",
-    shortName: "Redis",
-    blurb: "The in-memory data store: data structures, persistence and running it in production.",
-  },
-];
+/**
+ * Every subject, in the order screens list them. Adding a subject is one line here, plus
+ * its id in SubjectId (shared/types.ts); docs/subject-blueprint.md has the whole procedure.
+ */
+const files: SubjectFile[] = [reactNative, redis];
 
-/** Where the topic lists come from. Shown wherever a map is introduced. */
+export const subjects: Subject[] = files.map((f) => f.subject);
+
+/**
+ * roadmap.sh, where the first two subjects' topic lists started (14 Nov 2026: new subjects
+ * are designed from official sources instead, docs/subject-blueprint.md). Credited only
+ * for the subjects whose `source` is on it.
+ */
 export const SOURCE = { name: "roadmap.sh", url: "https://roadmap.sh" };
+export const fromRoadmapSh = subjects.filter((s) => s.source?.startsWith(SOURCE.url));
 
-const raw: RawTopic[] = [...reactNativeTopics, ...redisTopics];
-const difficultyOf: Record<string, Difficulty> = { ...reactNativeDifficulty, ...redisDifficulty };
-const written: Edge[] = [...reactNativeEdges, ...redisEdges];
+/** "React Native and Redis": a list of subjects as a sentence fragment. */
+export function namesOf(list: Subject[]): string {
+  const names = list.map((s) => s.name);
+  return names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/** "React Native and Redis", "React Native, Redis and MongoDB": for sentences that list them. */
+export const subjectNames = namesOf(subjects);
+
+const raw: RawTopic[] = files.flatMap((f) => f.topics);
+const difficultyOf: Record<string, Difficulty> = Object.assign({}, ...files.map((f) => f.difficulty));
+const written: Edge[] = files.flatMap((f) => f.edges);
 
 /**
  * The "needs" links between big topics, worked out from the links between subtopics.
@@ -76,7 +83,7 @@ function bigNeedsFrom(links: Edge[]): Edge[] {
 
 /** Every link: big-topic needs (worked out), then what the subject files write. */
 export const edges: Edge[] = [...bigNeedsFrom(written), ...written];
-export const goals: Goal[] = [...reactNativeGoals, ...redisGoals];
+export const goals: Goal[] = files.flatMap((f) => f.goals);
 
 const RANK: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
 
@@ -136,6 +143,13 @@ export function goalsOf(subjectId: SubjectId): Goal[] {
 // The data must agree with itself. These run once on load; read the console.
 
 {
+  // Each file's topics and goals belong to its own subject: a copied line from another
+  // subject's file would otherwise put a topic on the wrong map.
+  for (const f of files) {
+    for (const t of f.topics) console.assert(t.subjectId === f.subject.id, `${t.id} is in ${f.subject.id}'s file but says ${t.subjectId}`);
+    for (const g of f.goals) console.assert(g.subjectId === f.subject.id, `goal ${g.id} is in ${f.subject.id}'s file but says ${g.subjectId}`);
+  }
+
   const ids = new Set<string>();
   for (const t of topics) {
     console.assert(!ids.has(t.id), `duplicate topic id ${t.id}`);

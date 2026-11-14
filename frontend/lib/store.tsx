@@ -15,7 +15,7 @@
 // worked out here on every change, never stored: the same rule as the backend.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
-import { goalById, topicById } from "@shared/data";
+import { goalById, subjectById, topicById } from "@shared/data";
 import { TODAY, sampleCheckIns, sampleClaims, sampleExperiences, sampleMessages, student as sampleStudent } from "@shared/data/student";
 import { deriveStatuses } from "@shared/graph";
 import { checkInText } from "@shared/helper";
@@ -491,7 +491,8 @@ function clean(s: State): State {
     goalIds: Object.fromEntries(Object.entries(s.goalIds).filter(([, g]) => g && goalById.has(g))),
     opened: (s.opened ?? []).filter((id) => topicById.has(id)),
     usage: null, // demo mode calls no AI, whatever an old save says
-    subjectId: s.subjectId === "redis" ? "redis" : "react-native",
+    // A saved subject that no longer exists falls back to the first one.
+    subjectId: subjectById.has(s.subjectId) ? s.subjectId : "react-native",
   };
 }
 

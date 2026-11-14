@@ -22,7 +22,7 @@ import { BRAND } from "@/components/brand/brand";
 import { MiniMap } from "@/components/map/MiniMap";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { useStore } from "@/lib/store";
-import { bigTopicsOf, SOURCE, subjects } from "@shared/data";
+import { bigTopicsOf, fromRoadmapSh, namesOf, SOURCE, subjectNames, subjects } from "@shared/data";
 import { display } from "./fonts";
 import { HeroMap } from "./HeroMap";
 import { PromptSlip } from "./PromptSlip";
@@ -155,17 +155,21 @@ function Hero() {
   );
 }
 
-// ------------------------------------------------------------ subjects: the two graphs, at their real sizes
+// ------------------------------------------------------------ subjects: every graph, at its real size
+
+/** "Two", "Three": the count is worked out, so adding a subject needs no copy change here. */
+const COUNT = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+const howMany = (n: number) => COUNT[n] ?? String(n);
 
 function Subjects() {
   return (
     <section className={styles.subjects} data-section aria-labelledby="subjects-title">
       <div className={styles.subjectsHead}>
         <h2 id="subjects-title" className={styles.h2} data-rise>
-          Two subjects, drawn in full
+          {howMany(subjects.length)} {subjects.length === 1 ? "subject" : "subjects"}, drawn in full
         </h2>
         <p className={styles.lead} data-rise>
-          A map is only worth following if every link on it was checked by a person. So there are two for now. Ask for
+          A map is only worth following if every link on it was checked by a person. So there are {howMany(subjects.length).toLowerCase()} for now. Ask for
           another when you sign up and the request is kept.
         </p>
       </div>
@@ -185,12 +189,19 @@ function Subjects() {
           );
         })}
       </div>
+      {/* Only the subjects whose topic lists started there (Subject.source); later ones are
+          designed from official sources (docs/subject-blueprint.md) and credit nothing. */}
       <p className={styles.subjectsNote} data-rise>
-        Topic names and grouping follow{" "}
-        <a href={SOURCE.url} target="_blank" rel="noreferrer">
-          {SOURCE.name}
-        </a>
-        . The links between topics, and which ones you can skip, are ours.
+        {fromRoadmapSh.length > 0 && (
+          <>
+            {fromRoadmapSh.length === subjects.length ? "Topic names and grouping" : `${namesOf(fromRoadmapSh)}'s topic names and grouping`} follow{" "}
+            <a href={SOURCE.url} target="_blank" rel="noreferrer">
+              {SOURCE.name}
+            </a>
+            .{" "}
+          </>
+        )}
+        The links between topics, and which ones you can skip, are ours.
       </p>
     </section>
   );
@@ -263,7 +274,7 @@ function Start() {
         <h2 id="start-title" className={styles.startTitle}>
           {signedIn ? "Back to your map" : "Start your map"}
         </h2>
-        <p>{signedIn ? "Pick up at the topic it marked next." : "Pick React Native or Redis, and say what you want to build."}</p>
+        <p>{signedIn ? "Pick up at the topic it marked next." : `Pick ${subjectNames.replace(/ and ([^,]*)$/, " or $1")}, and say what you want to build.`}</p>
         <Link href={signedIn ? "/map" : "/signup"} className={styles.startAction}>
           {signedIn ? "Open your map" : "Create a free account"}
         </Link>
@@ -307,9 +318,11 @@ function Footer() {
           {subjects.map((s) => (
             <p key={s.id}>{s.name}</p>
           ))}
-          <a href={SOURCE.url} target="_blank" rel="noreferrer">
-            Topics adapted from {SOURCE.name}
-          </a>
+          {fromRoadmapSh.length > 0 && (
+            <a href={SOURCE.url} target="_blank" rel="noreferrer">
+              {fromRoadmapSh.length === subjects.length ? "Topics" : `${namesOf(fromRoadmapSh)} topics`} adapted from {SOURCE.name}
+            </a>
+          )}
         </div>
         <div>
           <p className={styles.footHead}>Promises</p>

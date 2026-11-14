@@ -244,12 +244,17 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
 
 ### Editing the topic graphs
 
+- **Adding a whole subject:** `docs/subject-blueprint.md`. Each subject file exports one
+  `SubjectFile` object (`shared/data/build.ts`); `shared/data/index.ts` lists them in `files`,
+  and everything else (landing, /start, store, backend, seed, tests) reads that list.
 - Two levels: `B(id, name, summary)` makes a **big topic**; `t(id, parentId, name, minutes,
   optional, summary, mistakes[], keywords[])` makes a **subtopic**. Its difficulty goes in the
   file's difficulty table (`redisDifficulty`, `reactNativeDifficulty`); a missing one fails the data checks. Ids: `rn-…` and `rd-…`.
-- Names and grouping follow roadmap.sh; summaries, mistakes, links and core/optional marks
-  are ours. Never copy roadmap.sh's descriptions. Credit lines exist on /start and in the
-  landing footer.
+- React Native's and Redis's names and grouping follow roadmap.sh (credited on /start and
+  in the landing page's subjects section and footer, for exactly the subjects whose
+  `Subject.source` is on roadmap.sh). New subjects are designed from official sources
+  instead (`docs/subject-blueprint.md`) and credit nothing. Summaries, mistakes, links and
+  core/optional marks are ours; never copy any source's text.
 - Links are `[from, to]` pairs meaning "from needs to" (or "helps"). A subject file writes
   **"needs" links between subtopics only.** The "needs" links between big topics are worked
   out in `shared/data/index.ts` (`bigNeedsFrom`): big topic A needs B when a **core**

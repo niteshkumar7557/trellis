@@ -1,6 +1,7 @@
 // The shapes every screen consumes. The backend will serve these same shapes;
 // see docs/frontend.md for the contract.
 
+/** One id per subject file in ./data (docs/subject-blueprint.md, "Wire it in"). */
 export type SubjectId = "react-native" | "redis";
 
 export interface Subject {
@@ -8,6 +9,11 @@ export interface Subject {
   name: string;
   shortName: string;
   blurb: string;
+  /**
+   * The page the topic list started from, credited on /start. Optional: a subject designed
+   * from scratch credits nothing. Not stored in Neo4j; screens read it from shared/data.
+   */
+  source?: string;
 }
 
 /**

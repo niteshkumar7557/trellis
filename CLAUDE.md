@@ -17,6 +17,8 @@ juniors first.
    - `docs/frontend.md`: how the frontend is built; the data contract; **§13 the product
      changes agreed but not built yet**.
    - `README.md` (public overview; keep in step) and `docs/tech-stack.md`.
+   - `docs/subject-blueprint.md`: **adding a subject**: official sources, a staged path with
+     gates, a review panel of agents, and a design record per subject (`docs/subjects/`).
 2. Run `git log --oneline -15` and `git status` to see what changed since.
 
 ### When asked "what's next in the backend?"
@@ -42,8 +44,8 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 ## Where things stand (14 Nov 2026)
 
 - **In one line:** every milestone of v1 (M0 to M7, MS, ML) is built, merged and **live at
-  https://trellis.niteshkumar.xyz**. Production runs `2e9ebc7` (the last code change on
-  `main`; later commits are docs only). Next: testing with real users, 18 to 21 Nov.
+  https://trellis.niteshkumar.xyz**. Production runs `8084a53` (the map fixes, released
+  14 Nov 2026). Next: testing with real users, 18 to 21 Nov.
 - **Design:** reviewed on 12 Nov 2026 (`design.md` v7, `backend-design.md`, `aws.md`), and
   kept in step with every change since; the docs describe the code as it stands.
 - **Frontend:** the screens are finished and connected to the API (M6, on `main`):
@@ -89,8 +91,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   - `/map` with no goal anywhere says "Your map", not "React Native";
   - a big topic's soft link is drawn and named once (it showed "helps" twice);
   - long chips wrap inside their border.
-- **Map rendering review and fixes (14 Nov 2026): on branch `fix/map-rendering`, not
-  merged.** Big-topic "needs" links are now worked out from the subtopic links (six
+- **Map rendering review and fixes (14 Nov 2026): on `main` and live** (`8084a53`). Big-topic "needs" links are now worked out from the subtopic links (six
   changed: Networking and Storage stand on React basics, Publishing on Development
   workflow, Pub/Sub on Getting started; Performance no longer needs Interactions); frames
   are laid out by dagre; lines run top to bottom with upright heads; hover lights the
@@ -98,7 +99,9 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   a selected topic keeps its path (switch in the sheet); zoom out fits any map.
   Details in `docs/frontend.md` §7 and "Editing the topic graphs". The release re-seeds
   Neo4j by itself (`seed-graph` in `deploy/docker-compose.yml`); no topic ids changed.
-  Next: a blueprint doc for adding a subject, written with the owner.
+  The blueprint for adding a subject is `docs/subject-blueprint.md` (14 Nov 2026); a
+  subject is now one file plus one line in `shared/data/index.ts` and its id in
+  `SubjectId`. The first real use is planned for MongoDB.
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
   topic difficulty and the small fixes went into `main` as one squashed commit each, on the
   owner's request; ML went in with a merge commit. `backend-design.md` §0 still says merge
@@ -119,9 +122,14 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 ## Decisions already made (don't re-ask; the reasons are in design.md §16)
 
-- **Subjects:** React Native and Redis only. Topic names and grouping come from roadmap.sh;
-  summaries, links and core/optional are ours. Anything else gets a fixed "Coming soon", and
-  the request is saved.
+- **Subjects:** React Native and Redis only. Their topic names and grouping came from
+  roadmap.sh, and they keep that credit; summaries, links and core/optional are ours.
+  Anything else gets a fixed "Coming soon", and the request is saved.
+- **New subjects (14 Nov 2026):** designed from **official sources split by job** (docs and
+  release notes for facts, exam guides and official courses for scope, learner pain for
+  core and difficulty), **never roadmap.sh**; always searched, never from memory; every draft
+  reviewed by a panel of agents (student personas, experts, one walker per goal). Quality
+  over session cost. The procedure is `docs/subject-blueprint.md`.
 - **The map:** two levels. A big topic opens into its subtopics when the student reaches it
   (next inside, a check-in inside, the likely cause of a stuck topic, or "Look inside now").
   It starts small and only grows.
@@ -217,6 +225,7 @@ cd backend && npm install && npm run db-init && npm run seed:graph && npm run de
 
 The dev compose file maps Postgres to **5050** (`backend/example.env` says so; an older
 `backend/.env` may still say 5432; it also needs `NEO4J_PASSWORD=trellis-dev-pass`). Backend
-checks: `npm run typecheck`, `npm test` (no database) and `npm run test:integration` (real ones).
+checks: `npm run typecheck`, `npm test` (no database) and `npm run test:integration` (real ones). `npm run subject -- <id> [--goal a,b]` prints a subject's curriculum as Trellis works it
+out (routes, worked-out links, warnings).
 The frontend demo state is in localStorage
 `trellis-demo-v5` (demo mode, signed out); Settings → "Restore the sample data" resets it.

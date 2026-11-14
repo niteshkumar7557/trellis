@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { MiniMap } from "@/components/map/MiniMap";
 import { Icon } from "@/components/ui/Icon";
 import ui from "@/components/ui/ui.module.css";
-import { SOURCE, bigTopicsOf, goalsOf, subjects, subtopicsOf } from "@shared/data";
+import { bigTopicsOf, goalsOf, subjectById, subjectNames, subjects, subtopicsOf } from "@shared/data";
 import { requiredFor } from "@shared/graph";
 import { useStore } from "@/lib/store";
 import type { Subject, SubjectId } from "@shared/types";
@@ -57,6 +57,7 @@ function PickSubject({ fresh, first, startedAny }: { fresh: Subject[]; first: Su
   const required = useMemo(() => requiredFor(goal), [goal]);
   const subs = subtopicsOf(subjectId);
   const bigs = bigTopicsOf(subjectId);
+  const source = subjectById.get(subjectId)?.source;
   const toLearn = subs.filter((t) => required.has(t.id)).length;
   const areas = bigs.filter((t) => required.has(t.id)).length;
 
@@ -141,13 +142,16 @@ function PickSubject({ fresh, first, startedAny }: { fresh: Subject[]; first: Su
           Each dot is a big topic. Dark: what this goal needs; green where you&apos;ve already done it. Pale: what it
           doesn&apos;t need. Your map starts small: a big topic opens into its smaller topics when you reach it.
         </p>
-        <p className={styles.previewNote}>
-          Topics adapted from{" "}
-          <a href={`${SOURCE.url}/${subjectId}`} target="_blank" rel="noreferrer">
-            {SOURCE.name}
-          </a>
-          .
-        </p>
+        {/* Credited only when the topic list started from someone's page (Subject.source). */}
+        {source && (
+          <p className={styles.previewNote}>
+            Topics adapted from{" "}
+            <a href={source} target="_blank" rel="noreferrer">
+              {new URL(source).hostname.replace(/^www\./, "")}
+            </a>
+            .
+          </p>
+        )}
       </aside>
     </div>
   );
@@ -188,7 +192,7 @@ function RequestSubject() {
       </div>
       {asked && (
         <p className={styles.otherReply} role="status">
-          <strong>Coming soon.</strong> Trellis has reviewed maps for React Native and Redis only, for now. A map
+          <strong>Coming soon.</strong> Trellis has reviewed maps for {subjectNames} only, for now. A map
           for “{asked}” isn&apos;t ready yet.
         </p>
       )}

@@ -41,7 +41,9 @@ topic. Signed-out visitors get a demo on a sample student. Testing with real use
 
 **v1 subjects:** React Native and Redis. Their topic lists are adapted from the roadmaps at
 [roadmap.sh](https://roadmap.sh); the links, core/optional marks, summaries and mistakes are
-ours. Any other subject gets a "coming soon" for now.
+ours. Any other subject gets a "coming soon" for now. New subjects are designed from
+official sources (docs, exam guides, official courses), not roadmap.sh:
+[docs/subject-blueprint.md](docs/subject-blueprint.md).
 
 ## Docs
 
@@ -104,7 +106,8 @@ frontend/
   components/art/      SVG drawings (the espalier)
   lib/store.tsx        client state: the one place to swap in API calls
 shared/                domain code the frontend and backend both run (imported as @shared/*)
-  data/                the React Native and Redis maps (reviewed files), and a sample student
+  data/                one reviewed file per subject (React Native, Redis), and a sample student;
+                       adding a subject: docs/subject-blueprint.md
   graph.ts             derived logic: statuses, next topic, what's open, skip or not, stuck diagnosis
   helper.ts            the helper chat's brain (stand-in for the AI): ask, propose, reply
   prompt.ts            the three-part prompt: known topics, experiences, instructions

@@ -17,7 +17,8 @@
     "seed:graph": "tsx src/db/seed-graph.ts",
     "db-init": "npm run db:migrate:dev && npm run db:seed:dev",
     "reset-link": "tsx src/db/reset-link.ts",
-    "ai:spend": "tsx src/db/ai-spend.ts"
+    "ai:spend": "tsx src/db/ai-spend.ts",
+    "subject": "tsx tools/subject.ts"
   },
   "keywords": [],
   "author": "",

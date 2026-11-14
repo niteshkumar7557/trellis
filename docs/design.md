@@ -69,7 +69,9 @@ roadmaps at [roadmap.sh](https://roadmap.sh) (topic names and grouping). The lin
 topics, what is core or optional, the summaries and the common mistakes are ours, and a
 person reviews every one. The two subjects are not linked. Asking for any other subject
 gets a fixed *"coming soon"*, and Trellis keeps the request so we know which map to make
-next.
+next. New subjects are designed from official sources (documentation, exam guides,
+official courses) and reviewed by a person; roadmap.sh is no longer used for them
+(14 Nov 2026; `docs/subject-blueprint.md`).
 
 ---
 
@@ -373,7 +375,7 @@ The map remembers where they were, so they do not have to.
 
 | When | What | Safety net |
 |---|---|---|
-| Before launch, by us | Drafting summaries, mistakes and links for the roadmap.sh topic lists | A person checks every one |
+| Before launch, by us | Drafting summaries, mistakes and links for the topic lists; for new subjects, the whole curriculum, reviewed by a panel of AI reviewers (docs/subject-blueprint.md) | A person checks every one |
 | The helper | Reading what you type: which topic, how it went, your answer as a clean line | Nothing is saved until you confirm, and you can change it first; Undo after; the topic buttons work without AI |
 
 **One model, one call.** The model is **GLM 5** (by Z.AI), used through **Amazon Bedrock**

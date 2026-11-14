@@ -3,7 +3,7 @@
 // Reviewed content: change it in a pull request, not in passing.
 
 import type { Edge, Goal } from "../types";
-import { big, edgesFrom, sub, type DifficultyTable, type RawTopic } from "./build";
+import { big, edgesFrom, sub, type DifficultyTable, type RawTopic, type SubjectFile } from "./build";
 
 const S = "react-native" as const;
 const B = big(S);
@@ -562,3 +562,17 @@ export const reactNativeGoals: Goal[] = [
     targets: ["rn-publish", "rn-perf", "rn-testing", "rn-security", "rn-deeplink", "rn-push", "rn-native"],
   },
 ];
+
+export const reactNative: SubjectFile = {
+  subject: {
+    id: S,
+    name: "React Native",
+    shortName: "React Native",
+    blurb: "Mobile apps in JavaScript, from your first screen to the app stores.",
+    source: "https://roadmap.sh/react-native",
+  },
+  topics: reactNativeTopics,
+  difficulty: reactNativeDifficulty,
+  edges: reactNativeEdges,
+  goals: reactNativeGoals,
+};

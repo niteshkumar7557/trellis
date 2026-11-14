@@ -4,7 +4,7 @@
 // Reviewed content: change it in a pull request, not in passing.
 
 import type { Edge, Goal } from "../types";
-import { big, edgesFrom, sub, type DifficultyTable, type RawTopic } from "./build";
+import { big, edgesFrom, sub, type DifficultyTable, type RawTopic, type SubjectFile } from "./build";
 
 const S = "redis" as const;
 const B = big(S);
@@ -698,3 +698,17 @@ export const redisGoals: Goal[] = [
     ],
   },
 ];
+
+export const redis: SubjectFile = {
+  subject: {
+    id: S,
+    name: "Redis",
+    shortName: "Redis",
+    blurb: "The in-memory data store: data structures, persistence and running it in production.",
+    source: "https://roadmap.sh/redis",
+  },
+  topics: redisTopics,
+  difficulty: redisDifficulty,
+  edges: redisEdges,
+  goals: redisGoals,
+};
