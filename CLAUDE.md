@@ -69,8 +69,8 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   `src/ai/limits.ts`). Students see a percentage in the sidebar and in Settings
   (`GET /api/usage`); the owner sees dollars with `npm run ai:spend`. The numbers and
   reasons are in `docs/backend-design.md` §5 "Cost limits".
-- **Landing page and brand assets (14 Nov 2026): on `main`** (squashed from
-  `frontend/brand-landing`). The landing page leads with the real React Native map in the
+- **Landing page and brand assets (14 Nov 2026): on `main` and live** (squashed from
+  `frontend/brand-landing`, released as `253c556`). The landing page leads with the real React Native map in the
   app's own map style, live, and every section runs the shared code on the sample student
   (`components/landing/sample.ts`). Its headings are Fraunces. The brand is in
   `components/brand/`; the tab icon, touch icon, manifest, share image and 404 page are
