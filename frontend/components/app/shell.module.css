@@ -131,11 +131,51 @@
 }
 .newSubject:hover { color: var(--text); background: color-mix(in srgb, var(--active) 55%, transparent); }
 
+/* The bottom of the sidebar: the AI meter, then who is signed in. "margin-top: auto"
+   pushes it down whatever the list of subjects above it holds. */
+.foot {
+  display: grid;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+/* The AI allowance. Laid out like a subject row (a label, a figure, a track under them)
+   so the sidebar reads as one list. Its fill is neutral, not the green of progress:
+   using an allowance is not an achievement. */
+.usage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  row-gap: 8px;
+  align-items: center;
+  padding: 9px 10px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: none;
+  transition: background-color 120ms ease;
+}
+.usage:hover { background: color-mix(in srgb, var(--active) 55%, transparent); }
+.usageLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.usageFig { color: var(--text); }
+.usage .track > span { background: var(--muted); }
+/* From 80%: amber, the same "take care" colour as a shaky topic. Never red: reaching the
+   limit is not an error, the helper carries on in basic mode. */
+.usage[data-tone="near"] .track > span { background: var(--shaky); }
+.usageNote {
+  grid-column: 1 / -1;
+  color: var(--shaky-ink);
+  font-size: var(--fs-small);
+}
+
 .user {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: auto;
   padding: 10px;
 }
 

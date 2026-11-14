@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Mark } from "@/components/ui/Mark";
@@ -12,6 +13,7 @@ import { tidy } from "@shared/parse";
 import { instructions } from "@shared/data/instructions";
 import { buildPrompt, chatGptUrl, claudeUrl } from "@shared/prompt";
 import { useStore } from "@/lib/store";
+import { backAt, basicReason } from "@/lib/usage";
 import type { Card, ChatMessage, ExperienceKind, Outcome, Proposal } from "@shared/types";
 import { PromptView } from "./Rail";
 import { Dropdown } from "@/components/ui/Dropdown";
@@ -33,6 +35,9 @@ const KINDS: { value: ExperienceKind; label: string }[] = [
 /** The helper, in the map's side panel: a study diary that answers back. */
 export function Chat({ helper, onOpen }: { helper: Helper; onOpen: (id: string) => void }) {
   const [text, setText] = useState("");
+  // Live mode: why typed messages are being read by the rules right now, if they are.
+  const { usage } = useStore();
+  const basic = usage ? basicReason(usage) : null;
   const scroller = useRef<HTMLDivElement>(null);
   const thread = useRef<HTMLOListElement>(null);
   const count = helper.messages.length;
@@ -112,6 +117,14 @@ export function Chat({ helper, onOpen }: { helper: Helper; onOpen: (id: string) 
           )}
         </ol>
       </div>
+
+      {/* At an AI limit nothing is refused: the rules read what is typed. Said here, where
+          the typing happens, so a plainer answer than usual isn't a surprise. */}
+      {basic && usage && (
+        <p className={styles.basic} role="status">
+          {basic} The helper is in basic mode until {backAt(usage)}. <Link href="/settings#ai-usage">See usage</Link>
+        </p>
+      )}
 
       <form
         className={styles.compose}

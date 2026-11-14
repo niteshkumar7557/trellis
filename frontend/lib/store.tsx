@@ -19,7 +19,7 @@ import { goalById, topicById } from "@shared/data";
 import { TODAY, sampleCheckIns, sampleClaims, sampleExperiences, sampleMessages, student as sampleStudent } from "@shared/data/student";
 import { deriveStatuses } from "@shared/graph";
 import { checkInText } from "@shared/helper";
-import type { ChatMessage, CheckIn, Claim, ClaimKind, Experience, Goal, PromptTake, Proposal, Status, Student, SubjectId } from "@shared/types";
+import type { AiUsage, ChatMessage, CheckIn, Claim, ClaimKind, Experience, Goal, PromptTake, Proposal, Status, Student, SubjectId } from "@shared/types";
 import { ApiError, api, refreshAccessToken, setAccessToken, whenSignedOut } from "./api";
 
 export interface State {
@@ -37,6 +37,11 @@ export interface State {
   goalIds: Partial<Record<SubjectId, string>>;
   /** Big topics the student chose to look inside before reaching them. */
   opened: string[];
+  /**
+   * Live mode: how much of the account's AI allowance is used, as percentages. Null in
+   * demo mode, where the helper runs in the browser and no AI is called.
+   */
+  usage: AiUsage | null;
   /** The topic open in the map's side panel. Not saved. */
   selected: string | null;
   /** A question from search waiting for the helper to pick it up. Not saved. */
@@ -54,6 +59,7 @@ interface ServerState {
   promptTakes: PromptTake[];
   messages: ChatMessage[];
   moreMessages: Partial<Record<SubjectId, boolean>>;
+  usage: AiUsage;
 }
 
 export type Action =
@@ -81,6 +87,8 @@ export type Action =
   | { type: "removeExperience"; id: string }
   | { type: "took"; take: PromptTake }
   | { type: "student"; student: Student }
+  /** Live: the allowance as the server last reported it (with a helper reply, or on its own). */
+  | { type: "usage"; usage: AiUsage }
   | { type: "erase" }
   | { type: "reset" };
 
@@ -95,6 +103,7 @@ const demoInitial: State = {
   subjectId: "react-native",
   goalIds: Object.fromEntries(sampleStudent.goals.map((g) => [g.subjectId, g.goalId])),
   opened: [],
+  usage: null,
   selected: null,
 };
 
@@ -202,6 +211,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, experiences: state.experiences.filter((e) => e.id !== action.id) };
     case "student":
       return { ...state, student: action.student };
+    case "usage":
+      return { ...state, usage: action.usage };
     case "erase":
       return { ...demoInitial, claims: [], checkIns: [], experiences: [], messages: [], goalIds: {}, subjectId: state.subjectId };
     case "reset":
@@ -243,6 +254,8 @@ export interface Actions {
   /** "Learning something else?" on /start. Live: saved for the operator to see demand. */
   requestSubject: (text: string) => Promise<void>;
   loadOlder: (subjectId: SubjectId) => Promise<void>;
+  /** Live: read the AI allowance again (Settings opening, a reset time passing). */
+  refreshUsage: () => Promise<void>;
   /** Live: after sign-up or login, load the student's record. */
   goLive: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -421,6 +434,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const page = await live(() => api<{ messages: ChatMessage[]; more: boolean }>(`/helper/${subjectId}/messages?before=${first.id}&limit=50`));
         if (page) dispatch({ type: "older", subjectId, ...page });
       },
+      async refreshUsage() {
+        if (!isLive()) return;
+        // Not through live(): a meter that couldn't refresh isn't worth an error bar.
+        // The old numbers stay, and the next helper reply brings new ones anyway.
+        const usage = await api<AiUsage>("/usage").catch(() => null);
+        if (usage) dispatch({ type: "usage", usage });
+      },
       goLive,
       async signOut() {
         await api("/auth/logout", { method: "POST" }).catch(() => undefined);
@@ -470,6 +490,7 @@ function clean(s: State): State {
     promptTakes: s.promptTakes ?? [],
     goalIds: Object.fromEntries(Object.entries(s.goalIds).filter(([, g]) => g && goalById.has(g))),
     opened: (s.opened ?? []).filter((id) => topicById.has(id)),
+    usage: null, // demo mode calls no AI, whatever an old save says
     subjectId: s.subjectId === "redis" ? "redis" : "react-native",
   };
 }

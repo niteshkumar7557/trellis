@@ -292,6 +292,24 @@
 
 /* ------------------------------------------------------------ compose */
 
+/* Above the box where the student types, while an AI limit is reached: amber, the "take
+   care" colour, never red. Nothing was refused; the helper just reads more plainly. */
+.basic {
+  margin: 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--shaky-bg);
+  color: var(--shaky-ink);
+  font-size: var(--fs-small);
+  line-height: 18px;
+}
+.basic a {
+  color: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .compose {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -85,6 +85,42 @@
   font-weight: 400;
 }
 
+/* AI usage: one row per window. A title and a figure, the track under both, then when it
+   resets. The fill is neutral until 80%, then amber; never red, because reaching the
+   limit is not an error (the helper carries on in basic mode). */
+.usage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: baseline;
+  font-size: 14px;
+}
+.usageTitle { font-weight: 500; }
+.usageTrack {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.usageTrack > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--muted);
+}
+.usage[data-tone="near"] .usageTrack > span { background: var(--shaky); }
+.usage .hint { grid-column: 1 / -1; }
+.usageNote {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--shaky-bg);
+  color: var(--shaky-ink);
+  font-size: 14px;
+  line-height: 20px;
+}
+
 /* The delete confirmation (ConfirmDelete). */
 .dialog {
   width: min(440px, calc(100vw - 32px));
