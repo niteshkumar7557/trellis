@@ -165,7 +165,7 @@ this account. Look there.
 
 | Risk | Guard |
 |---|---|
-| Someone hammers the helper and runs up Bedrock use | A daily message limit per student and a daily AI budget for the whole site (backend-design.md §5). At most $15 a month |
+| Someone hammers the helper and runs up Bedrock use | A daily AI budget for the whole site: **at most $15 a month**, whatever anyone does. Inside it, each account has its own daily and weekly allowance ($0.06 and $0.25, at most $1.08 a month from one account), so one account can't use everyone's share (backend-design.md §5 "Cost limits"). `npm run ai:spend` shows our count |
 | A bigger server "just for now" | An 8 GB server is about $70 a month and would end the plan in under three months. Stay on t4g.small |
 | Something left running from an "Explore AWS" activity | Delete it the same day |
 | An Elastic IP not attached to anything | It costs the same $3.65. Release it if the server is gone |
@@ -180,6 +180,11 @@ this account. Look there.
 - **Once a week**, open Billing → Credits and Billing → Bills. Compare credits left with
   months left. If the credits will run out before 12 May 2027, lower `AI_DAILY_BUDGET_USD`
   or decide early about upgrading (§10).
+- **In the same sitting**, run the AI cost report on the server and compare its "last 30
+  days" with the Bedrock line of the bill:
+  `docker compose exec api node dist/db/ai-spend.js`. Ours should be the same or a little
+  higher (it counts a timed-out call at its worst case). If the bill is higher, the prices
+  in `READER_PRICE_IN_PER_M` and `READER_PRICE_OUT_PER_M` are out of date.
 
 ## 4. The server and its address
 

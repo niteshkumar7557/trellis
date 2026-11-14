@@ -9,11 +9,13 @@ import { goalById, subjectById } from "@shared/data";
 import { ApiError, api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { useTheme, type ThemePref } from "@/lib/theme";
+import { NEARLY, backAt, basicReason, resetClock, resetWeekday } from "@/lib/usage";
+import type { AiUsage } from "@shared/types";
 import styles from "./settings.module.css";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { claims, checkIns, experiences, messages, goalIds, student, mode, act, fail } = useStore();
+  const { claims, checkIns, experiences, messages, goalIds, student, usage, mode, act, fail } = useStore();
   const { pref, setPref } = useTheme();
   const [name, setName] = useState(student.name);
   const [accountSaved, setAccountSaved] = useState(false);
@@ -34,6 +36,12 @@ export default function SettingsPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // The allowance shown here came with the page load or the last helper reply. Read it
+  // again on opening Settings, so the page a student opens to check is never stale.
+  useEffect(() => {
+    void act.refreshUsage();
+  }, [act]);
 
   // Live: the server's export, which is everything it holds (not just what this page has
   // loaded: older chat messages are included). Demo: what this browser holds.
@@ -140,6 +148,9 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* Live only: the sample's helper runs in the browser and calls no AI. */}
+      {live && usage && <AiUsageSection usage={usage} />}
+
       <section className={styles.section}>
         <div className={styles.label}>
           <h2>Your record</h2>
@@ -235,6 +246,63 @@ export default function SettingsPage() {
           />
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * The account's AI allowance: today and this week, each as a percentage with its reset
+ * time (backend-design.md §5 "Cost limits"). No amounts: the server sends none.
+ *
+ * `id="ai-usage"` is where the sidebar's meter links to.
+ */
+function AiUsageSection({ usage }: { usage: AiUsage }) {
+  const reason = basicReason(usage);
+  return (
+    <section className={styles.section} id="ai-usage">
+      <div className={styles.label}>
+        <h2>AI usage</h2>
+        <p>
+          An AI model reads what you type to the helper. Each account has a daily and a weekly allowance, shared across your
+          subjects. The Got it, Partly and Stuck buttons never use it.
+        </p>
+      </div>
+      <div className={styles.panel}>
+        {usage.on ? (
+          <>
+            <UsageBar title="Today" pct={usage.day.usedPct} resets={`Resets at ${resetClock(usage.day.resetsAt)}`} />
+            <UsageBar
+              title="This week"
+              pct={usage.week.usedPct}
+              resets={`Resets ${resetWeekday(usage.week.resetsAt)} at ${resetClock(usage.week.resetsAt)}`}
+            />
+            {reason && (
+              <p className={styles.usageNote} role="status">
+                {reason} The helper still answers in basic mode until {backAt(usage)}: it reads your message with simple
+                rules instead of the AI, so it may ask you to pick the topic more often. Nothing you&rsquo;ve saved is
+                affected.
+              </p>
+            )}
+          </>
+        ) : (
+          // A server run without the AI (development, or the operator turned it off).
+          <p className={styles.prose}>AI reading is off on this server. The helper reads your messages with its built-in rules.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function UsageBar({ title, pct, resets }: { title: string; pct: number; resets: string }) {
+  return (
+    <div className={styles.usage} data-tone={pct >= NEARLY ? "near" : undefined}>
+      <span className={styles.usageTitle}>{title}</span>
+      <span className="num">{pct}% used</span>
+      {/* A real progressbar here (the sidebar's meter is a link, so it uses a label instead). */}
+      <span className={styles.usageTrack} role="progressbar" aria-label={`${title}: AI allowance used`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+        <span style={{ width: `${pct}%` }} />
+      </span>
+      <small className={styles.hint}>{resets}</small>
     </div>
   );
 }

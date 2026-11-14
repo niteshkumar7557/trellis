@@ -15,6 +15,7 @@ import { listPromptTakes } from "../repos/prompt-takes.repo.js";
 import { listSubjectRequests } from "../repos/subject-requests.repo.js";
 import { getAccountForExport, getStudent } from "../repos/users.repo.js";
 import { HttpError } from "../utils/http-error.js";
+import { usageFor } from "./usage.controller.js";
 
 // Chat history is the one part of the record that grows without limit, so it alone is
 // paged (older pages come from GET /api/helper/:subjectId/messages in M4). 50 messages is
@@ -27,7 +28,7 @@ const gone = () => new HttpError(404, "not_found", "This account no longer exist
 
 /**
  * GET /api/state → { student, goalIds, claims, checkIns, experiences, opened,
- *                    promptTakes, messages, moreMessages }
+ *                    promptTakes, messages, moreMessages, usage }
  *
  * Shaped like the frontend store's state (frontend/lib/store.tsx), so loading it is one
  * request and one assignment. Statuses, next topic and the rest are NOT here: the frontend
@@ -59,6 +60,9 @@ export async function showState(req: Request, res: Response) {
       promptTakes: await listPromptTakes(userId, PROMPT_TAKES, db),
       messages,
       moreMessages,
+      // The AI allowance as percentages (usage.controller.ts), so the sidebar's meter
+      // is right from the first paint without a request of its own.
+      usage: await usageFor(userId, db),
     };
   });
   if (!state) throw gone();

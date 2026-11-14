@@ -147,7 +147,12 @@ services:
       # instance metadata (hop limit 2, aws.md §4). AI_PROVIDER=off turns it off.
       AI_PROVIDER: ${AI_PROVIDER:-bedrock}
       BEDROCK_REGION: ap-southeast-2
+      # Spending limits in dollars: the whole site per day, then one account per day
+      # and per week (backend-design.md §5 "Cost limits"). Change one by setting it in
+      # the server's environment and restarting the api container.
       AI_DAILY_BUDGET_USD: ${AI_DAILY_BUDGET_USD:-0.50}
+      AI_USER_DAILY_USD: ${AI_USER_DAILY_USD:-0.06}
+      AI_USER_WEEKLY_USD: ${AI_USER_WEEKLY_USD:-0.25}
       # Keeps Node's heap inside the container's limit, so Node collects garbage before
       # the limit kills it.
       NODE_OPTIONS: --max-old-space-size=192

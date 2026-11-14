@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Mark } from "@/components/ui/Mark";
 import ui from "@/components/ui/ui.module.css";
@@ -10,6 +10,7 @@ import { goalById, subjects } from "@shared/data";
 import { summarise } from "@shared/graph";
 import { useStore } from "@/lib/store";
 import { useResolvedTheme, useTheme } from "@/lib/theme";
+import { NEARLY, backAt, tighterWindow } from "@/lib/usage";
 import type { SubjectId } from "@shared/types";
 import { Search } from "./Search";
 import styles from "./shell.module.css";
@@ -125,16 +126,78 @@ function SidebarBody() {
         </Link>
       </div>
 
-      <div className={styles.user}>
-        <span className={styles.avatar} aria-hidden="true">
-          {student.name.charAt(0)}
-        </span>
-        <span className={styles.userText}>
-          <span className={styles.userName}>{student.name}</span>
-          <span className={styles.userMail}>{mode === "demo" ? "Sample student" : student.email}</span>
-        </span>
+      {/* The foot sits at the bottom of the sidebar: the AI meter, then who is signed in. */}
+      <div className={styles.foot}>
+        <UsageMeter />
+        <div className={styles.user}>
+          <span className={styles.avatar} aria-hidden="true">
+            {student.name.charAt(0)}
+          </span>
+          <span className={styles.userText}>
+            <span className={styles.userName}>{student.name}</span>
+            <span className={styles.userMail}>{mode === "demo" ? "Sample student" : student.email}</span>
+          </span>
+        </div>
       </div>
     </>
+  );
+}
+
+/**
+ * The account's AI allowance, as one small meter (backend-design.md §5 "Cost limits").
+ *
+ * It shows a percentage and never an amount: the server sends nothing else. Of the two
+ * windows (today, this week) it shows the one that is closer to its limit; Settings shows
+ * both. At a limit the helper keeps working in basic mode, and the meter says until when.
+ *
+ * Not shown in demo mode (the sample's helper runs in the browser and calls no AI), nor
+ * on a server that runs without the AI.
+ */
+function UsageMeter() {
+  const { usage, act } = useStore();
+  const dayResetsAt = usage?.day.resetsAt;
+
+  // A tab left open past the reset still shows yesterday's number. Ask again when the
+  // reset time arrives, and when the student comes back to the tab after it (a sleeping
+  // laptop runs no timers). Nothing is polled in between: every helper reply already
+  // carries fresh numbers.
+  useEffect(() => {
+    if (!dayResetsAt) return;
+    const resetsAt = Date.parse(dayResetsAt);
+    // A few seconds late on purpose, so the server's clock has certainly passed it too.
+    const timer = setTimeout(() => void act.refreshUsage(), Math.max(0, resetsAt - Date.now()) + 5000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() >= resetsAt) void act.refreshUsage();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [dayResetsAt, act]);
+
+  if (!usage?.on) return null;
+
+  const which = tighterWindow(usage);
+  const pct = usage[which].usedPct;
+  const label = `AI usage ${which === "day" ? "today" : "this week"}`;
+  const note = usage.basic ? `Basic mode until ${backAt(usage)}` : null;
+
+  return (
+    <Link
+      href="/settings#ai-usage"
+      className={styles.usage}
+      data-tone={pct >= NEARLY ? "near" : undefined}
+      // One sentence for a screen reader, instead of a label, a number and a bar.
+      aria-label={`${label}: ${pct}% used.${note ? ` ${note}.` : ""} Open settings.`}
+    >
+      <span className={styles.usageLabel}>{label}</span>
+      <span className={`${styles.usageFig} num`}>{pct}%</span>
+      <span className={styles.track} aria-hidden="true">
+        <span style={{ width: `${pct}%` }} />
+      </span>
+      {note && <span className={styles.usageNote}>{note}</span>}
+    </Link>
   );
 }
 

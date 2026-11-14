@@ -33,6 +33,17 @@ function num(name: string, fallback: number): number {
   return n;
 }
 
+/**
+ * A dollar limit. Zero is allowed (it means "no AI calls"); a negative number is refused,
+ * because a typo such as -0.5 would otherwise silently switch the AI off, or worse, be
+ * read by some later change as "no limit".
+ */
+function money(name: string, fallback: number): number {
+  const n = num(name, fallback);
+  if (n < 0) throw new Error(`Config: ${name} must be 0 or more, got "${n}"`);
+  return n;
+}
+
 function oneOf<T extends string>(name: string, allowed: readonly T[], fallback: T): T {
   const v = str(name, fallback);
   if (!(allowed as readonly string[]).includes(v)) {
@@ -107,7 +118,16 @@ const config = {
     price_in_per_m: num("READER_PRICE_IN_PER_M", 1.03),
     price_out_per_m: num("READER_PRICE_OUT_PER_M", 3.3),
     timeout_ms: num("AI_TIMEOUT_MS", 6000), // a slow answer is worse than a plain one
-    daily_budget_usd: num("AI_DAILY_BUDGET_USD", 0.5),
+    // The spending limits, in dollars (backend-design.md §5 "Cost limits"). The site's
+    // daily budget is the one that caps the bill: $0.50 a day is at most $15 a month.
+    daily_budget_usd: money("AI_DAILY_BUDGET_USD", 0.5),
+    // Each account's own allowance, the same across its subjects. At about $0.002 a
+    // message these are roughly 30 AI-read messages a day and 125 a week; at most $1.08 a
+    // month from one account. Students see them only as a percentage.
+    user_daily_usd: money("AI_USER_DAILY_USD", 0.06),
+    user_weekly_usd: money("AI_USER_WEEKLY_USD", 0.25),
+    // Typed messages a day, whoever reads them: a guard against a script filling the
+    // chat table, not a money limit.
     helper_daily_messages: num("HELPER_DAILY_MESSAGES", 100),
   },
 };

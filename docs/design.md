@@ -367,7 +367,7 @@ in the Sydney region, beside the server.
 |---|---|
 | Tap a button (Got it, Partly, Stuck, a choice card) | Our code. No model is called |
 | Type a message | One GLM 5 call reads it and returns a small typed answer: what kind of message it is, which topic, how it went, and a clean line. Our code then decides the reply |
-| The model is slow, fails, or today's AI budget is spent | Our rule-based reader (`shared/helper.ts`, `shared/parse.ts`) reads the message instead. The helper keeps working, just less cleverly |
+| The model is slow or fails, or an AI limit is reached (yours for the day or the week, or the whole site's for the day) | Our rule-based reader (`shared/helper.ts`, `shared/parse.ts`) reads the message instead: "basic mode". The helper keeps working, just less cleverly, and says so |
 
 **The AI never decides.** Statuses, the next topic, skip or not, and why you are stuck are
 worked out by our code from the map. The model only reads your words.
@@ -378,9 +378,14 @@ worked out by our code from the map. The model only reads your words.
 one, and the subject's topic names. Never your name, email or anyone else's data. Amazon
 Bedrock does not use it to train models and does not share it with the model's maker.
 
-**Cost control.** There is a daily message limit per student and a daily spending limit
-for the whole site. On the AWS free plan, running out of credits closes the account, so
-these limits protect the site itself (`docs/aws.md`).
+**Cost control.** Each account has an AI allowance for the day and for the week, the same
+across its subjects, and the whole site has one for the day. They are counted in money on
+the server; a student sees only **how much is used, as a percentage**, in the sidebar and
+in Settings, with the time it resets. At a limit nothing is refused: the helper answers in
+basic mode until the reset. There is no way to buy or raise an allowance in v1. On the AWS
+free plan, running out of credits closes the account, so these limits protect the site
+itself (`docs/aws.md`; the numbers and how they are counted are in
+`backend-design.md` §5 "Cost limits").
 
 ## 13. Tech
 
@@ -512,6 +517,11 @@ Each row is a choice we made, what else we could have done, and why we did not.
 | Bedrock in Sydney, `ap-southeast-2` (14 Nov 2026) | Mumbai, beside the users | The owner's call: close to the hosting. GLM 5 runs in both; Sydney is also a little cheaper. Costs about 0.2 seconds more per message from India |
 | Rules as the fallback, not the first step (v7) | Rules first, model only when unsure | One path for all typed text keeps behaviour consistent and is easier to debug |
 | Daily limits on AI use (v7) | Per-minute limit only | On the free plan, spent credits close the account. A cost limit is an uptime limit |
+| An AI allowance per account, daily and weekly, counted in money (14 Nov 2026) | A message count per student; one site-wide budget only | The site was about to be shared: without it one account could use everyone's AI for the day. Money, not messages, because that is what the bill counts |
+| At an AI limit the helper goes to basic mode (14 Nov 2026) | Refuse typed messages until the reset | Basic mode already costs nothing, and a student mid-session is not stopped |
+| Students see a percentage, never an amount (14 Nov 2026) | Show messages left, or dollars | What a message costs is the operator's business; a percentage says all a student needs: how much is left and when it comes back |
+| Deleting an account resets its AI allowance (14 Nov 2026) | Keep a scrambled copy of the email for a week so the usage follows it | "Delete removes everything" stays exactly true. The cost: delete and sign up again for a fresh allowance. The site's daily budget still caps the bill |
+| No paid plans or top-ups in v1 (14 Nov 2026) | A subscription that raises the limit | Later, if ever. Every account has the same allowance |
 
 ### Hosting (details in `docs/aws.md`)
 

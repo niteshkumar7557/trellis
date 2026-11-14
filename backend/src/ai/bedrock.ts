@@ -5,8 +5,13 @@
 // (timeout, throttled, no credentials, unusable output) ends as null, and the caller falls
 // back to the rule-based reader. A failing model must never fail a student's message.
 //
-// Every call, good or bad, leaves one row in ai_calls with its tokens, cost and latency.
-// That row is what the daily budget is counted from (src/ai/reader.ts).
+// Money first (docs/backend-design.md §5 "Cost limits"). A call has three steps:
+//   1. RESERVE  a row in ai_calls holding the most this call can cost. This is also where
+//               the limits are checked: at a limit there is no row and no call.
+//   2. CALL     Bedrock.
+//   3. SETTLE   the row with the tokens, the real cost and the latency.
+// So every call, good or bad, is in ai_calls BEFORE any money is spent on it, and the
+// limits are counted from that one table.
 //
 // Credentials: none are read here. The SDK's default chain finds them: on the server the
 // EC2 instance role, on a laptop the profile named in AWS_PROFILE (`trellis`). So there
@@ -14,7 +19,8 @@
 
 import { BedrockRuntimeClient, ConverseCommand, type ConverseCommandOutput } from "@aws-sdk/client-bedrock-runtime";
 import config from "../config/index.js";
-import { insertAiCall } from "../repos/ai-calls.repo.js";
+import { reserveAiCall, settleAiCall } from "../repos/ai-calls.repo.js";
+import { chargeFor, limits, worstCaseUsd } from "./limits.js";
 
 export interface JsonCall<T> {
   purpose: "read" | "warmup";
@@ -44,13 +50,6 @@ function bedrock(): BedrockRuntimeClient {
   return client;
 }
 
-/** What a call cost, in dollars, from the token counts and the configured prices. */
-export function costUsd(inputTokens: number, outputTokens: number): number {
-  const dollars = (inputTokens * config.ai.price_in_per_m + outputTokens * config.ai.price_out_per_m) / 1_000_000;
-  // NUMERIC(10,6) in the table: round here so the row and this number agree.
-  return Math.round(dollars * 1_000_000) / 1_000_000;
-}
-
 /**
  * A short, stable code for why a call failed, for ai_calls.error and the log. The SDK
  * names its errors after the service's exceptions (err.name).
@@ -65,6 +64,11 @@ export function errorCode(err: unknown, timedOut: boolean): string {
     case "ThrottlingException":
     case "ServiceQuotaExceededException":
       return "throttled";
+    // Bedrock's own trouble: it answered with an error instead of running the model.
+    case "ServiceUnavailableException":
+    case "InternalServerException":
+    case "ModelNotReadyException":
+      return "unavailable";
     case "AccessDeniedException":
       return "denied"; // the role or profile may not call this model
     case "ResourceNotFoundException":
@@ -88,6 +92,23 @@ function replyText(out: ConverseCommandOutput): string | null {
 
 export async function callForJson<T>(call: JsonCall<T>): Promise<T | null> {
   const model = config.ai.reader_model;
+
+  // 1. RESERVE. Everything billed as input is the instructions plus the message.
+  const reservedUsd = worstCaseUsd(call.system + call.message, call.maxTokens);
+  let rowId: string;
+  try {
+    const reservation = await reserveAiCall({ userId: call.userId, model, purpose: call.purpose, reservedUsd }, limits());
+    // A limit is reached: no call. Not an error, so nothing is logged.
+    if (reservation.blockedBy) return null;
+    rowId = reservation.id;
+  } catch (err) {
+    // The database couldn't take the reservation. Fail CLOSED: a call we can't write down
+    // is a call the limits can't see, so it isn't made. The rules read this message.
+    console.error("Could not reserve an AI call; the rules read this message.", err);
+    return null;
+  }
+
+  // 2. CALL.
   const started = Date.now();
   const signal = AbortSignal.timeout(call.timeoutMs);
 
@@ -135,23 +156,23 @@ export async function callForJson<T>(call: JsonCall<T>): Promise<T | null> {
     log(`Bedrock call failed: ${error}${err instanceof Error ? ` (${err.name}: ${err.message.slice(0, 200)})` : ""}`);
   }
 
+  // 3. SETTLE.
   try {
-    await insertAiCall({
-      userId: call.userId,
-      model,
-      purpose: call.purpose,
+    await settleAiCall(rowId, {
       inputTokens,
       outputTokens,
-      // A failed call that Bedrock still counted tokens for was still paid for.
-      costUsd: inputTokens !== null && outputTokens !== null ? costUsd(inputTokens, outputTokens) : null,
+      // A failed call that Bedrock still counted tokens for was still paid for, and a
+      // timeout counts as the whole reservation (chargeFor explains each case).
+      costUsd: chargeFor(inputTokens, outputTokens, error, reservedUsd),
       latencyMs: Date.now() - started,
       ok: value !== null,
       error,
     });
   } catch (err) {
-    // The bookkeeping failing must not throw away a good reading. The budget undercounts
-    // by one call, which is far less harm than failing the student's message.
-    console.error("Could not record an ai_calls row.", err);
+    // The bookkeeping failing must not throw away a good reading. The row stays
+    // 'pending' and keeps counting at its reservation, which is more than the call
+    // cost: the limits err towards too much, and `npm run ai:spend` reports such rows.
+    console.error("Could not settle an ai_calls row; it stays counted at its reservation.", err);
   }
   return value;
 }

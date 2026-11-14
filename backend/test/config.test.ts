@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const OPTIONAL_VARS = [
   "NODE_ENV", "PUBLIC_URL", "REFRESH_TOKEN_DAYS", "NEO4J_URL", "NEO4J_USER", "NEO4J_PASSWORD",
   "AI_PROVIDER", "BEDROCK_REGION", "READER_MODEL", "AI_TIMEOUT_MS", "AI_DAILY_BUDGET_USD",
-  "HELPER_DAILY_MESSAGES",
+  "HELPER_DAILY_MESSAGES", "AI_USER_DAILY_USD", "AI_USER_WEEKLY_USD",
 ];
 
 async function loadConfig() {
@@ -42,6 +42,18 @@ describe("config", () => {
     expect(config.ai.provider).toBe("off"); // no AWS needed unless asked for
     expect(config.ai.reader_model).toBe("zai.glm-5");
     expect(config.ai.timeout_ms).toBe(6000);
+    // The spending limits (backend-design.md §5): the site's day, an account's day and week.
+    expect(config.ai.daily_budget_usd).toBe(0.5);
+    expect(config.ai.user_daily_usd).toBe(0.06);
+    expect(config.ai.user_weekly_usd).toBe(0.25);
+  });
+
+  it("stops at boot on a negative spending limit, and accepts zero (no AI calls)", async () => {
+    vi.stubEnv("AI_USER_DAILY_USD", "-0.06");
+    await expect(loadConfig()).rejects.toThrow(/AI_USER_DAILY_USD must be 0 or more/);
+    vi.resetModules();
+    vi.stubEnv("AI_USER_DAILY_USD", "0");
+    expect((await loadConfig()).ai.user_daily_usd).toBe(0);
   });
 
   it("reads values from the environment, as numbers where needed", async () => {

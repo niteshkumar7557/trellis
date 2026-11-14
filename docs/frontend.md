@@ -72,7 +72,7 @@ dependencies. `next.config.ts` sets `devIndicators: false`.
 | `/start/sort` | Sort the **big topics**, one card each (keys 1/2/3, Backspace) | `app/start/sort/page.tsx` |
 | `/map` | The map (home) | `app/(app)/map/page.tsx` |
 | `/check-ins` | Every update and note; edit or delete | `app/(app)/check-ins/page.tsx` |
-| `/settings` | Account, theme, export, delete everything, restore sample | `app/(app)/settings/page.tsx` |
+| `/settings` | Account, theme, AI usage (signed in), export, delete everything, restore sample | `app/(app)/settings/page.tsx` |
 
 The app screens share `components/app/Shell.tsx`: sidebar (pages, the student's subjects
 with progress, the student) and top bar (search trigger, theme button). The sidebar lists
@@ -123,7 +123,7 @@ is started, it shows just that form.
 frontend/
   app/                     routes (above); globals.css holds every token
   components/
-    app/Shell.tsx          sidebar + top bar;   Search.tsx  ⌘K full-page search (§9)
+    app/Shell.tsx          sidebar (with the AI usage meter) + top bar;   Search.tsx  ⌘K full-page search (§9)
     ui/Dropdown.tsx        our own dropdown (ARIA listbox); used instead of every <select>
     map/
       layout.ts            dagre layout: big topics, frames, links, midpoints, arrowheads (§7)
@@ -139,6 +139,7 @@ frontend/
     ui/                    Icon, Mark (logo), Status (StatusMark, StatusPill), ui.module.css
   lib/
     store.tsx              the client store (§10)
+    usage.ts               the words for the AI allowance: which window, reset times, basic mode (§11)
     theme.tsx, gsap.ts     theme and motion setup
 shared/                    the domain code; the backend runs the same files (import as @shared/*)
   types.ts                 every shape (the data contract, §12)
@@ -314,12 +315,13 @@ On load it tries one `POST /api/auth/refresh` (the refresh cookie). Success: liv
 Failure: demo. A refresh that fails later (signed out elsewhere) drops back to demo.
 
 State: `student, claims, checkIns, experiences, messages, moreMessages, promptTakes,
-subjectId, goalIds, opened`, plus unsaved `selected`, `asking`. Derived on every change:
+subjectId, goalIds, opened, usage` (the AI allowance; `null` in demo mode), plus unsaved
+`selected`, `asking`. Derived on every change:
 `statuses`, `goal`, and `today` (the sample's fixed day in demo, the real date live).
 
 **Screens call `act.*`, never `dispatch` for record changes:** `setGoal, addClaims, open,
 editCheckIn, removeCheckIn, editExperience, removeExperience, tookPrompt, rename,
-requestSubject, loadOlder, goLive, signOut, erase, reset`. Each does the local change in
+requestSubject, loadOlder, refreshUsage, goLive, signOut, erase, reset`. Each does the local change in
 demo mode, or the request and then the server's answer in live mode. A failed request
 shows in the shell's error bar (`error`, `fail()`). `dispatch` stays for screen state:
 `select`, `ask`, `subject`.
@@ -347,6 +349,21 @@ shows in the shell's error bar (`error`, `fail()`). `dispatch` stays for screen 
   editable, and looks it), Download uses `GET /api/export`, and there is Log out. "Delete my
   record…" opens a pop-up (a native `<dialog>`) where the student types "delete my record"
   and, on password accounts, the password. "Restore the sample data" exists only in demo mode.
+- **AI usage** (backend-design.md §5 "Cost limits"). The server sends `AiUsage`:
+  percentages and reset times, never an amount. It arrives with `GET /api/state` and with
+  every helper reply (`useHelper` dispatches `usage`), and `act.refreshUsage()` reads
+  `GET /api/usage` when Settings opens and when a reset time passes with the tab open.
+  Three places show it, all with words from `lib/usage.ts`:
+  - **the sidebar** (`UsageMeter` in `Shell.tsx`): one meter above the account, for the
+    window nearer its limit (`tighterWindow`), linking to Settings. Neutral fill, amber
+    from 80%, and "Basic mode until 5:30 am" at the limit. On a phone it is in the menu;
+  - **Settings → AI usage** (`AiUsageSection`): today and this week, each with its reset
+    time in the student's own time zone, and what basic mode means when a limit is reached;
+  - **the chat** (`Chat.tsx`): one line above the composer while a limit is reached.
+
+  None of it shows in demo mode (the sample's helper calls no AI) or when the server runs
+  with the AI off (`usage.on` is false). Amber, never red: reaching a limit is not an
+  error.
 - **Scrollbars** are themed in `globals.css` (thin, `--control` thumb): `::-webkit-scrollbar`
   for Chrome and Safari, `scrollbar-color` only where that isn't supported (Firefox), since
   Chrome ignores the first when the second is set.
@@ -369,6 +386,7 @@ These are the shapes the screens consume (`shared/types.ts`). The backend return
 | `Card` | `confirm` (`proposal, state: open \| saved \| cancelled \| undone, saved?: {checkIns[], experiences[]}`) · `prompt` (`topicId`) · `choose` (`outcome, options[{label, topicIds, outcome?}]`) · `suggest` (`options[]`) |
 | `Proposal` | `updates: {topicId, outcome}[], experiences: {topicId, kind, text, line}[], said`. Nothing is written until the student saves it |
 | `Student` | `id, name, email, joinedAt, hasPassword, goals: {subjectId, goalId, since}[]` |
+| `AiUsage` | `on, day: {usedPct, resetsAt}, week: {usedPct, resetsAt}, basic: "day" \| "week" \| "site" \| null`: the account's AI allowance. Percentages (0 to 100) and ISO times only |
 | `Status` | `new \| know \| shaky \| learning \| stuck \| done`: **derived, never stored** |
 
 The endpoints that serve these are in `backend-design.md` §4.

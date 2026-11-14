@@ -23,6 +23,7 @@ import subjectRequestRoutes from "./routes/subject-requests.routes.js";
 import stateRoutes from "./routes/state.routes.js";
 import subjectRoutes from "./routes/subjects.routes.js";
 import topicRoutes from "./routes/topics.routes.js";
+import usageRoutes from "./routes/usage.routes.js";
 import { makeHealthHandler } from "./utils/health.js";
 
 const app = express();
@@ -57,6 +58,7 @@ app.use("/api/check-ins", checkInRoutes);
 app.use("/api/experiences", experienceRoutes);
 app.use("/api/prompt-takes", promptTakeRoutes);
 app.use("/api/helper", helperRoutes);
+app.use("/api/usage", usageRoutes); // the AI allowance, as percentages
 app.use("/api", stateRoutes); // /api/state and /api/export
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/topics", topicRoutes);

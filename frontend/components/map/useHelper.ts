@@ -14,7 +14,7 @@ import { afterSave, greeting, respond, type HelperContext, type Input, type Repl
 import { nextTopic, revealed } from "@shared/graph";
 import { ApiError, api } from "@/lib/api";
 import { newId, useStore } from "@/lib/store";
-import type { ChatMessage, CheckIn, Experience, Outcome, Proposal } from "@shared/types";
+import type { AiUsage, ChatMessage, CheckIn, Experience, Outcome, Proposal } from "@shared/types";
 
 /** How long the demo helper "thinks", so it feels like the real one. */
 const THINK_MS = 650;
@@ -112,8 +112,10 @@ export function useHelper(): Helper {
   const sendLive = useCallback(
     async (body: unknown) => {
       const subjectId = latest.current.subjectId;
-      const answer = await request<{ messages: ChatMessage[] }>(`/helper/${subjectId}/messages`, body).catch(showError);
+      const answer = await request<{ messages: ChatMessage[]; usage: AiUsage }>(`/helper/${subjectId}/messages`, body).catch(showError);
       for (const m of answer?.messages ?? []) latest.current.dispatch({ type: "say", message: m });
+      // The AI allowance after this message, so the sidebar's meter moves with the reply.
+      if (answer?.usage) latest.current.dispatch({ type: "usage", usage: answer.usage });
     },
     [request, showError],
   );
