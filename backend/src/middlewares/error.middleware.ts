@@ -7,7 +7,6 @@
 //   app.use(errorHandler);  ← reached when anything earlier threw or called next(err)
 
 import type { NextFunction, Request, Response } from "express";
-import { ZodError } from "zod";
 import { HttpError } from "../utils/http-error.js";
 import { forgetGraphState, graphUnavailableError, isGraphOutage } from "./graph.middleware.js";
 
@@ -24,19 +23,6 @@ export function notFound(req: Request, res: Response) {
  * too, with no try/catch needed.
  */
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      error: {
-        code: "invalid_request",
-        message: "The request body is not valid.",
-        details: err.issues.map((issue) => ({
-          path: issue.path.join("."),
-          message: issue.message,
-        })),
-      },
-    });
-  }
-
   // express.json() reports its own failures with a `type` field. Without these two checks
   // they would fall through to the 500 below and look like our bug.
   const bodyParserType = typeof err === "object" && err !== null && "type" in err ? err.type : null;
@@ -59,7 +45,8 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   }
 
   if (err instanceof HttpError) {
-    return res.status(err.status).json({ error: { code: err.code, message: err.message } });
+    const error = { code: err.code, message: err.message, ...(err.details === undefined ? {} : { details: err.details }) };
+    return res.status(err.status).json({ error });
   }
 
   // Anything else is a bug or an outage (the database is down, a typo, ...). Log the real

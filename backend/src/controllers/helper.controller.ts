@@ -5,7 +5,7 @@
 //
 // What a POST does:
 //   1. load the student's record and work out statuses   (shared/graph.ts)
-//   2. READ the message into a Reading                    (rules today; GLM 5 in M5)
+//   2. READ the message into a Reading                    (GLM 5, else the rules)
 //   3. REPLY with replyFor()                               (shared/helper.ts)
 //   4. store the student's message, the reply and any proposal, in ONE transaction
 // Nothing here writes a check-in or an experience. Only saving a proposal does (M4.3).
@@ -17,9 +17,11 @@ import type { SubjectId } from "@shared/types";
 import type { Request, Response } from "express";
 import type { PoolClient } from "pg";
 import { z } from "zod";
+import { readByModel } from "../ai/reader.js";
+import config from "../config/index.js";
 import pool, { inTransaction } from "../db/index.js";
 import { currentUserId } from "../middlewares/auth.middleware.js";
-import { findMessages, insertMessage, listMessages, messageExists } from "../repos/chat.repo.js";
+import { findMessages, insertMessage, listMessages, messageExists, typedToday } from "../repos/chat.repo.js";
 import { listCheckIns } from "../repos/check-ins.repo.js";
 import { listClaims } from "../repos/claims.repo.js";
 import { listExperiences } from "../repos/experiences.repo.js";
@@ -111,20 +113,34 @@ export async function postMessage(req: Request<{ subjectId: string }>, res: Resp
     if (wrong.length) throw new HttpError(400, "invalid_request", "Those topics aren't in this subject.");
   }
 
+  // The daily limit on TYPED messages (backend-design.md §5 "Cost limits"). It is what
+  // stops one student, or a script with their token, from spending the whole site's AI
+  // budget. Taps are never limited: marking a topic must always work. Two messages sent
+  // at the same moment can both pass at 99; one over the limit is harmless.
+  if ("text" in body && (await typedToday(userId)) >= config.ai.helper_daily_messages) {
+    throw new HttpError(
+      429,
+      "daily_limit",
+      `That's ${config.ai.helper_daily_messages} typed messages today, the daily limit. The Got it, Partly and Stuck buttons still work, and typing opens again at 05:30 India time.`,
+    );
+  }
+
   const ctx = await loadContext(userId, subjectId, "text" in body ? (body.selected ?? null) : null);
 
-  // A tap needs no reading: our own code knows what was tapped. Typed text is read by the
-  // rules; M5 tries GLM 5 first and keeps these rules as the fallback.
+  // A tap needs no reading: our own code knows what was tapped, so it never calls the
+  // model. Typed text goes to GLM 5 when the AI is on and today's budget allows; if that
+  // gives nothing usable (null), the rules read it, so the student always gets a reply.
   let reading: Reading;
-  let readBy: "tap" | "rules";
+  let readBy: "tap" | "model" | "rules";
   let studentText: string;
   if ("pick" in body) {
     reading = readTap(body.pick.outcome, body.pick.topicIds);
     readBy = "tap";
     studentText = body.pick.label;
   } else {
-    reading = readByRules(body.text, ctx);
-    readBy = "rules";
+    const byModel = await readByModel(body.text, ctx, userId);
+    reading = byModel ?? readByRules(body.text, ctx);
+    readBy = byModel ? "model" : "rules";
     studentText = body.text;
   }
   const reply = replyFor(reading, ctx);

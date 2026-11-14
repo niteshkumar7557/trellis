@@ -58,7 +58,7 @@ ours. Any other subject gets a "coming soon" for now.
 | Frontend | Next.js 16, Tailwind 4, GSAP. The map is laid out with dagre and drawn in SVG. |
 | Backend | Node.js, Express |
 | Data | Postgres for accounts and every student's record; Neo4j for the topic graph |
-| AI | Only in the helper chat: GLM 5 on Amazon Bedrock reads each typed message (planned; a rule-based reader for now, and as the fallback) |
+| AI | Only in the helper chat: GLM 5 on Amazon Bedrock reads each typed message when it is turned on (`AI_PROVIDER=bedrock`), within daily limits; a rule-based reader is the fallback and the default |
 | Infra | AWS (Mumbai): one EC2 server running Docker Compose behind Caddy; backups in S3 |
 
 ## Run it locally

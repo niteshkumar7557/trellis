@@ -433,6 +433,8 @@ const GUIDE = {
 
 export type HelpTopic = keyof typeof GUIDE;
 export const HELP_TOPICS = Object.keys(GUIDE) as HelpTopic[];
+/** What a guide entry says. The model reader lists these, so GLM 5 can pick the key that answers. */
+export const helpText = (key: HelpTopic): string => GUIDE[key].say;
 
 function helpTopicIn(text: string): HelpTopic | null {
   return HELP_TOPICS.find((k) => GUIDE[k].when.test(text)) ?? null;
@@ -441,7 +443,8 @@ function helpTopicIn(text: string): HelpTopic | null {
 // ---------------------------------------------------------------- context
 
 /** The question the helper asked just before the student's latest message, if it asked one. */
-function pendingQuestion(ctx: HelperContext): ChatMessage["asks"] | null {
+/** The question the helper just asked and is waiting on, if any. The model reader shows it to GLM 5. */
+export function pendingQuestion(ctx: HelperContext): ChatMessage["asks"] | null {
   const msgs = ctx.messages;
   const before = msgs.at(-1)?.role === "student" ? msgs.at(-2) : msgs.at(-1);
   return before?.role === "helper" && before.asks ? before.asks : null;

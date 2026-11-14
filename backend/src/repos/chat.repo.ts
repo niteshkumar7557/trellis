@@ -200,3 +200,19 @@ export async function insertMessage(
   }
   return messageId;
 }
+
+/**
+ * How many messages this student TYPED since midnight UTC, in every subject. Taps
+ * (read_by 'tap') don't count: they never call the model, and the daily limit must never
+ * stop a student from marking a topic. Counted from the table, so a restart doesn't
+ * reset it.
+ */
+export async function typedToday(userId: number): Promise<number> {
+  const { rows } = await pool.query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM chat_messages
+     WHERE user_id = $1 AND role = 'student' AND read_by IN ('model', 'rules')
+       AND at >= date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
+    [userId],
+  );
+  return rows[0]!.n;
+}

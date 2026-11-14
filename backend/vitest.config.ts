@@ -22,6 +22,9 @@ export default defineConfig({
     env: {
       JWT_SECRET: "test-secret-that-is-at-least-32-characters-long",
       DB_URL: "postgresql://nobody@localhost:1/not-used-by-unit-tests",
+      // Never the real Bedrock, whatever backend/.env says. reader.test.ts turns it on
+      // for itself, with the SDK faked.
+      AI_PROVIDER: "off",
     },
   },
 });

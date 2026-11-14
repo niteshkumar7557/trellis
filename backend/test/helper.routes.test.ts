@@ -6,7 +6,8 @@ import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { errorHandler, notFound } from "../src/middlewares/error.middleware.js";
-import { findMessages, insertMessage, listMessages, messageExists } from "../src/repos/chat.repo.js";
+import { readByModel } from "../src/ai/reader.js";
+import { findMessages, insertMessage, listMessages, messageExists, typedToday } from "../src/repos/chat.repo.js";
 import helperRoutes from "../src/routes/helper.routes.js";
 import { bearerToken } from "./auth-token.js";
 
@@ -20,6 +21,7 @@ vi.mock("../src/repos/chat.repo.js", () => ({
   findMessages: vi.fn(),
   insertMessage: vi.fn(),
   messageExists: vi.fn(),
+  typedToday: vi.fn(),
 }));
 vi.mock("../src/repos/check-ins.repo.js", () => ({ listCheckIns: vi.fn(async () => []) }));
 vi.mock("../src/repos/claims.repo.js", () => ({ listClaims: vi.fn(async () => []) }));
@@ -28,6 +30,9 @@ vi.mock("../src/repos/goals.repo.js", () => ({
   listGoals: vi.fn(async () => [{ subjectId: "react-native", goalId: "goal-rn-first-app", since: "" }]),
 }));
 vi.mock("../src/repos/opened.repo.js", () => ({ listOpened: vi.fn(async () => []) }));
+// The model reader, faked: null (the default here) means "the model didn't read it",
+// which is what happens with AI_PROVIDER=off. Its own tests are in reader.test.ts.
+vi.mock("../src/ai/reader.js", () => ({ readByModel: vi.fn(async () => null) }));
 
 const app = express();
 app.use(express.json());
@@ -43,6 +48,7 @@ beforeEach(() => {
   vi.mocked(listMessages).mockResolvedValue({ messages: [], more: false });
   vi.mocked(insertMessage).mockResolvedValueOnce("id-student").mockResolvedValueOnce("id-helper");
   vi.mocked(findMessages).mockResolvedValue([]);
+  vi.mocked(typedToday).mockResolvedValue(0);
 });
 
 describe("POST /api/helper/:subjectId/messages", () => {
@@ -60,6 +66,24 @@ describe("POST /api/helper/:subjectId/messages", () => {
     expect(findMessages).toHaveBeenCalledWith(4, ["id-student", "id-helper"]);
   });
 
+  it("uses the model's Reading when there is one, and stores the message as read by the model", async () => {
+    vi.mocked(readByModel).mockResolvedValueOnce({
+      path: "next",
+      topicIds: [],
+      bigId: null,
+      outcome: null,
+      experiences: [],
+      help: null,
+      said: "I'm lost on what comes after FlatList",
+    });
+    await request(app).post(URL).set(AUTH).send({ text: "I'm lost on what comes after FlatList" });
+    expect(readByModel).toHaveBeenCalledWith("I'm lost on what comes after FlatList", expect.objectContaining({ subjectId: "react-native" }), 4);
+    const [student, helper] = vi.mocked(insertMessage).mock.calls;
+    expect(student![3]).toMatchObject({ readBy: "model" });
+    // The rules would have read "lost" as stuck; the model's "next" gives the next topic.
+    expect(helper![3]).toMatchObject({ text: expect.stringMatching(/^Next up: /) });
+  });
+
   it("stores a tap with its label as the student's words, read by nobody", async () => {
     await request(app)
       .post(URL)
@@ -67,7 +91,29 @@ describe("POST /api/helper/:subjectId/messages", () => {
       .send({ pick: { outcome: "got", topicIds: ["rn-state"], label: "Got it" } });
     const [student, helper] = vi.mocked(insertMessage).mock.calls;
     expect(student![3]).toEqual({ role: "student", text: "Got it", readBy: "tap" });
+    expect(readByModel).not.toHaveBeenCalled(); // taps never cost a model call
     expect(helper![3]).toMatchObject({ asks: { kind: "easy" } }); // "Nice, State done. What felt easy…?"
+  });
+
+  it("refuses typed text at the daily limit with 429 daily_limit, and still takes a tap", async () => {
+    vi.mocked(typedToday).mockResolvedValue(100);
+    const res = await request(app).post(URL).set(AUTH).send({ text: "what's next?" });
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe("daily_limit");
+    expect(res.body.error.message).toMatch(/buttons still work/);
+    expect(readByModel).not.toHaveBeenCalled();
+    expect(insertMessage).not.toHaveBeenCalled();
+
+    const tap = await request(app)
+      .post(URL)
+      .set(AUTH)
+      .send({ pick: { outcome: "got", topicIds: ["rn-state"], label: "Got it" } });
+    expect(tap.status).toBe(201);
+  });
+
+  it("takes the 100th typed message of the day", async () => {
+    vi.mocked(typedToday).mockResolvedValue(99);
+    expect((await request(app).post(URL).set(AUTH).send({ text: "what's next?" })).status).toBe(201);
   });
 
   it("refuses a tap on another subject's topic", async () => {

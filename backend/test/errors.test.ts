@@ -30,6 +30,11 @@ app.get("/boom-async", async () => {
 app.post("/nested", validateBody(z.object({ goal: z.object({ id: z.string() }) })), (_req, res) => {
   res.end();
 });
+// zod used for something other than the body (as src/ai/reader.ts checks the model's
+// reply): a failure there is our problem, not a bad request.
+app.get("/zod-inside", () => {
+  z.object({ path: z.string() }).parse({});
+});
 app.use(notFound);
 app.use(errorHandler);
 
@@ -96,5 +101,13 @@ describe("the error shape", () => {
     const res = await request(app).post("/nested").send({ goal: {} });
     expect(res.status).toBe(400);
     expect(res.body.error.details[0].path).toBe("goal.id");
+  });
+
+  it("answers 500, not 400, for a ZodError that isn't about the request body", async () => {
+    const log = quietConsoleError();
+    const res = await request(app).get("/zod-inside");
+    expect(res.status).toBe(500);
+    expect(res.body.error.code).toBe("internal");
+    log.mockRestore();
   });
 });

@@ -54,13 +54,20 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   `/api/auth`, `/api/me`, reset links, goals, claims, opened topics, subject requests, and
   running without Neo4j) and M3 (check-ins, experiences, prompt takes, `GET /api/state`,
   `GET /api/export`, `DELETE /api/me`), M4 (the helper on rules) and M6 (the frontend on
-  the API, real sign-in, Google sign-in (off until the OAuth client exists), the reset
-  page, "how did it go?", the short sort, with MS.3) are done and on `main`. MS.1 and
-  MS.2 (the new stuck ranking and prompt note rules) are built on `backend/ms`, awaiting
-  the owner's review. **Next up:** M5 (GLM 5 on Bedrock) and M7 (deploy), on 15 Nov.
+  the API, real sign-in, Google sign-in (on in development), the reset
+  page, "how did it go?", the short sort, with MS.3) and MS (the new stuck ranking and
+  prompt note rules) and M5 (GLM 5 on Bedrock in **Sydney**, tried against the real
+  service; `AI_PROVIDER=bedrock` in `backend/.env`) are done and on `main`. **Next up:
+  M7 (deploy)**, on 15 Nov. Open first: is the server hosted in Sydney too (Bedrock moved
+  there "close to the hosting"; `aws.md` still says Mumbai)? The `trellis` AWS profile
+  exists (account `631603562964`); still run the `docs/aws.md` §2 check every time.
+- **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS and M5 went into `main` as
+  one squashed commit each, on the owner's request; §0 still says merge commits. Ask
+  for M7.
 - **Plan (re-planned 13 Nov 2026):** M3 on 13 Nov; M4, M6 and MS on 14 Nov; M5 and M7 on
   15 Nov. Testing with real users 18 to 21 Nov.
-- **AWS:** nothing created yet. The plan and the setup steps are in `docs/aws.md`.
+- **AWS:** no resources created yet (Bedrock needs none). The plan and the setup steps
+  are in `docs/aws.md`.
 - **Git:** `main` is the only branch. Each milestone gets its own branch from `main`
   (`backend/m2`, …); commit only there. **Push and merge only on the owner's say-so.** It goes
   into `main` with a **merge commit, never a squash**, and is deleted after.
@@ -91,7 +98,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   - A "was hard" note stays **while its topic is not done** (there is no use counter).
   - The instructions tell the AI not to remind the student of past mistakes, and to end
     with two lines the student can paste back.
-- **AI only reads helper messages:** one **GLM 5** call on **Amazon Bedrock** (Mumbai) per
+- **AI only reads helper messages:** one **GLM 5** call on **Amazon Bedrock** (Sydney, `ap-southeast-2`) per
   typed message; taps call no model; the rule-based reader is the fallback. **No Jev, no
   DeepSeek, no OpenRouter.** Daily limits per student and for the whole site.
 - **Accounts:** Google sign-in plus email and password. A forgotten password is reset by the

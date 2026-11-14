@@ -65,10 +65,10 @@ credits can run out before the six months do, and that closes the account.
 | | |
 |---|---|
 | Root email | trellis.niteshkumar@gmail.com |
-| Account ID | **not recorded yet. Write it here at first sign-in.** |
+| Account ID | `631603562964` (confirmed by the owner, 14 Nov 2026) |
 | Created | 12 Nov 2026 |
 | Plan | Free plan, ends **12 May 2027** at the latest |
-| Region | `ap-south-1` (Mumbai), for everything |
+| Region | `ap-south-1` (Mumbai), for everything except Bedrock, which is in `ap-southeast-2` (Sydney) (§5). **Open (14 Nov 2026):** the owner wants Bedrock "close to the hosting"; whether the server moves to Sydney too is to be settled before M7 |
 | CLI profile name | `trellis` |
 
 ### The check (do this every time)
@@ -250,19 +250,26 @@ to keep alive. Caddy was chosen because there is nothing to maintain.
 | | |
 |---|---|
 | Model | GLM 5 by Z.AI, model id `zai.glm-5` |
-| Region | `ap-south-1`. It runs in-region; there is no cross-region profile for this model |
+| Region | **`ap-southeast-2` (Sydney)**, on the owner's call (14 Nov 2026): close to the hosting. It runs in-region; there is no cross-region profile for this model. GLM 5 is also active in Mumbai on this account, so switching back is `BEDROCK_REGION=ap-south-1` plus that region's prices |
 | API | Converse, with structured output (a JSON schema). It does not support tool calling on this API |
-| Price in Mumbai | $1.20 per million input tokens, $3.84 per million output tokens |
-| A helper message | About 1,700 tokens in and 120 out: about **$0.0025** |
-| Access | Enabled on first use; no request form. Z.AI models are not sold through AWS Marketplace, which is where credit problems with third-party models usually come from |
+| Price in Sydney | $1.03 per million input tokens, $3.30 per million output tokens (standard tier; AWS Price List API, 14 Nov 2026). Mumbai is $1.20 and $3.84 |
+| A helper message | **Measured** (23 real calls, 14 Nov 2026): about 1,680 tokens in and 40 to 120 out, **about $0.0019**, 2.3 seconds on average from India. No reasoning block |
+| Access | **Confirmed by a real call on 14 Nov 2026.** Enabled on first use; no request form. Z.AI models are not sold through AWS Marketplace, which is where credit problems with third-party models usually come from |
 | Permission | The server's role may call `bedrock:InvokeModel` on this one model only |
 | Privacy | Bedrock does not use prompts to train models and does not share them with the model's maker. Re-read AWS's Bedrock data protection page before repeating this claim anywhere new |
+
+**Structured output compiles the schema on first use** (up to about 90 seconds, then
+cached for 24 hours). The server keeps it warm with a tiny call at start and every 3 hours,
+logged in `ai_calls` as `warmup` (`backend-design.md` §5). These calls cost about $0.004 a
+day.
 
 **Why GLM 5 on Bedrock:** it runs inside the same AWS account, on the same credits, in the
 same region as the users, with no second company and no second bill.
 
-**Before M5, prove it with one real call** from the Trellis account: the Bedrock console's
-playground, or one Converse call from the CLI. The owner reports GLM 5 is available on the
+**Before turning the AI on, prove it with one real call** from the Trellis account: the
+Bedrock console's playground, or the helper itself with `AI_PROVIDER=bedrock` on a laptop
+(the checklist is in `backend-design.md` §5 "The first real call"). M5's code is built
+and waits only for this. The owner reports GLM 5 is available on the
 account's free plan; AWS's pages do not say either way. If the call is refused, set
 `AI_PROVIDER=off`: the helper runs on its rules, and nothing else changes.
 
@@ -282,7 +289,7 @@ One IAM role, attached to the server, with only what the server needs:
 | Permission | On | For |
 |---|---|---|
 | `AmazonSSMManagedInstanceCore` (AWS's managed policy) | | Session Manager shell and commands |
-| `bedrock:InvokeModel` | the `zai.glm-5` model in `ap-south-1` | The helper |
+| `bedrock:InvokeModel` | the `zai.glm-5` model in `ap-southeast-2` | The helper |
 | `s3:PutObject`, `s3:GetObject`, `s3:ListBucket` | the backup bucket only | Backups and restores |
 | `ecr:GetAuthorizationToken`, `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, `ecr:BatchCheckLayerAvailability` | the two Trellis repositories | Pulling images |
 | `ssm:GetParametersByPath` | `/trellis/prod/*` | Reading secrets at deploy |
@@ -506,6 +513,10 @@ arrives sooner.
 - GLM 5 on Bedrock: the model id, in-region in Mumbai, structured output supported, the
   Mumbai prices (from a summary of the pricing page, not the page's raw text), and that
   Z.AI models are not sold through AWS Marketplace.
+- 14 Nov 2026, checked on the account itself: GLM 5 is ACTIVE in both `ap-south-1` and
+  `ap-southeast-2`; the Sydney prices come from the AWS Price List API. Structured output
+  is NOT strictly enforced for GLM 5 (a reply had `"help": []` against the schema), so the
+  backend's own check is what counts (`backend-design.md` §5).
 - Lightsail's bundle prices, and that Mumbai bundles include half the data allowance.
 
 **Not verified. Check in the console (§9, step 2)**

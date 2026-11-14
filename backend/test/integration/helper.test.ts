@@ -34,7 +34,13 @@ describe("a conversation", () => {
     expect(student).toMatchObject({ role: "student", text: "I finished Components", subjectId: "react-native" });
     expect(helper.role).toBe("helper");
     expect(helper.asks).toMatchObject({ kind: "easy", pending: { updates: [{ outcome: "got" }] } });
-    expect(student.at < helper.at).toBe(true); // clock_timestamp(): the reply comes after
+    // clock_timestamp(): the reply comes after. Compared in Postgres, at microseconds:
+    // the JSON times are cut to milliseconds, and two inserts can share one.
+    const { rows } = await pool.query(
+      "SELECT (SELECT at FROM chat_messages WHERE id = $1) < (SELECT at FROM chat_messages WHERE id = $2) AS after",
+      [student.id, helper.id],
+    );
+    expect(rows[0].after).toBe(true);
     expect(await count("proposals")).toBe(0); // a question is not a proposal yet
   });
 
@@ -108,5 +114,37 @@ describe("paging history", () => {
     expect(all).toHaveLength(14);
     expect(new Set(all.map((m: { id: string }) => m.id)).size).toBe(14);
     expect(all[0].text).toBe("hello 1");
+  });
+});
+
+describe("the daily limit on typed messages", () => {
+  /** Writes `n` student messages directly, as if typed (or tapped) at `at`. */
+  const fill = (userId: number, n: number, readBy: string, at = "clock_timestamp()") =>
+    pool.query(
+      `INSERT INTO chat_messages (user_id, subject_id, role, text, read_by, at)
+       SELECT $1, 'redis', 'student', 'filler', $2, ${at} FROM generate_series(1, $3)`,
+      [userId, readBy, n],
+    );
+
+  it("counts today's typed messages in every subject, not taps or yesterday's, and stops at 100", async () => {
+    const dan = await registerStudent(DOMAIN, "Dan");
+    await fill(dan.userId, 50, "rules");
+    await fill(dan.userId, 49, "model");
+    await fill(dan.userId, 30, "tap"); // taps never count
+    // Yesterday (UTC) doesn't count either.
+    await fill(dan.userId, 30, "rules", "date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' - INTERVAL '1 minute'");
+
+    // 99 so far: the 100th is taken, in another subject.
+    expect((await say("what's next", "react-native", dan)).status).toBe(201);
+    const over = await say("what's next", "react-native", dan);
+    expect(over.status).toBe(429);
+    expect(over.body.error.code).toBe("daily_limit");
+
+    // A tap still works at the limit: marking a topic must never be blocked.
+    const tap = await request(app)
+      .post("/api/helper/react-native/messages")
+      .set(dan.auth)
+      .send({ pick: { outcome: "got", topicIds: ["rn-state"], label: "Got it" } });
+    expect(tap.status).toBe(201);
   });
 });

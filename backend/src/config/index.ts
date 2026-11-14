@@ -92,10 +92,13 @@ const config = {
   // tests. AWS credentials are never read here: the SDK finds them itself (§5).
   ai: {
     provider: oneOf("AI_PROVIDER", ["bedrock", "off"] as const, "off"),
-    region: str("BEDROCK_REGION", "ap-south-1"),
+    // Sydney, on the owner's call (14 Nov 2026): close to where the site is hosted. GLM 5
+    // runs in Mumbai too, but Bedrock follows the server.
+    region: str("BEDROCK_REGION", "ap-southeast-2"),
     reader_model: str("READER_MODEL", "zai.glm-5"),
-    price_in_per_m: num("READER_PRICE_IN_PER_M", 1.2), // dollars per million input tokens
-    price_out_per_m: num("READER_PRICE_OUT_PER_M", 3.84),
+    // GLM 5 in Sydney, standard tier (AWS Price List, 14 Nov 2026). Dollars per million.
+    price_in_per_m: num("READER_PRICE_IN_PER_M", 1.03),
+    price_out_per_m: num("READER_PRICE_OUT_PER_M", 3.3),
     timeout_ms: num("AI_TIMEOUT_MS", 6000), // a slow answer is worse than a plain one
     daily_budget_usd: num("AI_DAILY_BUDGET_USD", 0.5),
     helper_daily_messages: num("HELPER_DAILY_MESSAGES", 100),

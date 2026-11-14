@@ -508,6 +508,7 @@ Each row is a choice we made, what else we could have done, and why we did not.
 | AI only reads helper messages | AI decides statuses, next topic or the stuck cause | Those must be explainable and the same every time |
 | One model call per typed message (v7) | Jev routes, then DeepSeek reads | Two calls in a row could take up to 16 seconds and made the helper clever on some messages and not others. The saving was a fraction of a cent per message |
 | GLM 5 on Amazon Bedrock (v7) | DeepSeek through OpenRouter | No second bill and no second company: it runs inside the AWS account, on the free-plan credits, in Mumbai. Bedrock does not train on or share the messages |
+| Bedrock in Sydney, `ap-southeast-2` (14 Nov 2026) | Mumbai, beside the users | The owner's call: close to the hosting. GLM 5 runs in both; Sydney is also a little cheaper. Costs about 0.2 seconds more per message from India |
 | Rules as the fallback, not the first step (v7) | Rules first, model only when unsure | One path for all typed text keeps behaviour consistent and is easier to debug |
 | Daily limits on AI use (v7) | Per-minute limit only | On the free plan, spent credits close the account. A cost limit is an uptime limit |
 
