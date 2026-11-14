@@ -759,7 +759,7 @@ exports[`respond(): the rule-based helper > why am I stuck? 1`] = `
       "type": "prompt",
     },
   ],
-  "text": "You're stuck on FlatList. It may be State underneath: FlatList needs it, and you said React basics was shaky.",
+  "text": "You're stuck on FlatList. It may be State underneath: FlatList needs it, and you said React basics was shaky. What you said points there too.",
 }
 `;
 

@@ -38,7 +38,7 @@ describe("golden: the sample student", () => {
 
   it("4. is told State may be why FlatList is stuck", () => {
     // Suspects = prerequisites up to two steps below the stuck topic, weakest first.
-    expect(suspectsFor("rn-flatlist", statuses)[0]?.topic.id).toBe("rn-state");
+    expect(suspectsFor("rn-flatlist", statuses, sampleCheckIns, sampleExperiences)[0]?.topic.id).toBe("rn-state");
   });
 
   it("5. has no Redis goal, and every Redis topic is still new", () => {
@@ -52,16 +52,26 @@ describe("golden: the sample student", () => {
 describe("golden: FlatList's prompt", () => {
   const flatList = topicById.get("rn-flatlist")!;
 
-  it("6. starts with the gap, uses FlatList's own experience, and keeps the base rules", () => {
+  it("6. starts with the gap, uses FlatList's own note, and keeps the base rules", () => {
     const prompt = buildPrompt(flatList, statuses, sampleCheckIns, sampleExperiences, instructions);
     expect(prompt.instructions[0]).toBe("Start with State, briefly, then connect it back to FlatList.");
-    expect(prompt.experienceIds).toEqual(["e08"]);
+    expect(prompt.experiences[0]).toBe("FlatList was hard: I push the new item into the array and nothing re-renders.");
     expect(prompt.text).toContain("Don't lecture, and don't give me everything at once.");
+    // MS.2: every prompt ends by asking for two lines to paste back.
+    expect(prompt.instructions.at(-1)).toMatch(/^When we finish, end with two short lines I can paste back into Trellis/);
   });
 
-  it("7. leaves out a 'hard' experience once it has been used in 2 prompts", () => {
-    const used = sampleExperiences.map((e) => (e.id === "e08" ? { ...e, uses: 2 } : e));
-    const prompt = buildPrompt(flatList, statuses, sampleCheckIns, used, instructions);
-    expect(prompt.experienceIds).toEqual([]);
+  it("7. drops FlatList's 'hard' note once FlatList is done (MS.2)", () => {
+    const done = new Map(statuses).set("rn-flatlist", "done");
+    const prompt = buildPrompt(flatList, done, sampleCheckIns, sampleExperiences, instructions);
+    expect(prompt.experiences.some((l) => l.startsWith("FlatList was hard"))).toBe(false);
+  });
+
+  it("8. adds what worked underneath: Props clicked, ScrollView easy, never Props' hard note (MS.2)", () => {
+    const prompt = buildPrompt(flatList, statuses, sampleCheckIns, sampleExperiences, instructions);
+    expect(prompt.experiences.slice(1)).toEqual([
+      "Props clicked when the parent owns the data; the child calls a function the parent passed down.",
+      "ScrollView felt easy: fine for short screens; just wrap the content.",
+    ]);
   });
 });

@@ -282,7 +282,7 @@ export function PromptView({ prompt, topicId, compact = false }: { prompt: Promp
   const [copied, copy] = useCopy();
   const { act } = useStore();
   // Taking the prompt is recorded (so the helper can ask how it went); looking at it isn't.
-  const took = (via: "copy" | "chatgpt" | "claude") => void act.tookPrompt(topicId, via, prompt.experienceIds);
+  const took = (via: "copy" | "chatgpt" | "claude") => void act.tookPrompt(topicId, via);
   return (
     <div className={styles.promptView} data-compact={compact || undefined}>
       <div className={styles.prompt}>

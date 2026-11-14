@@ -12,6 +12,9 @@ export const instructions: Instruction[] = [
   { id: "base-examples", scope: "base", text: "Use short examples I can run in my own project." },
   { id: "base-lecture", scope: "base", text: "Don't lecture, and don't give me everything at once." },
   { id: "base-no-reminders", scope: "base", text: "Use my notes to shape how you teach, but don't remind me of past mistakes or of what I found hard. Just make it easier this time." },
+  // Gives the student ready words for the helper, written where they just finished
+  // learning (design.md §9). Kept last, so it is the last thing the AI reads.
+  { id: "base-report-back", scope: "base", text: "When we finish, end with two short lines I can paste back into Trellis: what I understood, and what is still unclear." },
 
   // ------------------------------------------------------------ by status
   { id: "new-start", scope: "status", status: "new", text: "Start from what I already know, and tell me where {topic} fits." },

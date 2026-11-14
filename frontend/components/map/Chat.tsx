@@ -351,7 +351,7 @@ function PromptCard({ topicId, onOpen }: { topicId: string; onOpen: (id: string)
   if (!topic) return null;
   const prompt = buildPrompt(topic, statuses, checkIns, experiences, instructions);
   // Taking the prompt is recorded (so the helper can ask how it went); looking at it isn't.
-  const took = (via: "copy" | "chatgpt" | "claude") => void act.tookPrompt(topicId, via, prompt.experienceIds);
+  const took = (via: "copy" | "chatgpt" | "claude") => void act.tookPrompt(topicId, via);
 
   return (
     <div className={styles.promptCard} data-open={unfolded || undefined}>

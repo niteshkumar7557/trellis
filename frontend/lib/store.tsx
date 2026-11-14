@@ -79,8 +79,6 @@ export type Action =
   | { type: "older"; subjectId: SubjectId; messages: ChatMessage[]; more: boolean }
   | { type: "editExperience"; experience: Experience }
   | { type: "removeExperience"; id: string }
-  /** Demo: the student took a prompt; count the experiences that were in it. */
-  | { type: "used"; experienceIds: string[] }
   | { type: "took"; take: PromptTake }
   | { type: "student"; student: Student }
   | { type: "erase" }
@@ -198,10 +196,6 @@ function reducer(state: State, action: Action): State {
     }
     case "editExperience":
       return { ...state, experiences: state.experiences.map((e) => (e.id === action.experience.id ? action.experience : e)) };
-    case "used": {
-      const ids = new Set(action.experienceIds);
-      return { ...state, experiences: state.experiences.map((e) => (ids.has(e.id) ? { ...e, uses: (e.uses ?? 0) + 1 } : e)) };
-    }
     case "took":
       return { ...state, promptTakes: [action.take, ...state.promptTakes] };
     case "removeExperience":
@@ -244,7 +238,7 @@ export interface Actions {
   editExperience: (experience: Experience) => Promise<void>;
   removeExperience: (id: string) => Promise<void>;
   /** The student copied a prompt or opened it in an AI. */
-  tookPrompt: (topicId: string, via: PromptTake["via"], experienceIds: string[]) => Promise<void>;
+  tookPrompt: (topicId: string, via: PromptTake["via"]) => Promise<void>;
   rename: (name: string) => Promise<void>;
   /** "Learning something else?" on /start. Live: saved for the operator to see demand. */
   requestSubject: (text: string) => Promise<void>;
@@ -404,9 +398,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (isLive() && (await live(() => api(`/experiences/${id}`, { method: "DELETE" }))) === null) return;
         dispatch({ type: "removeExperience", id });
       },
-      async tookPrompt(topicId, via, experienceIds) {
+      async tookPrompt(topicId, via) {
         if (!isLive()) {
-          if (experienceIds.length) dispatch({ type: "used", experienceIds });
           dispatch({ type: "took", take: { id: newId("p"), topicId, via, at: new Date().toISOString() } });
           return;
         }

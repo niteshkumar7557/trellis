@@ -6,6 +6,7 @@
 // status is summed up from its subtopics.
 
 import { bigOf, edges, isBig, kids, subtopicsOf, topicById, topics } from "./data";
+import { mentions } from "./parse";
 import type { CheckIn, Claim, Experience, Goal, PromptTake, Status, SubjectId, Topic } from "./types";
 
 const needsOut = new Map<string, string[]>();
@@ -187,6 +188,10 @@ export function revealed(
   checkIns: CheckIn[],
   nextId: string | null,
   opened: string[],
+  // Needed because a stuck topic's first suspect opens its big topic, and the suspects
+  // depend on what the student said (suspectsFor). Without it the map could open a
+  // different frame than the one the Stuck button names.
+  experiences: Experience[],
 ): Set<string> {
   const out = new Set<string>();
   for (const c of checkIns) {
@@ -196,7 +201,7 @@ export function revealed(
   if (nextId) out.add(bigOf(nextId));
   for (const t of subtopicsOf(subjectId)) {
     if (statusOf(statuses, t.id) !== "stuck") continue;
-    const s = suspectsFor(t.id, statuses)[0];
+    const s = suspectsFor(t.id, statuses, checkIns, experiences)[0];
     if (s) out.add(bigOf(s.topic.id));
   }
   for (const id of opened) if (topicById.get(id)?.subjectId === subjectId) out.add(id);
@@ -254,26 +259,110 @@ function list(names: string[]): string {
 
 // ---------------------------------------------------------------- being stuck
 
-const WEAKNESS: Record<Status, number> = { new: 0, stuck: 1, shaky: 2, learning: 3, know: 4, done: 9 };
+// How weak the evidence is that the student really has a prerequisite (design.md §8).
+// Lower is weaker, so more likely to be why they're stuck. A cleanly done topic has no
+// rank: it is not a suspect unless the student's own words point at it.
+const WEAKNESS: Record<Exclude<Status, "done">, number> = { new: 0, stuck: 1, shaky: 2, learning: 3, know: 4 };
+const DONE_WITH_DOUBT = 5;
+const WORDS_LIFT = 3; // a text match moves a suspect up this many ranks
+const WORDS_MAKE_DONE_SUSPECT = 3; // the rank a cleanly done topic gets from a text match
 
 export interface Suspect {
   topic: Topic;
   status: Status;
   /** From the stuck topic down to the suspect. */
   path: string[];
+  /** 0 (weakest evidence) to 5. Ties go to fewer steps, then file order. */
+  rank: number;
+  /** Marked done, but it was hard: a "hard" note, or stuck or partly on it before. */
+  doubt: boolean;
+  /** What the student said about being stuck points at it. */
+  matched: boolean;
 }
 
-/** Prerequisites up to two steps below a stuck topic, weakest evidence first. */
-export function suspectsFor(stuckId: string, statuses: Map<string, Status>): Suspect[] {
+/**
+ * Why the student may be stuck on `stuckId`: its prerequisites up to two steps down,
+ * weakest evidence first. A fixed rule, never an AI's opinion, so it can always be
+ * explained (design.md §8, §11 promise 5).
+ *
+ * The student's own words (their latest "stuck" check-in on the topic and its "hard"
+ * notes) lift a candidate whose name, keywords or common mistakes they echo.
+ */
+export function suspectsFor(
+  stuckId: string,
+  statuses: Map<string, Status>,
+  checkIns: CheckIn[],
+  experiences: Experience[],
+): Suspect[] {
   const found = new Map<string, string[]>();
   for (const a of needsOf(stuckId)) {
     if (!found.has(a)) found.set(a, [stuckId, a]);
     for (const b of needsOf(a)) if (!found.has(b)) found.set(b, [stuckId, a, b]);
   }
-  return [...found.entries()]
-    .map(([id, path]) => ({ topic: topicById.get(id)!, status: statusOf(statuses, id), path }))
-    .filter((s) => s.status !== "done")
-    .sort((x, y) => WEAKNESS[x.status] - WEAKNESS[y.status] || x.path.length - y.path.length);
+  const words = stuckWords(stuckId, checkIns, experiences);
+
+  const out: Suspect[] = [];
+  for (const [id, path] of found) {
+    const topic = topicById.get(id)!;
+    const status = statusOf(statuses, id);
+    const matched = words !== "" && pointsAt(words, topic);
+    const doubt = status === "done" && doneWithDoubt(id, checkIns, experiences);
+
+    let rank: number | null;
+    if (status !== "done") rank = WEAKNESS[status];
+    else if (doubt) rank = DONE_WITH_DOUBT;
+    else rank = null; // done cleanly
+    if (matched) rank = rank === null ? WORDS_MAKE_DONE_SUSPECT : Math.max(0, rank - WORDS_LIFT);
+    if (rank !== null) out.push({ topic, status, path, rank, doubt, matched });
+  }
+  return out.sort((x, y) => x.rank - y.rank || x.path.length - y.path.length || fileOrder.get(x.topic.id)! - fileOrder.get(y.topic.id)!);
+}
+
+/** The student's words about being stuck on this topic: the latest stuck check-in, plus its hard notes. */
+function stuckWords(stuckId: string, checkIns: CheckIn[], experiences: Experience[]): string {
+  const latestStuck = checkIns
+    .filter((c) => c.topicId === stuckId && c.outcome === "stuck")
+    .sort((a, b) => b.at.localeCompare(a.at))[0];
+  const hard = experiences.filter((e) => e.topicId === stuckId && e.kind === "hard").map((e) => e.text);
+  return [latestStuck?.text ?? "", ...hard].join(" \n ").trim();
+}
+
+/** Do these words name the topic, use one of its keywords, or echo one of its common mistakes? */
+function pointsAt(words: string, topic: Topic): boolean {
+  if (mentions(words, topic.name) || topic.keywords.some((k) => mentions(words, k))) return true;
+  const said = shingles(words);
+  return topic.mistakes.some((m) => [...shingles(m)].some((p) => said.has(p)));
+}
+
+/**
+ * Every run of three words, lower-cased, punctuation dropped: "nothing re-renders at all"
+ * gives "nothing re renders" and "re renders at". Three words because one or two shared
+ * words ("the state") match almost anything; a shared phrase of three rarely happens by
+ * chance.
+ */
+function shingles(text: string): Set<string> {
+  const w = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const out = new Set<string>();
+  for (let i = 0; i + 3 <= w.length; i++) out.add(w.slice(i, i + 3).join(" "));
+  return out;
+}
+
+/**
+ * Done, but it was hard getting there: a "hard" note on it, or a stuck or partly check-in
+ * before the "got" that made it done. For a big topic, its subtopics' history counts.
+ */
+function doneWithDoubt(id: string, checkIns: CheckIn[], experiences: Experience[]): boolean {
+  const ids = new Set([id, ...kids(id).map((k) => k.id)]);
+  if (experiences.some((e) => ids.has(e.topicId) && e.kind === "hard")) return true;
+  for (const tid of ids) {
+    const mine = checkIns.filter((c) => c.topicId === tid).sort((a, b) => a.at.localeCompare(b.at));
+    let lastGot = -1;
+    mine.forEach((c, i) => {
+      if (c.outcome === "got") lastGot = i;
+    });
+    if (lastGot > 0 && mine.slice(0, lastGot).some((c) => c.outcome !== "got")) return true;
+  }
+  return false;
 }
 
 /** Where a subtopic's status came from, if it was said at the sort rather than earned. */

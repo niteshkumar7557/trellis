@@ -1,7 +1,8 @@
 // Builds the prompt a student takes to their own AI. It is assembled, not generated:
 // no AI call. Three parts, each straight from the data (design.md §9):
 //   1. known topics — template text filled in from the student's statuses
-//   2. experiences — what the student told the helper about this topic
+//   2. experiences — what the student told the helper about this topic, plus what worked on
+//      the topics right underneath it
 //   3. instructions — fixed lines from the database, by layer (passed in: the frontend uses
 //      GET /api/instructions or shared/data/instructions.ts; the backend reads Postgres)
 // Every sentence comes from the map or the student's own words; none of it explains the topic.
@@ -17,13 +18,10 @@ export interface Prompt {
   instructions: string[];
   /** The whole prompt, ready to paste. */
   text: string;
-  /** The experiences in it, so taking the prompt can count them. */
-  experienceIds: string[];
 }
 
-const MAX_EXPERIENCES = 4;
-/** A bad experience goes into at most this many prompts the student takes, then it is left out. */
-export const MAX_HARD_USES = 2;
+const MAX_OWN = 4; // this topic's own notes
+const MAX_WORKED_BELOW = 2; // "what worked" notes from the topics right underneath
 
 function list(names: string[]): string {
   if (names.length <= 1) return names.join("");
@@ -33,13 +31,34 @@ function list(names: string[]): string {
 /** Lowercase the first letter to continue a sentence, but leave "I" and names like "FlatList" alone. */
 const lower = (s: string) => (/^(I\b|[A-Z]{2}|[A-Z][a-z]+[A-Z])/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
 
-/** Part 2: this topic's own experiences, newest first. A bad one stops after two prompts taken. */
-export function experiencesFor(topic: Topic, experiences: Experience[]): Experience[] {
-  return experiences
-    .filter((e) => e.topicId === topic.id)
-    .filter((e) => e.kind !== "hard" || (e.uses ?? 0) < MAX_HARD_USES)
-    .sort((a, b) => b.at.localeCompare(a.at))
-    .slice(0, MAX_EXPERIENCES);
+const newestFirst = (a: Experience, b: Experience) => b.at.localeCompare(a.at);
+
+/**
+ * Part 2 (design.md §9): which of the student's notes go into this topic's prompt.
+ *
+ * - This topic's own notes, newest first, at most 4. A "hard" note stays only while the
+ *   topic is not done: once it is done, an old difficulty stops following the student
+ *   around. (This replaced a counter of prompts taken, so a prompt is again a pure
+ *   function of the record: the same record always gives the same prompt.)
+ * - Plus at most 2 notes on what WORKED on the topics it directly needs: "clicked" first,
+ *   then "easy", newest first. Never a "hard" one from another topic. So the first prompt
+ *   for a new topic already knows how this student learns.
+ */
+export function experiencesFor(topic: Topic, experiences: Experience[], statuses: Map<string, Status>): Experience[] {
+  const done = statusOf(statuses, topic.id) === "done";
+  const own = experiences
+    .filter((e) => e.topicId === topic.id && !(e.kind === "hard" && done))
+    .sort(newestFirst)
+    .slice(0, MAX_OWN);
+
+  const below = new Set(needsOf(topic.id));
+  const kindOrder = { clicked: 0, easy: 1 } as const;
+  const worked = experiences
+    .filter((e): e is Experience & { kind: "clicked" | "easy" } => below.has(e.topicId) && e.kind !== "hard")
+    .sort((a, b) => kindOrder[a.kind] - kindOrder[b.kind] || newestFirst(a, b))
+    .slice(0, MAX_WORKED_BELOW);
+
+  return [...own, ...worked];
 }
 
 function experienceLine(e: Experience): string {
@@ -61,7 +80,7 @@ export function buildPrompt(
   const status = statusOf(statuses, topic.id);
   const area = topic.parentId ? topicById.get(topic.parentId)!.name : null;
   const where = area ? `${subject.name} (${area})` : subject.name;
-  const suspect = status === "stuck" ? suspectsFor(topic.id, statuses)[0] : undefined;
+  const suspect = status === "stuck" ? suspectsFor(topic.id, statuses, checkIns, experiences)[0] : undefined;
 
   // ---------------------------------------------------------------- 1. known topics
   const known: string[] = [];
@@ -83,8 +102,7 @@ export function buildPrompt(
   if (status === "stuck" && pastUnlocks(checkIns, experiences).length) known.push("Going back one step has worked for me before.");
 
   // ---------------------------------------------------------------- 2. experiences
-  const picked = experiencesFor(topic, experiences);
-  const mine = picked.map(experienceLine);
+  const mine = experiencesFor(topic, experiences, statuses).map(experienceLine);
 
   // ---------------------------------------------------------------- 3. instructions
   const fill = (text: string) => text.replaceAll("{topic}", topic.name).replaceAll("{gap}", suspect?.topic.name ?? "");
@@ -107,7 +125,7 @@ export function buildPrompt(
     ...told.map((l) => `- ${l}`),
   ].join("\n");
 
-  return { known: known.join(" "), experiences: mine, instructions: told, text, experienceIds: picked.map((e) => e.id) };
+  return { known: known.join(" "), experiences: mine, instructions: told, text };
 }
 
 export function chatGptUrl(prompt: string) {

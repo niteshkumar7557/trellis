@@ -201,7 +201,7 @@ function Palette({ onClose }: { onClose: () => void }) {
         (t) => statusOf(statuses, t.id) === "stuck",
       );
       if (stuck) {
-        const why = suspectsFor(stuck.id, statuses)[0];
+        const why = suspectsFor(stuck.id, statuses, checkIns, experiences)[0];
         jumps.push({
           key: `stuck-${s.id}`,
           group: "jump",

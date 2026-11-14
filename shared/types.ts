@@ -92,8 +92,6 @@ export interface Experience {
   /** A clean one-line version for prompts. (The AI writes it; the stand-in tidies the text.) */
   line: string;
   messageId?: string;
-  /** How many prompts the student took (copied or opened) with this in them. A "hard" one stops at 2. */
-  uses?: number;
 }
 
 /**

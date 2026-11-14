@@ -6,7 +6,7 @@ the code map, the rules each part follows, the gotchas, and the **data contract*
 backend must serve.
 
 **Status (14 Nov 2026):** the screens are finished and connected to the API (M6, on
-`backend/m6`). A signed-in student is **live**: their record comes from the backend.
+`main`). A signed-in student is **live**: their record comes from the backend.
 A visitor who isn't signed in sees a **demo** on the sample student, kept in this
 browser. How the two modes work is in §10 and §11.
 
@@ -175,7 +175,9 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
 - `revealed`: a big topic opens on a check-in inside it, when next is inside it, when it
   holds a stuck topic's first suspect, or when the student opened it.
 - `importanceOf`: "Don't skip" / "Can skip" plus a sentence, naming up to three dependents.
-- `suspectsFor` (two steps down, weakest first), `claimSource`, `pastUnlocks` (from
+- `suspectsFor(stuckId, statuses, checkIns, experiences)` (two steps down, weakest evidence
+  first; a done topic counts if it was hard or the student's words point at it;
+  backend-design.md §7), `awaitingReport`, `unsortedAreas`, `claimSource`, `pastUnlocks` (from
   experiences), `progressOf`, and date helpers.
 - **Never store derived facts.** Recompute them from claims, check-ins, experiences and
   opened.
@@ -261,13 +263,16 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
 ### Prompts (design.md §9; `shared/prompt.ts`)
 
 - Assembled, **never generated**: `buildPrompt(topic, statuses, checkIns, experiences, instructions)` →
-  `{known, experiences[], instructions[], text, experienceIds}`.
+  `{known, experiences[], instructions[], text}`.
 - **Known:** template text from statuses, including the likely gap when stuck.
-- **Experiences:** **this topic's own only**, newest first, at most 4. A `hard` one is left
-  out once its `uses` reaches 2 (`MAX_HARD_USES`). `uses` goes up only when the prompt is
-  **taken** (Copy, ChatGPT, Claude; the store's `used` action), never when it is viewed.
+- **Experiences** (`experiencesFor`): this topic's own notes, newest first, at most 4, with
+  a `hard` one kept only while the topic is not done; plus at most 2 "what worked" notes
+  from the topics it directly needs (`clicked` first, then `easy`, never `hard`).
 - **Instructions:** status lines, then the topic's own (its mistakes plus extras), then
-  base. Base includes "don't remind me of past mistakes".
+  base. Base includes "don't remind me of past mistakes" and, last, `base-report-back`
+  (end with two lines to paste back into Trellis).
+- Taking a prompt (Copy, ChatGPT, Claude) calls `act.tookPrompt(topicId, via)`, which
+  records a prompt take; viewing it doesn't.
 - `PromptView` (in `Rail.tsx`) shows the three parts with labels, so it's clear where each
   line comes from.
 
@@ -341,7 +346,7 @@ These are the shapes the screens consume (`shared/types.ts`). The backend return
 | `Goal` | `id, subjectId, name, blurb, targets[]` (big topics) |
 | `Claim` | `topicId, claim: "know" \| "shaky" \| "new", at`: from the sort, usually on a big topic |
 | `CheckIn` | `id, at, text, topicId` (always a subtopic)`, outcome: "got" \| "partly" \| "stuck", messageId?` |
-| `Experience` | `id, at, topicId, kind: "easy" \| "hard" \| "clicked", text` (their words)`, line` (clean)`, messageId?, uses?` |
+| `Experience` | `id, at, topicId, kind: "easy" \| "hard" \| "clicked", text` (their words)`, line` (clean)`, messageId?` |
 | `Instruction` | `id, scope: "base" \| "status" \| "topic", status?, topicId?, text` (may use `{topic}`, `{gap}`) |
 | `ChatMessage` | `id, subjectId, at, role: "student" \| "helper", text, cards?, asks?: { kind, pending: Proposal }` |
 | `Card` | `confirm` (`proposal, state: open \| saved \| cancelled \| undone, saved?: {checkIns[], experiences[]}`) · `prompt` (`topicId`) · `choose` (`outcome, options[{label, topicIds, outcome?}]`) · `suggest` (`options[]`) |
@@ -361,9 +366,9 @@ where it is built. Until then, sections 1 to 12 describe the code as it stands.
 | Change | Where it shows | Built in |
 |---|---|---|
 | **"How did it go?" on return.** If the student took a prompt and has not reported on that topic since, the helper shows one line: *"How did State go?"* with Got it · Partly · Stuck · Not yet. It shows only the latest such topic, only when the prompt was taken between 10 minutes and 14 days ago, and never says how long ago. The first three go through `helper.pick()`. "Not yet" hides it until the next visit and saves nothing | Top of the helper thread | M6.4 (`awaitingReport` in MS.3) **Built in M6.** |
-| **Taking a prompt is recorded.** Copy, ChatGPT and Claude each send the topic and how it was taken. This replaces the `used` action and the `uses` counter | `PromptView` in `Rail.tsx`, prompt cards in `Chat.tsx` | M6.4 **Built in M6.** The demo still counts `uses` until MS.2 removes it from the prompt rules. |
-| **The stuck guess can name a done topic**, and uses the student's own words (design.md §8). The "May be underneath" rows and the trace need no new UI; a done topic simply appears there with its Done mark | Topic panel, the Stuck button, the trace | MS.1 |
-| **Prompts show what worked underneath**: up to two lines from the topic's direct prerequisites. Hard notes show only while their topic is not done | `PromptView`, under "From my own notes" | MS.2 |
+| **Taking a prompt is recorded.** Copy, ChatGPT and Claude each send the topic and how it was taken. This replaces the `used` action and the `uses` counter | `PromptView` in `Rail.tsx`, prompt cards in `Chat.tsx` | M6.4 **Built in M6**; `uses` removed in MS.2. |
+| **The stuck guess can name a done topic**, and uses the student's own words (design.md §8). The "May be underneath" rows and the trace need no new UI; a done topic simply appears there with its Done mark | Topic panel, the Stuck button, the trace | MS.1 **Built.** |
+| **Prompts show what worked underneath**: up to two lines from the topic's direct prerequisites. Hard notes show only while their topic is not done | `PromptView`, under "From my own notes" | MS.2 **Built.** |
 | **A short sort after a goal change**, for big topics the new goal needs that were never sorted. `/start/sort` deals only those cards | A line under the goal menu | M6.4 (`unsortedAreas` in MS.3) **Built in M6.** |
 | **"Coming soon" requests are saved** | `/start`, the "Learning something else?" form | M6.4 **Built in M6.** |
 | **Real sign-in.** Google works; password sign-up and login call the API | `AuthForm.tsx` | M6.2, M6.3 **Built in M6.** |
@@ -387,7 +392,7 @@ Done in M6.2, except the topic-panel wording: no "Gemini" was left in the UI.
 
 | Shape | Change |
 |---|---|
-| `Experience` | `uses` is removed |
+| `Experience` | `uses` is removed. **Done in MS.2** |
 | `Card` (confirm) | gains `proposalId`. Save, cancel and undo are addressed by it, not by message id and card position. **In `shared/types.ts` since M3.4** (optional: the demo store has none) |
 | `PromptTake` (new) | `id, topicId, via: "copy" \| "chatgpt" \| "claude", at`. **In `shared/types.ts` since M3.3** |
 | `Student` | gains `hasPassword` (Google-only accounts have none). **Done in M2.1** |

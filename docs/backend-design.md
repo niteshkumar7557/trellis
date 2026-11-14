@@ -7,9 +7,9 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (14 Nov 2026):** M0 to M4 are done and on `main`. M6 (connecting the frontend)
-and MS.3 are built and tested on `backend/m6`, waiting for review. Next are MS.1 and MS.2
-(§10, §11). The frontend still runs on sample data with no API calls.
+**Status (14 Nov 2026):** M0 to M4 and M6 are done and on `main`. MS (the rule changes in
+`shared/`) is built and tested on `backend/ms`, waiting for review. Next are M5 and M7, on
+15 Nov (§10, §11). The frontend still runs on sample data with no API calls.
 **The deadline is 21 Nov 2026**: the build is planned for 13 to 15 Nov (re-planned on
 13 Nov from 13 to 17 Nov), then testing with real users.
 
@@ -777,7 +777,7 @@ checkIns, experiences, instructions)`. The frontend assembles prompts locally wi
 same function, using `/api/instructions`.
 
 - Part 1, **known topics**: template text from statuses.
-- Part 2, **experiences** (rules changed 12 Nov 2026, built in MS.2):
+- Part 2, **experiences** (rules changed 12 Nov 2026, built in MS.2: `experiencesFor()`):
   - this topic's own, newest first, at most 4;
   - plus at most 2 from its **direct prerequisites**, `clicked` first, then `easy`, newest
     first, never `hard`;
@@ -787,8 +787,9 @@ same function, using `/api/instructions`.
   past mistakes, and (new, id `base-report-back`) asks the AI to end with two lines the
   student can paste back into Trellis.
 
-`MAX_HARD_USES` and the `uses` counter are removed. Taking a prompt now records a
-`prompt_takes` row instead (§3).
+`MAX_HARD_USES`, `Experience.uses` and `Prompt.experienceIds` are removed (MS.2), so the
+same record always gives the same prompt. Taking a prompt records a `prompt_takes` row
+instead (§3).
 
 ## 7. Derived logic (must match the frontend exactly)
 
@@ -804,7 +805,12 @@ All of it lives in `shared/graph.ts`; the rules are in design.md §6 and §8. In
 - Revealed: a big topic opens on a check-in inside it, when next is inside it, when it
   holds a stuck topic's likely cause, or when opened by hand.
 
-**Changing on 12 Nov 2026** (built in MS, with tests):
+**Changed on 12 Nov 2026, built in MS on 14 Nov** (tests: `backend/test/suspects.test.ts`,
+`coming-back.test.ts`, `prompt.test.ts`, and the golden test). `Suspect` also carries
+`rank`, `doubt` and `matched`, so the helper can say why ("you marked it done, but it was
+hard going"; "what you said about being stuck sounds like it"). `revealed()` gained
+`experiences` for the same reason the suspects did: the map must open the frame of the
+same first suspect the Stuck button names.
 
 - **Suspects** (design.md §8). Candidates are still the prerequisites up to two steps
   below the stuck topic. The ranking becomes:
@@ -1010,7 +1016,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M4.2 `GET/POST /api/helper/:subject/messages` on the rules, with paging.
 - M4.3 Proposals: save, cancel, undo (the guarded update; one transaction).
 
-**M6: Connect the frontend** (14 Nov)
+**M6: Connect the frontend** ✅ (merged into `main` as one squashed commit, 14 Nov 2026)
 - M6.1 The API client, the store on the API, loading and error states, demo mode, the
   rewrite keeping `/api`.
 - M6.2 Real sign-up and login, the reset page, and the wording changes in frontend.md §13.
@@ -1068,15 +1074,17 @@ Update this table at the start of each planning session from `git log` and merge
 | M4.1 Split `respond()` into `readByRules` and `replyFor` | done | `main`, 14 Nov 2026 (squashed) |
 | M4.2 `GET/POST /api/helper/:subjectId/messages` on the rules | done | `main`, 14 Nov 2026 (squashed) |
 | M4.3 Save, cancel, undo | done | `main`, 14 Nov 2026 (squashed) |
-| M6.1 The API client, the store on the API, demo mode, the rewrite | built, in review | `backend/m6` |
-| M6.2 Real sign-up and login, the reset page, the wording changes | built, in review | `backend/m6` |
-| M6.3 Google sign-in | built, in review; **off until the owner creates the Google OAuth client** | `backend/m6` |
-| M6.4 "How did it go?", subject requests, the short sort | built, in review | `backend/m6` |
-| MS.3 `awaitingReport`, `unsortedAreas` | built, in review | `backend/m6` |
-| MS.1, MS.2, M5, M7 | not started | — |
+| M6.1 The API client, the store on the API, demo mode, the rewrite | done | `main`, 14 Nov 2026 (squashed) |
+| M6.2 Real sign-up and login, the reset page, the wording changes | done | `main`, 14 Nov 2026 (squashed) |
+| M6.3 Google sign-in | done; **off until the owner creates the Google OAuth client** | `main`, 14 Nov 2026 (squashed) |
+| M6.4 "How did it go?", subject requests, the short sort | done | `main`, 14 Nov 2026 (squashed) |
+| MS.3 `awaitingReport`, `unsortedAreas` | done | `main`, 14 Nov 2026 (squashed) |
+| MS.1 The new stuck ranking | built, in review | `backend/ms` |
+| MS.2 The new prompt note rules, `base-report-back`, no more `uses` | built, in review | `backend/ms` |
+| M5, M7 | not started | — |
 
-**Expected test counts after M6:** 193 passed in `npm test`, 81 in `npm run test:integration`,
-none skipped (checked 14 Nov 2026). After M4 they were 178 and 77. M6 was also checked by
+**Expected test counts after MS:** 211 passed in `npm test`, 81 in `npm run test:integration`,
+none skipped (checked 14 Nov 2026). After M6 they were 193 and 81; after M4, 178 and 77. M6 was also checked by
 hand in a browser against the real API (sign-up to delete, a reset link, the helper's
 question, Save, reload); the frontend has no automated tests of its own yet.
 

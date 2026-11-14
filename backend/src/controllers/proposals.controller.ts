@@ -86,7 +86,7 @@ function checkTopics(proposal: Proposal, subjectId: SubjectId) {
 /** Big topics open on the map, from a context: to say "that opened X" after saving. */
 function openBigTopics(ctx: HelperContext): Set<string> {
   const next = ctx.goal ? nextTopic(ctx.goal, ctx.statuses) : null;
-  return revealed(ctx.subjectId, ctx.statuses, ctx.checkIns, next?.id ?? null, ctx.opened);
+  return revealed(ctx.subjectId, ctx.statuses, ctx.checkIns, next?.id ?? null, ctx.opened, ctx.experiences);
 }
 
 /** POST /api/helper/proposals/:id/save */

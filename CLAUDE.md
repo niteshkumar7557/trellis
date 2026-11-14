@@ -43,7 +43,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 - **Design:** reviewed on 12 Nov 2026. `design.md` v7, `backend-design.md` and `aws.md` are
   the result. The docs are written; nothing in them beyond M0 and M1 is built yet.
-- **Frontend:** the screens are finished and connected to the API (M6, on `backend/m6`):
+- **Frontend:** the screens are finished and connected to the API (M6, on `main`):
   signed in is **live** (the record from the backend), signed out is a **demo** on the
   sample student. The topic graphs are real (`shared/data/react-native.ts`, `redis.ts`,
   from roadmap.sh). See `docs/frontend.md` §10 and §11.
@@ -53,10 +53,11 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   the subject graph, `GET /api/instructions` and the path query) and M2 (accounts under
   `/api/auth`, `/api/me`, reset links, goals, claims, opened topics, subject requests, and
   running without Neo4j) and M3 (check-ins, experiences, prompt takes, `GET /api/state`,
-  `GET /api/export`, `DELETE /api/me`) and M4 (the helper on rules) are done and on
-  `main`. M6 (the frontend on the API, real sign-in, Google sign-in (off until the OAuth
-  client exists), the reset page, "how did it go?", the short sort) and MS.3 are built on
-  `backend/m6`, awaiting the owner's review. **Next up:** MS.1 and MS.2.
+  `GET /api/export`, `DELETE /api/me`), M4 (the helper on rules) and M6 (the frontend on
+  the API, real sign-in, Google sign-in (off until the OAuth client exists), the reset
+  page, "how did it go?", the short sort, with MS.3) are done and on `main`. MS.1 and
+  MS.2 (the new stuck ranking and prompt note rules) are built on `backend/ms`, awaiting
+  the owner's review. **Next up:** M5 (GLM 5 on Bedrock) and M7 (deploy), on 15 Nov.
 - **Plan (re-planned 13 Nov 2026):** M3 on 13 Nov; M4, M6 and MS on 14 Nov; M5 and M7 on
   15 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** nothing created yet. The plan and the setup steps are in `docs/aws.md`.

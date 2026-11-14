@@ -148,7 +148,7 @@ export function useHelper(): Helper {
       }
       const before = context();
       const next = before.goal ? nextTopic(before.goal, before.statuses) : null;
-      const open = revealed(before.subjectId, before.statuses, before.checkIns, next?.id ?? null, before.opened);
+      const open = revealed(before.subjectId, before.statuses, before.checkIns, next?.id ?? null, before.opened, before.experiences);
       latest.current.dispatch({ type: "save", messageId, card, proposal, at: new Date().toISOString() });
       reply(() => afterSave(proposal, context(), open));
     },

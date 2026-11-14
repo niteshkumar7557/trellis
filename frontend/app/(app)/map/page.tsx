@@ -49,19 +49,22 @@ export default function MapPage() {
   const summary = useMemo(() => (goal ? summarise(goal, statuses) : null), [goal, statuses]);
   const next = useMemo(() => (goal ? nextTopic(goal, statuses) : null), [goal, statuses]);
   const open = useMemo(
-    () => revealed(subjectId, statuses, checkIns, next?.id ?? null, opened),
-    [subjectId, statuses, checkIns, next, opened],
+    () => revealed(subjectId, statuses, checkIns, next?.id ?? null, opened, experiences),
+    [subjectId, statuses, checkIns, next, opened, experiences],
   );
   const layout = useMemo(() => layoutFor(subjectId, open), [subjectId, open]);
   const stuck = summary?.route.find((t) => statusOf(statuses, t.id) === "stuck") ?? null;
-  const suspects = useMemo(() => (stuck ? suspectsFor(stuck.id, statuses) : []), [stuck, statuses]);
+  const suspects = useMemo(
+    () => (stuck ? suspectsFor(stuck.id, statuses, checkIns, experiences) : []),
+    [stuck, statuses, checkIns, experiences],
+  );
   const selectedTopic = selected ? topicById.get(selected) ?? null : null;
   const selectedSuspects = useMemo(
     () =>
       selectedTopic && !isBig(selectedTopic) && statusOf(statuses, selectedTopic.id) === "stuck"
-        ? suspectsFor(selectedTopic.id, statuses)
+        ? suspectsFor(selectedTopic.id, statuses, checkIns, experiences)
         : [],
-    [selectedTopic, statuses],
+    [selectedTopic, statuses, checkIns, experiences],
   );
   // Open on the map, but nothing inside touched yet: shown so the student notices it arrived.
   const fresh = useMemo(

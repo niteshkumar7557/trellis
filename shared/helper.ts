@@ -330,14 +330,14 @@ function chooseAny(outcome: Outcome, ctx: HelperContext): Reply {
 export function afterSave(proposal: Proposal, ctx: HelperContext, before: Set<string>): Reply {
   const update = proposal.updates.length === 1 ? proposal.updates[0] : null;
   const next = ctx.goal ? nextTopic(ctx.goal, ctx.statuses) : null;
-  const nowOpen = revealed(ctx.subjectId, ctx.statuses, ctx.checkIns, next?.id ?? null, ctx.opened);
+  const nowOpen = revealed(ctx.subjectId, ctx.statuses, ctx.checkIns, next?.id ?? null, ctx.opened, ctx.experiences);
   const opened = [...nowOpen].filter((id) => !before.has(id)).map((id) => topicById.get(id)!);
   const grew = opened.length
     ? ` That opened ${opened.map((t) => t.name).join(" and ")} on your map: ${opened.reduce((n, t) => n + kids(t.id).length, 0)} new topics.`
     : "";
 
   if (update?.outcome === "stuck") {
-    const s = suspectsFor(update.topicId, ctx.statuses)[0];
+    const s = suspectsFor(update.topicId, ctx.statuses, ctx.checkIns, ctx.experiences)[0];
     const topic = topicById.get(update.topicId)!;
     const keep = ctx.goal ? importanceOf(topic.id, ctx.goal, requiredFor(ctx.goal)) : null;
     const unlock = pastUnlocks(ctx.checkIns, ctx.experiences).at(-1);
@@ -369,14 +369,22 @@ export function afterSave(proposal: Proposal, ctx: HelperContext, before: Set<st
   return { text: "Saved. It'll shape your next prompts." };
 }
 
+/** Why a suspect is suspected, in the student's terms (design.md §8 explains every case). */
 function weakBecause(s: Suspect, claims: Claim[]): string {
-  if (s.status === "shaky") {
-    const src = claimSource(s.topic.id, claims);
-    return src && src.topic.id !== s.topic.id ? `you said ${src.topic.name} was shaky.` : "you said it was shaky.";
-  }
-  if (s.status === "new") return "you haven't studied it yet.";
-  if (s.status === "stuck") return "you're stuck on it too.";
-  return "it isn't solid yet.";
+  const base = (() => {
+    if (s.status === "shaky") {
+      const src = claimSource(s.topic.id, claims);
+      return src && src.topic.id !== s.topic.id ? `you said ${src.topic.name} was shaky.` : "you said it was shaky.";
+    }
+    if (s.status === "new") return "you haven't studied it yet.";
+    if (s.status === "stuck") return "you're stuck on it too.";
+    if (s.status === "done" && s.doubt) return "you marked it done, but it was hard going.";
+    // Done cleanly: only the student's own words made it a suspect.
+    if (s.status === "done") return "what you said about being stuck sounds like it.";
+    return "it isn't solid yet.";
+  })();
+  // A text match on a topic that was suspected anyway: say that the words point there too.
+  return s.matched && !(s.status === "done" && !s.doubt) ? `${base} What you said points there too.` : base;
 }
 
 // ---------------------------------------------------------------- questions about the map
@@ -399,7 +407,7 @@ function canSkip(id: string, ctx: HelperContext): Reply {
 function whyStuck(ctx: HelperContext): Reply {
   const stuck = ctx.goal ? sortByRoute([...requiredFor(ctx.goal)].map((id) => topicById.get(id)!).filter((t) => t.parentId)).find((t) => statusOf(ctx.statuses, t.id) === "stuck") : null;
   if (!stuck) return { text: "Nothing on your route is marked stuck. Tell me if something is, and I'll look underneath it." };
-  const s = suspectsFor(stuck.id, ctx.statuses)[0];
+  const s = suspectsFor(stuck.id, ctx.statuses, ctx.checkIns, ctx.experiences)[0];
   if (!s) return { text: `You're stuck on ${stuck.name}, but everything it needs looks solid. Here's a prompt that tries a different way in.`, cards: [{ type: "prompt", topicId: stuck.id }] };
   return {
     text: `You're stuck on ${stuck.name}. It may be ${s.topic.name} underneath: ${stuck.name} needs it, and ${weakBecause(s, ctx.claims)}`,
