@@ -44,8 +44,8 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 ## Where things stand (14 Nov 2026)
 
 - **In one line:** every milestone of v1 (M0 to M7, MS, ML) is built, merged and **live at
-  https://trellis.niteshkumar.xyz**. Production runs `8084a53` (the map fixes, released
-  14 Nov 2026). Next: testing with real users, 18 to 21 Nov.
+  https://trellis.niteshkumar.xyz**. Production runs `73b62c6` (the map fixes and the subject
+  blueprint, released 14 Nov 2026). Next: testing with real users, 18 to 21 Nov.
 - **Design:** reviewed on 12 Nov 2026 (`design.md` v7, `backend-design.md`, `aws.md`), and
   kept in step with every change since; the docs describe the code as it stands.
 - **Frontend:** the screens are finished and connected to the API (M6, on `main`):
@@ -99,9 +99,17 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   a selected topic keeps its path (switch in the sheet); zoom out fits any map.
   Details in `docs/frontend.md` §7 and "Editing the topic graphs". The release re-seeds
   Neo4j by itself (`seed-graph` in `deploy/docker-compose.yml`); no topic ids changed.
-  The blueprint for adding a subject is `docs/subject-blueprint.md` (14 Nov 2026); a
-  subject is now one file plus one line in `shared/data/index.ts` and its id in
-  `SubjectId`. The first real use is planned for MongoDB.
+  The blueprint for adding a subject is `docs/subject-blueprint.md` (14 Nov 2026, live in
+  `73b62c6`); a subject is now one file plus one line in `shared/data/index.ts` and its id
+  in `SubjectId`.
+- **Next, in order (owner, 14 Nov 2026):** (1) redesign **React Native** and (2) **Redis**
+  from scratch with the blueprint, and remove the roadmap.sh credit completely
+  (`Subject.source`, `SOURCE`, `fromRoadmapSh`, and the docs that mention it); the curricula
+  may change entirely, and topic ids may change: production holds only the owner's trial
+  data, so a reset is fine. Update `shared/data/student.ts` and
+  `frontend/components/landing/sample.ts`, which use React Native ids. (3) Then add
+  **MongoDB** as a new subject, fresh from scratch with the blueprint (its §12 sketch is a
+  method example, not a starting point).
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
   topic difficulty and the small fixes went into `main` as one squashed commit each, on the
   owner's request; ML went in with a merge commit. `backend-design.md` §0 still says merge
