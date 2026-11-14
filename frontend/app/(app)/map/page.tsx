@@ -36,6 +36,7 @@ export default function MapPage() {
   const helper = useHelper();
   const { asking } = useStore();
   const rail = useRail();
+  const path = usePathSwitch();
   // The last goal change, so the header can say what it did (and undo it). Tied to its
   // subject: switching subjects hides it rather than showing it on the wrong map.
   const [change, setChange] = useState<(GoalChange & { subjectId: string }) | null>(null);
@@ -253,6 +254,7 @@ export default function MapPage() {
               traceOn={traceOn}
               focusId={stuck?.id ?? next?.id ?? null}
               rightInset={selectedTopic ? 444 : 0}
+              pathOn={path.on}
               onSelect={openTopic}
             />
           ) : (
@@ -279,6 +281,7 @@ export default function MapPage() {
                 onOpen={openTopic}
                 onLookInside={(id) => void act.open(id)}
                 onClose={close}
+                path={path}
               />
             ) : (
               <TopicPanel
@@ -290,6 +293,7 @@ export default function MapPage() {
                 suspects={selectedSuspects}
                 onOpen={openTopic}
                 onClose={close}
+                path={path}
                 onLog={(id, outcome) => {
                   // The buttons go through the helper too, so its question still follows.
                   rail.expand();
@@ -360,6 +364,36 @@ function Sheet({ children, onClose, label }: { children: React.ReactNode; onClos
       {children}
     </section>
   );
+}
+
+const PATH_KEY = "trellis-map-path";
+
+/**
+ * Whether a selected topic shows its path on the map, as a hover does. On by default;
+ * remembered per browser, like the helper's width, because it is a taste, not data.
+ */
+function usePathSwitch() {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    try {
+      // Reading a per-browser preference after mount; there is nothing to sync before it.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (localStorage.getItem(PATH_KEY) === "off") setOn(false);
+    } catch {
+      // Storage blocked: the default is fine.
+    }
+  }, []);
+  const toggle = useCallback(() => {
+    setOn((was) => {
+      try {
+        localStorage.setItem(PATH_KEY, was ? "off" : "on");
+      } catch {
+        // Not remembered; it still works for this visit.
+      }
+      return !was;
+    });
+  }, []);
+  return useMemo(() => ({ on, toggle }), [on, toggle]);
 }
 
 const RAIL_MIN = 320;

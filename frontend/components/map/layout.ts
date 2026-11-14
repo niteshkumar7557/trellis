@@ -3,7 +3,7 @@
 //
 // Two levels. Big topics are laid out by dagre. A big topic you haven't reached is
 // a single closed node; one you have reached opens into a frame holding its
-// subtopics, prerequisites lower down inside the frame too.
+// subtopics, laid out inside it by a second dagre (arrangeFrame).
 
 import dagre from "@dagrejs/dagre";
 import { bigTopicsOf, edges, kids, topicById } from "@shared/data";
@@ -40,7 +40,9 @@ export interface LaidEdge {
   /** Its prerequisite. */
   to: string;
   kind: "needs" | "helps";
-  /** Between two big topics, or two subtopics inside the same frame. */
+  /** Between two big topics, or two subtopics inside the same frame. A link between subtopics
+   *  in different big topics is never drawn on its own: it shows as the line between their
+   *  big topics (MapCanvas, `relationLines`). */
   level: "big" | "sub";
   /** Drawn from the prerequisite (below) up to the dependent, so arrowheads point the way you learn. */
   d: string;
@@ -87,47 +89,65 @@ const SIZES = {
   plate: { nodesep: 12, ranksep: 30, margin: 12, w: 206, h: BIG_H },
 };
 
-/** Where each subtopic sits inside its frame, relative to the frame's top-left. */
+/**
+ * Where each subtopic sits inside its frame, relative to the frame's top-left, and the
+ * points each link inside the frame passes through.
+ *
+ * Subtopics linked to each other inside the frame are laid out by dagre, the same way the
+ * big topics are. Before 14 Nov 2026 they went in hand-made rows of three; a level wider than
+ * three wrapped into a second row, and the lines from the row below then ran straight
+ * through the boxes in between (View → Pressable through Switch). Dagre gives every level
+ * one row and routes long links around the boxes. The frame gets wider instead, which is the
+ * trade: a wide frame is easier to read than lines through names.
+ *
+ * Subtopics with no "needs" link to another one in the same frame (their prerequisites are
+ * all in other big topics) have no line to route, so they sit in rows along the bottom of
+ * the frame: the foundations of a frame are at its bottom, like the map's.
+ */
 function arrangeFrame(bigId: string) {
   const inside = kids(bigId);
   const ids = new Set(inside.map((t) => t.id));
-  const local = new Map<string, number>();
-  const depth = (id: string): number => {
-    const hit = local.get(id);
-    if (hit !== undefined) return hit;
-    const d = edges
-      .filter((e) => e.kind === "needs" && e.from === id && ids.has(e.to))
-      .reduce((m, e) => Math.max(m, depth(e.to) + 1), 0);
-    local.set(id, d);
-    return d;
-  };
-  // Rows from the bottom up: shallowest first, wrapped at COLS per row. Each level is
-  // ordered by where its prerequisites sit, so links run up rather than across.
+  const inner = edges.filter((e) => e.kind === "needs" && ids.has(e.from) && ids.has(e.to));
+  const linked = inside.filter((t) => inner.some((e) => e.from === t.id || e.to === t.id));
+  const loose = inside.filter((t) => !linked.includes(t));
+
+  const g = new dagre.graphlib.Graph();
+  g.setGraph({ rankdir: "BT", nodesep: GAP_X, ranksep: GAP_Y, edgesep: 8, marginx: 0, marginy: 0 });
+  g.setDefaultEdgeLabel(() => ({}));
+  for (const t of linked) g.setNode(t.id, { width: NODE_W, height: NODE_H });
+  for (const e of inner) g.setEdge(e.to, e.from);
+  if (linked.length) dagre.layout(g);
+  const gw = linked.length ? (g.graph().width ?? 0) : 0;
+  const gh = linked.length ? (g.graph().height ?? 0) : 0;
+
+  // The loose ones fill rows as wide as the dagre part (at least COLS), so the frame doesn't
+  // grow sideways for them.
+  const perRow = Math.max(COLS, Math.floor((gw + GAP_X) / (NODE_W + GAP_X)));
   const rows: Topic[][] = [];
-  const where = new Map<string, number>();
-  const maxDepth = Math.max(0, ...inside.map((t) => depth(t.id)));
-  for (let d = 0; d <= maxDepth; d++) {
-    const level = inside.filter((t) => depth(t.id) === d);
-    const pull = (t: Topic) => {
-      const pre = edges.filter((e) => e.kind === "needs" && e.from === t.id && where.has(e.to)).map((e) => where.get(e.to)!);
-      return pre.length ? pre.reduce((a, b) => a + b, 0) / pre.length : 0.5;
-    };
-    if (d > 0) level.sort((a, b) => pull(a) - pull(b));
-    // Prerequisite-free items go to the outside so the linked ones stay together.
-    else level.sort((a, b) => Number(!edges.some((e) => e.to === a.id && ids.has(e.from))) - Number(!edges.some((e) => e.to === b.id && ids.has(e.from))));
-    level.forEach((t, i) => where.set(t.id, level.length > 1 ? i / (level.length - 1) : 0.5));
-    for (let i = 0; i < level.length; i += COLS) rows.push(level.slice(i, i + COLS));
+  for (let i = 0; i < loose.length; i += perRow) rows.push(loose.slice(i, i + perRow));
+  const rowW = (n: number) => n * NODE_W + (n - 1) * GAP_X;
+  const innerW = Math.max(gw, ...rows.map((r) => rowW(r.length)));
+  const bandTop = HEAD + gh + (gh && rows.length ? GAP_Y : 0);
+  const w = PAD * 2 + innerW;
+  const h = bandTop + rows.length * NODE_H + Math.max(0, rows.length - 1) * GAP_Y + PAD;
+
+  const dx = PAD + (innerW - gw) / 2;
+  const spots = new Map<string, Point>();
+  for (const t of linked) {
+    const n = g.node(t.id);
+    spots.set(t.id, { x: dx + n.x - NODE_W / 2, y: HEAD + n.y - NODE_H / 2 });
   }
-  const cols = Math.min(COLS, Math.max(...rows.map((r) => r.length)));
-  const w = PAD * 2 + cols * NODE_W + (cols - 1) * GAP_X;
-  const h = HEAD + rows.length * NODE_H + (rows.length - 1) * GAP_Y + PAD;
-  const spots = new Map<string, { x: number; y: number }>();
   rows.forEach((row, r) => {
-    const top = h - PAD - (r + 1) * NODE_H - r * GAP_Y;
-    const rowW = row.length * NODE_W + (row.length - 1) * GAP_X;
-    row.forEach((t, i) => spots.set(t.id, { x: (w - rowW) / 2 + i * (NODE_W + GAP_X), y: top }));
+    const left = PAD + (innerW - rowW(row.length)) / 2;
+    row.forEach((t, i) => spots.set(t.id, { x: left + i * (NODE_W + GAP_X), y: bandTop + r * (NODE_H + GAP_Y) }));
   });
-  return { w, h, spots };
+  // Dagre's bend points for each link, keyed "dependent>prerequisite", in frame coordinates.
+  const paths = new Map<string, Point[]>();
+  for (const e of inner) {
+    const pts = (g.edge(e.to, e.from).points as Point[]) ?? [];
+    paths.set(`${e.from}>${e.to}`, pts.map((p) => ({ x: p.x + dx, y: p.y + HEAD })));
+  }
+  return { w, h, spots, paths };
 }
 
 export function layoutFor(subjectId: SubjectId, open: Set<string>, size: keyof typeof SIZES = "full"): Layout {
@@ -171,20 +191,20 @@ export function layoutFor(subjectId: SubjectId, open: Set<string>, size: keyof t
 
   const laid: LaidEdge[] = [];
   for (const e of bigEdges) {
-    if (e.kind === "needs") {
-      const pts = (g.edge(e.to, e.from).points as Point[]) ?? [];
-      laid.push({ ...e, level: "big", ...smooth(pts), mid: middle(pts), trail: pts });
-    } else {
-      laid.push({ ...e, level: "big", ...link(byId.get(e.to)!, byId.get(e.from)!) });
-    }
+    const pre = byId.get(e.to)!;
+    const dep = byId.get(e.from)!;
+    // Hard links follow dagre's route, which goes around the boxes; soft ones aren't part of
+    // the layout, so they take the direct curve.
+    const via = e.kind === "needs" ? (g.edge(e.to, e.from).points as Point[]) ?? [] : [];
+    laid.push({ ...e, level: "big", ...route(pre, dep, via.slice(1, -1)) });
   }
-  // Inside a frame, every hard link between two of its subtopics is drawn.
-  for (const e of edges) {
-    if (e.kind !== "needs") continue;
-    const a = byId.get(e.from);
-    const b = byId.get(e.to);
-    if (a?.kind === "sub" && b?.kind === "sub" && a.topic.parentId === b.topic.parentId) {
-      laid.push({ ...e, level: "sub", ...link(b, a) });
+  // Inside a frame, every hard link between two of its subtopics is drawn, along dagre's route.
+  for (const [bigId, f] of frames) {
+    const frame = byId.get(bigId)!;
+    for (const [k, pts] of f.paths) {
+      const [from, to] = k.split(">");
+      const via = pts.slice(1, -1).map((p) => ({ x: p.x + frame.x, y: p.y + frame.y }));
+      laid.push({ from, to, kind: "needs", level: "sub", ...route(byId.get(to)!, byId.get(from)!, via) });
     }
   }
 
@@ -199,6 +219,74 @@ export function shownAs(id: string, layout: Layout): LaidNode | undefined {
   return layout.byId.get(id) ?? layout.byId.get(topicById.get(id)?.parentId ?? "");
 }
 
+/**
+ * A line from a prerequisite (below) up to its dependent, through the given bend points.
+ *
+ * It leaves the TOP of the prerequisite and enters the BOTTOM of the dependent, going
+ * straight up at both ends, so every arrowhead points up (design: arrows point upward, in
+ * learning order). Dagre's own end points sit where the line from the box's centre crosses
+ * its border, which for a wide box or a steep fan is often a SIDE; smoothing through those
+ * made lines leave sideways and hook back just before the arrowhead (Basic data operations
+ * fanned seven lines out of its left and right edges). The end points slide along the edge
+ * towards the next bend, so a fan of lines still spreads out instead of starting at one dot.
+ */
+export function route(pre: Box, dep: Box, via: Point[] = []): { d: string; mid: Point; trail: Point[]; head: Head } {
+  const above = dep.y + dep.h <= pre.y + 1;
+  // Only a soft link can join two boxes side by side or upside down; it takes the old plain
+  // curve between facing edges.
+  if (!above) return link(pre, dep);
+  const inset = (b: Box, x: number) => Math.min(b.x + b.w - 14, Math.max(b.x + 14, x));
+  const pts = via.filter((p) => p.y < pre.y && p.y > dep.y + dep.h);
+  const start = { x: inset(pre, pts[0]?.x ?? dep.x + dep.w / 2), y: pre.y };
+  const tip = { x: inset(dep, pts[pts.length - 1]?.x ?? pre.x + pre.w / 2), y: dep.y + dep.h };
+  // The line ends in a straight stem as long as the arrowhead, so the head always points
+  // straight up. Turned along a curve's last pixels instead, it came out tilted wherever a
+  // line has to cover a lot of ground sideways in little height (24px between rows in a
+  // frame), and a field of tilted heads reads as noise.
+  const end = { x: tip.x, y: tip.y + HEAD_LENGTH };
+  // Through dagre's bend points, which sit in the gaps between rows where no box is: that is
+  // what keeps a line off every box in between (a plain S-curve from one box to the other
+  // cut across a big frame's corner). The result reads as up, across in a gap, up.
+  const all = [start, ...pts, end];
+  // Catmull-Rom tangents inside; straight up at the two ends, as strongly as the old plain
+  // curve (link) so short hops still leave and arrive vertically.
+  const tangent = (i: number): Point => {
+    if (i === 0 || i === all.length - 1) {
+      const other = all[i === 0 ? 1 : i - 1];
+      return { x: 0, y: -3 * Math.max(18, Math.abs(other.y - all[i].y) / 2) };
+    }
+    return { x: (all[i + 1].x - all[i - 1].x) / 2, y: (all[i + 1].y - all[i - 1].y) / 2 };
+  };
+  let d = `M${start.x},${start.y}`;
+  const trail: Point[] = [start];
+  for (let i = 0; i < all.length - 1; i++) {
+    const p0 = all[i];
+    const p3 = all[i + 1];
+    const t0 = tangent(i);
+    const t1 = tangent(i + 1);
+    // Control points stay between the segment's two ends sideways, so the curve never swings
+    // past a bend and comes back (the hooks under Performance and Persistence).
+    const lo = Math.min(p0.x, p3.x);
+    const hi = Math.max(p0.x, p3.x);
+    const clampX = (x: number) => Math.min(hi, Math.max(lo, x));
+    const c1 = { x: clampX(p0.x + t0.x / 3), y: p0.y + t0.y / 3 };
+    const c2 = { x: clampX(p3.x - t1.x / 3), y: p3.y - t1.y / 3 };
+    d += ` C${c1.x},${c1.y} ${c2.x},${c2.y} ${p3.x},${p3.y}`;
+    for (let k = 1; k <= 8; k++) trail.push(bezier(p0, c1, c2, p3, k / 8));
+  }
+  d += ` L${tip.x},${tip.y}`;
+  trail.push(tip);
+  return { d, mid: along(trail, 0.5), trail, head: { x: tip.x, y: tip.y, angle: -90 } };
+}
+
+function bezier(p0: Point, c1: Point, c2: Point, p3: Point, t: number): Point {
+  const u = 1 - t;
+  return {
+    x: u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p3.x,
+    y: u * u * u * p0.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p3.y,
+  };
+}
+
 /** A curve from a prerequisite up to its dependent, whatever their sizes, and its midpoint. */
 export function link(pre: Box, dep: Box): { d: string; mid: Point; trail: Point[]; head: Head } {
   const sx = pre.x + pre.w / 2;
@@ -208,23 +296,12 @@ export function link(pre: Box, dep: Box): { d: string; mid: Point; trail: Point[
   const eY = above ? dep.y + dep.h : dep.y;
   const bend = Math.max(18, Math.abs(eY - sY) / 2);
   const dir = above ? -1 : 1;
-  const c1 = sY + dir * bend;
-  const c2 = eY - dir * bend;
-  // A cubic Bézier at t = ½.
-  const at = (t: number): Point => {
-    const u = 1 - t;
-    return {
-      x: u * u * u * sx + 3 * u * u * t * sx + 3 * u * t * t * ex + t * t * t * ex,
-      y: u * u * u * sY + 3 * u * u * t * c1 + 3 * u * t * t * c2 + t * t * t * eY,
-    };
-  };
-  const trail = Array.from({ length: 13 }, (_, i) => at(i / 12));
-  return {
-    d: `M${sx},${sY} C${sx},${c1} ${ex},${c2} ${ex},${eY}`,
-    mid: at(0.5),
-    trail,
-    head: headOf({ x: sx, y: sY }, { x: sx, y: c1 }, { x: ex, y: c2 }, { x: ex, y: eY }),
-  };
+  const p0 = { x: sx, y: sY };
+  const c1 = { x: sx, y: sY + dir * bend };
+  const c2 = { x: ex, y: eY - dir * bend };
+  const p3 = { x: ex, y: eY };
+  const trail = Array.from({ length: 13 }, (_, i) => bezier(p0, c1, c2, p3, i / 12));
+  return { d: `M${sx},${sY} C${sx},${c1.y} ${ex},${c2.y} ${ex},${eY}`, mid: bezier(p0, c1, c2, p3, 0.5), trail, head: headOf(p0, c1, c2, p3) };
 }
 
 export const connect = (pre: Box, dep: Box) => link(pre, dep).d;
@@ -242,39 +319,6 @@ export function along(trail: Point[], t: number): Point {
     left -= seg[i];
   }
   return trail[trail.length - 1];
-}
-
-/** The middle of dagre's points; the smoothed curve passes through them. */
-function middle(pts: Point[]): Point {
-  if (!pts.length) return { x: 0, y: 0 };
-  if (pts.length % 2) return pts[(pts.length - 1) / 2];
-  const a = pts[pts.length / 2 - 1];
-  const b = pts[pts.length / 2];
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-}
-
-/** Catmull-Rom through dagre's points, as cubic Béziers. */
-function smooth(pts: Point[]): { d: string; head: Head } {
-  if (pts.length < 2) return { d: "", head: { x: 0, y: 0, angle: -90 } };
-  if (pts.length === 2) {
-    const [a, b] = pts;
-    return { d: `M${a.x},${a.y} L${b.x},${b.y}`, head: { x: b.x, y: b.y, angle: (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI } };
-  }
-  let d = `M${pts[0].x},${pts[0].y}`;
-  let head: Head = { x: 0, y: 0, angle: -90 };
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] ?? pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] ?? p2;
-    const c1x = p1.x + (p2.x - p0.x) / 6;
-    const c1y = p1.y + (p2.y - p0.y) / 6;
-    const c2x = p2.x - (p3.x - p1.x) / 6;
-    const c2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
-    if (i === pts.length - 2) head = headOf(p1, { x: c1x, y: c1y }, { x: c2x, y: c2y }, p2);
-  }
-  return { d, head };
 }
 
 /** How long an arrowhead is: it turns to match this much of the end of its line. */

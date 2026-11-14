@@ -89,6 +89,16 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   - `/map` with no goal anywhere says "Your map", not "React Native";
   - a big topic's soft link is drawn and named once (it showed "helps" twice);
   - long chips wrap inside their border.
+- **Map rendering review and fixes (14 Nov 2026): on branch `fix/map-rendering`, not
+  merged.** Big-topic "needs" links are now worked out from the subtopic links (six
+  changed: Networking and Storage stand on React basics, Publishing on Development
+  workflow, Pub/Sub on Getting started; Performance no longer needs Interactions); frames
+  are laid out by dagre; lines run top to bottom with upright heads; hover lights the
+  topic's own lines too; open frame headers are clickable again; tags never cover names;
+  a selected topic keeps its path (switch in the sheet); zoom out fits any map.
+  Details in `docs/frontend.md` §7 and "Editing the topic graphs". The release re-seeds
+  Neo4j by itself (`seed-graph` in `deploy/docker-compose.yml`); no topic ids changed.
+  Next: a blueprint doc for adding a subject, written with the owner.
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
   topic difficulty and the small fixes went into `main` as one squashed commit each, on the
   owner's request; ML went in with a merge commit. `backend-design.md` §0 still says merge
@@ -162,7 +172,13 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 - **Privacy:** the promise names its limits (design.md §11). No admin tool that reads
   records; no pgAdmin in production; backups expire after 14 days.
 - **Map look:**
-  - arrows point **upward**, in learning order, with heads drawn along each line's last 8px;
+  - arrows point **upward**, in learning order: every line leaves a box's top, enters the
+    next one's bottom, and ends in a straight 8px stem under its head (14 Nov 2026);
+  - big-topic "needs" links are **worked out** from the subtopics' (core ones only), never
+    written; a link between subtopics in different big topics shows as the big-topic line;
+  - hover lights the topic's own lines both ways plus the chain below; every named line is lit;
+  - a selected topic shows the same path and holds it (hover changes nothing) until the
+    sheet's "Hide path"; zoom goes out as far as the whole map needs;
   - links are named only on hover or selection, as tags when a line is too short, and as a
     summary when there are more than 3 of a kind;
   - the stuck trace says "may be why";

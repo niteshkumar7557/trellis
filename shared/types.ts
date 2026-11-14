@@ -55,6 +55,7 @@ export interface Topic {
 /**
  * `from` needs (or is helped by) `to`. Arrows point from the dependent to its prerequisite.
  * Edges join two big topics, or two subtopics (which may sit in different big topics).
+ * Big-topic "needs" edges are worked out from the subtopic ones (./data/index.ts). 
  */
 export interface Edge {
   from: string;

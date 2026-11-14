@@ -45,10 +45,12 @@ interface PanelProps {
   suspects: Suspect[];
   onOpen: (id: string) => void;
   onClose: () => void;
+  /** The "show the path on the map" switch, in the sheet's top bar. */
+  path: PathSwitch;
   onLog: (topicId: string, outcome: Outcome) => void;
 }
 
-export function TopicPanel({ topic, statuses, checkIns, experiences, importance, suspects, onOpen, onClose, onLog }: PanelProps) {
+export function TopicPanel({ topic, statuses, checkIns, experiences, importance, suspects, onOpen, onClose, onLog, path }: PanelProps) {
   const root = useRef<HTMLDivElement>(null);
   const status = statusOf(statuses, topic.id);
   const prompt = buildPrompt(topic, statuses, checkIns, experiences, instructions);
@@ -67,7 +69,7 @@ export function TopicPanel({ topic, statuses, checkIns, experiences, importance,
 
   return (
     <div ref={root} className={styles.panel}>
-      <PanelBar onClose={onClose} />
+      <PanelBar onClose={onClose} path={path} />
 
       <header className={styles.panelHead}>
         <button type="button" className={styles.crumb} onClick={() => onOpen(parent.id)}>
@@ -190,9 +192,10 @@ interface BigPanelProps {
   onOpen: (id: string) => void;
   onLookInside: (id: string) => void;
   onClose: () => void;
+  path: PathSwitch;
 }
 
-export function BigPanel({ topic, statuses, importance, shown, required, nextId, onOpen, onLookInside, onClose }: BigPanelProps) {
+export function BigPanel({ topic, statuses, importance, shown, required, nextId, onOpen, onLookInside, onClose, path }: BigPanelProps) {
   const root = useRef<HTMLDivElement>(null);
   const status = statusOf(statuses, topic.id);
   const p = progressOf(topic.id, statuses);
@@ -208,7 +211,7 @@ export function BigPanel({ topic, statuses, importance, shown, required, nextId,
 
   return (
     <div ref={root} className={styles.panel}>
-      <PanelBar onClose={onClose} />
+      <PanelBar onClose={onClose} path={path} />
 
       <header className={styles.panelHead}>
         <p className={styles.kicker}>Big topic</p>
@@ -381,15 +384,29 @@ export function PromptView({ prompt, topicId, compact = false }: { prompt: Promp
   );
 }
 
-function PanelBar({ onClose }: { onClose: () => void }) {
+/** Whether the selected topic's path shows on the map (MapCanvas `pathOn`), and its switch. */
+export interface PathSwitch {
+  on: boolean;
+  toggle: () => void;
+}
+
+function PanelBar({ onClose, path }: { onClose: () => void; path: PathSwitch }) {
   return (
     <div className={styles.panelBar}>
       <span className={styles.panelHint}>
         <span className={ui.kbd}>Esc</span> to close
       </span>
-      <button type="button" className={ui.iconBtn} aria-label="Close topic" onClick={onClose}>
-        <Icon name="close" />
-      </button>
+      <span className={styles.panelActions}>
+        {/* The selected topic's path on the map: its chain lit, the rest dimmed. A switch,
+            not a one-off: it stays as set for the next topic too. */}
+        <button type="button" className={`${ui.ghost} ${styles.pathSwitch}`} aria-pressed={path.on} onClick={path.toggle}>
+          <Icon name="route" size={14} />
+          {path.on ? "Hide path" : "Show path"}
+        </button>
+        <button type="button" className={ui.iconBtn} aria-label="Close topic" onClick={onClose}>
+          <Icon name="close" />
+        </button>
+      </span>
     </div>
   );
 }

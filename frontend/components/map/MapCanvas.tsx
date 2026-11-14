@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark } from "@/components/ui/Status";
-import { kids, subjectById, topicById } from "@shared/data";
+import { subjectById, topicById } from "@shared/data";
 import { Draggable, gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
-import { STATUS_LABEL, helpsOf, needsOf, neededBy, progressOf, statusOf } from "@shared/graph";
+import { STATUS_LABEL, progressOf, statusOf } from "@shared/graph";
 import type { Status } from "@shared/types";
+import { chainPicture, isDim, lineKey, ownPicture, type Label } from "./focus";
 import { HEAD_LENGTH, along, link, shownAs, type Head, type Layout, type LaidNode, type Point } from "./layout";
 import styles from "./map.module.css";
 
@@ -24,10 +25,22 @@ interface Props {
   focusId: string | null;
   /** Pixels on the right covered by the topic sheet; the camera keeps things out from under it. */
   rightInset?: number;
+  /**
+   * Whether the selected topic shows its path the way a hover does (its chain lit, the rest
+   * dimmed, beads running). The topic sheet has the switch. Off: the map stays at rest.
+   */
+  pathOn?: boolean;
   onSelect: (id: string) => void;
 }
 
-const MIN = 0.3;
+/**
+ * The camera never zooms out past the scale that fits the whole map, nor below this. Until
+ * 14 Nov 2026 the floor was a fixed 0.3, and Redis with every big topic open (about
+ * 5000px wide) didn't fit any screen at 0.3. Zoomed that far out the names can't be read,
+ * but the shape can, which is the point of zooming out.
+ */
+const FLOOR = 0.05;
+const MIN_USUAL = 0.3;
 const MAX = 1.6;
 /** Below this the names are too small to read, so the map opens on the focus topic instead. */
 const READABLE = 0.72;
@@ -35,12 +48,14 @@ const READABLE = 0.72;
 const MAX_NAMED = 3;
 /** The camera never zooms out past this on its own when bringing a topic into view. */
 const LEGIBLE = 0.62;
-/** How far along a line its name sits: near the end for lines into the topic in focus, near the start for lines out. */
-const NEAR_END = 0.72;
-const NEAR_START = 0.28;
+/** The clickable header strip of an open big topic, which names must not cover. */
+const FRAME_HEAD = 40;
+
+/** Where a tag sits on its box: just outside one of its corners. */
+type Corner = "top-right" | "top-left" | "bottom-right" | "bottom-left";
 
 /** An arrowhead with its tip on the line's end, turned along the line's last few pixels. */
-function Arrowhead({ head, kind }: { head: Head; kind: "rest" | "on" | "soft" | "reach" | "trace" }) {
+function Arrowhead({ head, kind }: { head: Head; kind: "rest" | "on" | "soft" | "trace" }) {
   const k = kind === "trace" ? 1.3 : 1;
   return (
     <path
@@ -53,23 +68,7 @@ function Arrowhead({ head, kind }: { head: Head; kind: "rest" | "on" | "soft" | 
   );
 }
 
-/** Every hard prerequisite below a topic, as the nodes that show them on this layout. */
-function chainBelow(id: string, layout: Layout): Set<string> {
-  const out = new Set<string>();
-  const seen = new Set<string>();
-  const stack = [id];
-  while (stack.length) {
-    const cur = stack.pop()!;
-    if (seen.has(cur)) continue;
-    seen.add(cur);
-    const n = shownAs(cur, layout);
-    if (n) out.add(n.topic.id);
-    stack.push(...needsOf(cur));
-  }
-  return out;
-}
-
-export function MapCanvas({ layout, statuses, required, targets, nextId, selected, trace, traceOn, focusId, rightInset = 0, onSelect }: Props) {
+export function MapCanvas({ layout, statuses, required, targets, nextId, selected, trace, traceOn, focusId, rightInset = 0, pathOn = true, onSelect }: Props) {
   const viewport = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
   const traceGroup = useRef<SVGGElement>(null);
@@ -77,126 +76,136 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
   const [hovered, setHovered] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
 
-  const lit = useMemo(() => (hovered ? chainBelow(hovered, layout) : null), [hovered, layout]);
-  const focus = hovered ?? selected;
+  // The topic in focus. A selected topic with its path on holds the map: hovering other
+  // topics doesn't replace its path (the owner's call, 14 Nov 2026: a path you opened should
+  // stay put while the pointer crosses the map). With no selection, or its path hidden,
+  // hover works as before.
+  const holding = pathOn && selected !== null;
+  const focus = holding ? selected : hovered;
+  // What it lights and names (./focus.ts): its own lines both ways, and the chain below.
+  const picture = useMemo(() => (focus ? chainPicture(focus, layout, ownPicture(focus, layout)) : null), [focus, layout]);
+  // Dimming and beads come with the picture, for a hover and a selected topic alike.
+  const lit = picture;
 
-  // Links that leave a frame, and soft links, are only drawn for the topic in focus.
-  const focusEdges = useMemo(() => {
-    if (!focus) return [];
-    const self = shownAs(focus, layout);
-    if (!self) return [];
-    const out: { key: string; d: string; mid: Point; trail: Point[]; head: Head; kind: "needs" | "helps"; label: string; t: number; other: string }[] = [];
-    const add = (pre: string, dep: string, kind: "needs" | "helps") => {
-      const a = shownAs(pre, layout);
-      const b = shownAs(dep, layout);
-      if (!a || !b || a === b) return;
-      // Already a line on the map (the layout draws it, or another link shown between the
-      // same two boxes was added just before): drawing it again would also name it twice.
-      // This used to check "needs" only, so a big topic's soft link showed "helps" twice.
-      if (layout.edges.some((e) => e.from === b.topic.id && e.to === a.topic.id && e.kind === kind)) return;
-      if (out.some((o) => o.key === `${kind}-${a.topic.id}-${b.topic.id}`)) return;
-      if (a.kind === "frame" && b.topic.parentId === a.topic.id) return;
-      if (b.kind === "frame" && a.topic.parentId === b.topic.id) return;
-      const incoming = b === self;
-      const l = link(a, b);
-      out.push({
-        // Keyed by the boxes it joins, not the topics behind them: two subtopic links shown
-        // between the same two closed big topics are one line.
-        key: `${kind}-${a.topic.id}-${b.topic.id}`,
-        ...l,
-        kind,
-        label: kind === "helps" ? "helps" : incoming ? "needed first" : "unlocks",
-        t: incoming ? NEAR_END : NEAR_START,
-        other: incoming ? a.topic.id : b.topic.id,
-      });
-    };
-    for (const p of needsOf(focus)) add(p, focus, "needs");
-    for (const d of neededBy(focus)) add(focus, d, "needs");
-    for (const p of helpsOf(focus)) add(p, focus, "helps");
-    return out;
-  }, [focus, layout]);
-
-  // Names only where they answer a question: on the lines of the topic in focus.
-  // A name sits on its line only if the line is long enough on screen to hold it and the
-  // spot covers no topic. Otherwise it becomes a small tag on the topic at the other end.
+  // Names only where they answer a question: the relations of the topic in focus, each on its
+  // line when one line joins the two boxes and is long enough on screen to hold the name, or
+  // else as a small tag above the box at the other end.
   const relations = useMemo(() => {
     const none = {
       lines: [] as { key: string; kind: "needs" | "helps"; label: string; near: Point }[],
-      tags: new Map<string, { kind: "needs" | "helps"; label: string }>(),
-      /** On the topic in focus, when one kind of line is too many to name one by one. */
+      tags: [] as { id: string; kind: "needs" | "helps"; label: string; corner: Corner }[],
+      /** On the topic in focus, when one kind of relation is too many to name one by one. */
       summary: [] as { label: string; count: number }[],
       self: null as string | null,
     };
-    if (!focus) return none;
+    if (!focus || !picture) return none;
     const self = shownAs(focus, layout)?.topic.id;
     if (!self) return none;
-    const own = layout.edges
-      .filter((e) => e.from === self || e.to === self)
-      .map((e) => ({
-        key: `${e.kind}-${e.from}-${e.to}`,
-        trail: e.trail,
-        t: e.from === self ? NEAR_END : NEAR_START,
-        kind: e.kind,
-        // `from` is the dependent: a line into the focus from below brings what it needs.
-        label: e.kind === "helps" ? "helps" : e.from === self ? "needed first" : "unlocks",
-        other: e.from === self ? e.to : e.from,
-      }));
-    const every = [...own, ...focusEdges.map(({ key, trail, t, kind, label, other }) => ({ key, trail, t, kind, label, other }))];
     // Naming the same relation six times is noise: past a few, say it once, on the topic in focus.
-    const count = new Map<string, number>();
-    for (const l of every) count.set(l.label, (count.get(l.label) ?? 0) + 1);
-    const all = every.filter((l) => count.get(l.label)! <= MAX_NAMED);
-    const summary = [...count].filter(([, n]) => n > MAX_NAMED).map(([label, n]) => ({ label, count: n }));
+    const count = new Map<Label, number>();
+    for (const n of picture.names) count.set(n.label, (count.get(n.label) ?? 0) + 1);
+    const named = picture.names.filter((n) => count.get(n.label)! <= MAX_NAMED);
+    const summary = [...count].filter(([, c]) => c > MAX_NAMED).map(([label, c]) => ({ label, count: c }));
 
     // Labels keep their size on screen, so their footprint in the world grows as you zoom out.
     const k = Math.min(1.6, 1 / scale);
-    const blocks = layout.nodes.filter((n) => n.kind !== "frame").map((n) => ({ x: n.x + n.w / 2, y: n.y + n.h / 2, w: n.w + 6, h: n.h + 6 }));
+    const H = 20 * k;
+    const widthOf = (label: string) => (18 + label.length * 6.2) * k;
+    // Everything a name must not cover: every box, and the header strip of every open big
+    // topic (before 14 Nov 2026 frames were left out, so names landed on "Core components").
+    // A frame's header is mostly empty: what matters is its name on the left and its count
+    // on the right. Blocking the whole strip would push every tag in the top row elsewhere.
+    // Each block remembers whose it is, so a tag isn't kept off its own box.
+    const blocks = layout.nodes.flatMap((n) => {
+      const owner = n.topic.id;
+      if (n.kind !== "frame") return [{ owner, x: n.x + n.w / 2, y: n.y + n.h / 2, w: n.w + 6, h: n.h + 6 }];
+      const nameW = 44 + n.topic.name.length * 7.4;
+      return [
+        { owner, x: n.x + nameW / 2, y: n.y + FRAME_HEAD / 2, w: nameW, h: FRAME_HEAD },
+        { owner, x: n.x + n.w - 26, y: n.y + FRAME_HEAD / 2, w: 52, h: FRAME_HEAD },
+      ];
+    });
+    // The "Next" pill straddles the top-left of the next topic's box (map.module.css, .nextTag).
+    const next = nextId ? shownAs(nextId, layout) : null;
+    if (next) blocks.push({ owner: "", x: next.x + 10 + 21, y: next.y - 1, w: 42, h: 20 });
     const placed: { x: number; y: number; w: number; h: number }[] = [];
-    const selfNode = layout.byId.get(self);
-    if (summary.length && selfNode) placed.push({ x: selfNode.x + selfNode.w - 60 * k, y: selfNode.y, w: 120 * k, h: 20 * k });
-    const clashes = (p: Point, w: number, h: number) =>
-      [...placed, ...blocks].some((b) => Math.abs(b.x - p.x) < (b.w + w) / 2 && Math.abs(b.y - p.y) < (b.h + h) / 2);
+    const clashes = (b: { x: number; y: number; w: number; h: number }, against = [...placed, ...blocks]) =>
+      against.some((o) => Math.abs(o.x - b.x) < (o.w + b.w) / 2 && Math.abs(o.y - b.y) < (o.h + b.h) / 2);
+
+    // A tag sits just outside its box, at a corner: above on the right, above on the left,
+    // then below, whichever is clear first, so it never covers a name. It used to sit across
+    // the top border, over the box's own name.
+    const SPOTS: Corner[] = ["top-right", "top-left", "bottom-right", "bottom-left"];
+    const tagSpot = (id: string, w: number, corner: Corner) => {
+      const n = layout.byId.get(id)!;
+      const right = corner.endsWith("right") ? n.x + n.w - 6 : n.x + 6 + w;
+      const y = corner.startsWith("top") ? n.y + 3 - H / 2 : n.y + n.h - 3 + H / 2;
+      return { x: right - w / 2, y, w, h: H };
+    };
+    // How much of other boxes, names and labels a tag at this spot would cover (0: clear).
+    const tagCover = (id: string, b: { x: number; y: number; w: number; h: number }) => {
+      const others = blocks.filter((o) => o.owner !== id);
+      return [...placed, ...others].reduce((sum, o) => {
+        const dx = Math.max(0, Math.min(o.x + o.w / 2, b.x + b.w / 2) - Math.max(o.x - o.w / 2, b.x - b.w / 2));
+        const dy = Math.max(0, Math.min(o.y + o.h / 2, b.y + b.h / 2) - Math.max(o.y - o.h / 2, b.y - b.h / 2));
+        return sum + dx * dy;
+      }, 0);
+    };
+    const tagged = new Map<string, { kind: "needs" | "helps"; labels: Label[] }>();
+    const toTag = (id: string, kind: "needs" | "helps", label: Label) => {
+      const t = tagged.get(id) ?? { kind, labels: [] };
+      if (!t.labels.includes(label)) t.labels.push(label);
+      tagged.set(id, t);
+    };
+    if (summary.length) {
+      const text = summary.map((x) => `${x.label} ${x.count}`).join(" · ");
+      placed.push(tagSpot(self, widthOf(text), "top-right"));
+    }
 
     const lines: typeof none.lines = [];
-    const tags: typeof none.tags = new Map();
-    const sized = all.map((l) => {
-      const w = (16 + l.label.length * 6) * k;
-      const length = l.trail.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - l.trail[i].x, p.y - l.trail[i].y), 0);
-      // On screen, the line must be clearly longer than the label it carries.
-      return { ...l, w, h: 20 * k, roomy: length * scale > (w / k) * 1.8 };
+    const roomy = named.filter((n) => {
+      if (!n.line) return false;
+      const length = n.line.trail.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - n.line!.trail[i].x, p.y - n.line!.trail[i].y), 0);
+      // On screen, the line must be clearly longer than the name it carries.
+      return length * scale > (widthOf(n.label) / k) * 1.8;
     });
-
-    // First the tags, for lines too short to carry a name: their corners are taken.
-    const tagBox = (id: string, w: number, h: number) => {
-      const n = layout.byId.get(id);
-      return n ? { x: n.x + n.w - 8 - w / 2, y: n.y, w, h } : null;
+    for (const n of named) if (!roomy.includes(n)) toTag(n.other, n.kind, n.label);
+    const tags: typeof none.tags = [];
+    const placeTags = () => {
+      for (const [id, t] of tagged) {
+        if (tags.some((x) => x.id === id)) continue;
+        const label = t.labels.join(" · ");
+        const w = widthOf(label);
+        // The first clear corner; zoomed far out, where every corner touches something, the
+        // one that covers least.
+        const cover = SPOTS.map((c) => tagCover(id, tagSpot(id, w, c)));
+        const clear = cover.indexOf(0);
+        const corner = SPOTS[clear >= 0 ? clear : cover.indexOf(Math.min(...cover))];
+        placed.push(tagSpot(id, w, corner));
+        tags.push({ id, kind: t.kind, label, corner });
+      }
     };
-    const toTag = (l: (typeof sized)[number]) => {
-      if (tags.has(l.other)) return;
-      tags.set(l.other, { kind: l.kind, label: l.label });
-      const b = tagBox(l.other, l.w, l.h);
-      if (b) placed.push(b);
-    };
-    for (const l of sized) if (!l.roomy) toTag(l);
-
-    // Then names on the roomy lines, slid along each line until clear of topics, tags and each other.
-    for (const l of sized) {
-      if (!l.roomy) continue;
-      const step = l.t > 0.5 ? -0.08 : 0.08;
+    placeTags();
+    // Then names on the roomy lines, slid along each line until clear of boxes, tags and each other.
+    for (const n of roomy) {
+      const { trail, t, key } = n.line!;
+      const w = widthOf(n.label);
+      const step = t > 0.5 ? -0.08 : 0.08;
       let spot: Point | null = null;
-      for (let i = 0; i < 7 && !spot; i++) {
-        const p = along(l.trail, Math.min(0.9, Math.max(0.1, l.t + step * i)));
-        if (!clashes(p, l.w, l.h)) spot = p;
+      for (let i = 0; i < 8 && !spot; i++) {
+        const p = along(trail, Math.min(0.92, Math.max(0.08, t + step * i)));
+        if (!clashes({ x: p.x, y: p.y, w, h: H })) spot = p;
       }
       if (spot) {
-        placed.push({ x: spot.x, y: spot.y, w: l.w, h: l.h });
-        lines.push({ key: l.key, kind: l.kind, label: l.label, near: spot });
+        placed.push({ x: spot.x, y: spot.y, w, h: H });
+        lines.push({ key, kind: n.kind, label: n.label, near: spot });
       } else {
-        toTag(l);
+        toTag(n.other, n.kind, n.label);
       }
     }
+    placeTags();
     return { lines, tags, summary, self };
-  }, [focus, layout, focusEdges, scale]);
+  }, [focus, picture, layout, scale, nextId]);
 
   const tracePaths = useMemo(() => {
     if (!trace) return [];
@@ -206,6 +215,23 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
       return dep && pre && dep !== pre ? [{ key: `${from}-${trace[i + 1]}`, ...link(pre, dep) }] : [];
     });
   }, [trace, layout]);
+
+  // "may be why" sits on the last step of the trace, slid along it until it covers no box or
+  // frame name. At its plain midpoint it landed on whatever the line crossed ("Image").
+  const traceSpot = useMemo(() => {
+    const last = tracePaths[tracePaths.length - 1];
+    if (!last) return null;
+    const k = Math.min(1.6, 1 / scale);
+    const w = (18 + "may be why".length * 6.6) * k;
+    const h = 20 * k;
+    const boxes = layout.nodes.map((n) => (n.kind === "frame" ? { x: n.x, y: n.y, w: n.w, h: FRAME_HEAD } : n));
+    const clear = (p: Point) => !boxes.some((b) => p.x + w / 2 > b.x && p.x - w / 2 < b.x + b.w && p.y + h / 2 > b.y && p.y - h / 2 < b.y + b.h);
+    for (const t of [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82]) {
+      const p = along(last.trail, t);
+      if (clear(p)) return p;
+    }
+    return last.mid;
+  }, [tracePaths, layout, scale]);
 
   // Camera moves. Plain callbacks: they only run from effects and handlers, never in render.
   const readView = useCallback(() => {
@@ -231,15 +257,24 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
     });
   }, []);
 
+  /** How far out the camera may go: far enough to see the whole map, whatever its size. */
+  const minScale = useCallback(() => {
+    const vp = viewport.current;
+    if (!vp) return MIN_USUAL;
+    const { width: vw, height: vh } = vp.getBoundingClientRect();
+    const fits = Math.min((vw - 32) / layout.width, (vh - 32) / layout.height);
+    return Math.max(FLOOR, Math.min(MIN_USUAL, fits));
+  }, [layout]);
+
   const fit = useCallback(
     (animate = true) => {
       const vp = viewport.current;
       if (!vp) return;
       const { width: vw, height: vh } = vp.getBoundingClientRect();
-      const s = Math.min(MAX, Math.max(MIN, Math.min((vw - 32) / layout.width, (vh - 32) / layout.height, 1)));
+      const s = Math.min(MAX, Math.max(minScale(), Math.min((vw - 32) / layout.width, (vh - 32) / layout.height, 1)));
       apply((vw - layout.width * s) / 2, (vh - layout.height * s) / 2, s, animate);
     },
-    [layout, apply],
+    [layout, apply, minScale],
   );
 
   /** Fit if the whole map is readable; otherwise centre the focus topic at a readable size. */
@@ -262,10 +297,10 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
       const px = cx ?? rect.width / 2;
       const py = cy ?? rect.height / 2;
       const { x, y, s } = readView();
-      const ns = Math.min(MAX, Math.max(MIN, s * factor));
+      const ns = Math.min(MAX, Math.max(minScale(), s * factor));
       apply(px - ((px - x) * ns) / s, py - ((py - y) * ns) / s, ns, animate);
     },
-    [readView, apply],
+    [readView, apply, minScale],
   );
 
   // Open the view when the subject changes, and drag to pan. Until the student moves the
@@ -446,7 +481,7 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
   const nextBig = nextId ? topicById.get(nextId)?.parentId ?? null : null;
 
   return (
-    <div ref={viewport} className={styles.viewport} data-hovering={hovered ? "true" : undefined}>
+    <div ref={viewport} className={styles.viewport} data-lit={lit ? "true" : undefined}>
       <div ref={world} className={styles.world} style={{ width: layout.width, height: layout.height }}>
         {/* Open big topics sit underneath as frames. */}
         {frames.map((n) => {
@@ -461,7 +496,7 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
               style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
               data-status={status}
               data-skip={!required.has(id) || undefined}
-              data-dim={lit ? !lit.has(id) && !kids(id).some((c) => lit.has(c.id)) : undefined}
+              data-dim={lit ? isDim(n, lit) : undefined}
             >
               <button
                 type="button"
@@ -483,33 +518,32 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
 
         <svg className={styles.edges} width={layout.width} height={layout.height} aria-hidden="true" data-edges>
           {layout.edges.map((e) => {
-            if (e.kind === "helps" && e.from !== focus && e.to !== focus) return null;
-            const on = lit ? lit.has(e.from) && lit.has(e.to) : false;
-            const off = lit ? !on : !required.has(e.from);
+            const on = picture?.lines.has(lineKey(e)) ?? false;
+            // Soft lines are drawn only for the topic in focus.
+            if (e.kind === "helps" && !on) return null;
+            // Inside a big topic needed as a whole, the lines keep their resting look.
+            const whole = e.level === "sub" && lit?.whole.has(topicById.get(e.from)!.parentId!);
+            const off = lit ? !on && !whole : !required.has(e.from);
             return (
-              <g key={`${e.kind}-${e.from}-${e.to}`} data-on={on || undefined} data-off={off || undefined} className={styles.line}>
+              <g key={lineKey(e)} data-on={on || undefined} data-off={off || undefined} className={styles.line}>
                 <path d={e.d} className={e.kind === "helps" ? styles.edgeSoft : e.level === "sub" ? styles.edgeInner : styles.edge} data-on={on || undefined} data-off={off || undefined} />
-                <Arrowhead head={e.head} kind={on ? "on" : e.kind === "helps" ? "soft" : "rest"} />
+                <Arrowhead head={e.head} kind={e.kind === "helps" ? "soft" : on ? "on" : "rest"} />
               </g>
             );
           })}
-          {focusEdges.map((e) => (
+          {picture?.extra.map((e) => (
             <g key={e.key}>
-              <path d={e.d} className={e.kind === "helps" ? styles.edgeSoft : styles.edgeReach} />
-              <Arrowhead head={e.head} kind={e.kind === "helps" ? "soft" : "reach"} />
+              <path d={e.d} className={styles.edgeSoft} data-on />
+              <Arrowhead head={e.head} kind="soft" />
             </g>
           ))}
-          {/* On hover the lit chain flows upward, so the direction reads at a glance. */}
+          {/* On hover, beads run up the lit lines, so the direction reads at a glance. Beads
+              on a solid line, not gaps in it: gaps made every lit line look dashed, and
+              dashed means "helps". */}
           {lit &&
             layout.edges
-              .filter((e) => e.kind === "needs" && lit.has(e.from) && lit.has(e.to))
-              .map((e) => <path key={`f-${e.from}-${e.to}`} d={e.d} className={styles.flow} />)}
-          {lit &&
-            focusEdges
-            .filter((e) => e.kind === "needs")
-            .map((e) => (
-              <path key={`f-${e.key}`} d={e.d} className={styles.flow} />
-            ))}
+              .filter((e) => e.kind === "needs" && lit.lines.has(lineKey(e)))
+              .map((e) => <path key={`f-${lineKey(e)}`} d={e.d} className={styles.flow} />)}
           <g ref={traceGroup}>
             {tracePaths.map((p) => (
               <path key={`t-${p.key}`} d={p.d} className={styles.trace} />
@@ -523,7 +557,7 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
           const id = n.topic.id;
           const status = statusOf(statuses, id);
           const skippable = !required.has(id);
-          const dim = lit ? !lit.has(id) : false;
+          const dim = lit ? isDim(n, lit) : false;
 
           if (n.kind === "closed") {
             const p = progressOf(id, statuses);
@@ -608,33 +642,42 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
           return (
             <span
               className={`${styles.edgeLabel} ${styles.nodeTag} ${styles.summaryTag}`}
-              style={{ left: n.x + n.w - 8, top: n.y, transform: `translate(-100%, -50%) scale(${Math.min(1.6, 1 / scale)})` }}
+              style={{ left: n.x + n.w - 6, top: n.y + 3, transformOrigin: "right bottom", transform: `translate(-100%, -100%) scale(${Math.min(1.6, 1 / scale)})` }}
             >
               {relations.summary.map((x) => `${x.label} ${x.count}`).join(" · ")}
             </span>
           );
         })()}
-        {/* Where a line is too short for its name, the name sits on the topic at the other end. */}
-        {[...relations.tags].map(([id, t]) => {
-          const n = layout.byId.get(id);
+        {/* Where a line is too short for its name, or the relation crosses big topics, the
+            name sits above the box at the other end. */}
+        {relations.tags.map((t) => {
+          const n = layout.byId.get(t.id);
           if (!n) return null;
+          const right = t.corner.endsWith("right");
+          const top = t.corner.startsWith("top");
           return (
             <span
-              key={`tag-${id}`}
+              key={`tag-${t.id}`}
               className={`${styles.edgeLabel} ${styles.nodeTag}`}
               data-kind={t.kind}
-              style={{ left: n.x + n.w - 8, top: n.y, transform: `translate(-100%, -50%) scale(${Math.min(1.6, 1 / scale)})` }}
+              style={{
+                left: right ? n.x + n.w - 6 : n.x + 6,
+                top: top ? n.y + 3 : n.y + n.h - 3,
+                // Scaled from the corner that touches the box, so it grows away from it.
+                transformOrigin: `${right ? "right" : "left"} ${top ? "bottom" : "top"}`,
+                transform: `translate(${right ? "-100%" : "0"}, ${top ? "-100%" : "0"}) scale(${Math.min(1.6, 1 / scale)})`,
+              }}
             >
               {t.label}
             </span>
           );
         })}
-        {traceOn && tracePaths.length > 0 && (
+        {traceOn && traceSpot && (
           <span
             className={`${styles.edgeLabel} ${styles.traceLabel}`}
             style={{
-              left: tracePaths[tracePaths.length - 1].mid.x,
-              top: tracePaths[tracePaths.length - 1].mid.y,
+              left: traceSpot.x,
+              top: traceSpot.y,
               transform: `translate(-50%, -50%) scale(${Math.min(1.6, 1 / scale)})`,
             }}
           >

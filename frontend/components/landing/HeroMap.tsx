@@ -48,6 +48,14 @@ export function HeroMap() {
   const shown = layout.byId.get(shownId)!.topic;
   const verdict = importanceOf(shownId, goal, required);
 
+  // Free room in each bottom corner: how far the lower half's boxes stay from each side.
+  const keySide = useMemo(() => {
+    const low = layout.nodes.filter((n) => n.y + n.h > layout.height / 2);
+    const left = Math.min(...low.map((n) => n.x));
+    const right = layout.width - Math.max(...low.map((n) => n.x + n.w));
+    return right > left ? "right" : "left";
+  }, [layout]);
+
   const bigOnRoute = layout.nodes.filter((n) => required.has(n.topic.id)).length;
   const canSkip = subtopicsOf(SUBJECT).filter((t) => !required.has(t.id)).length;
 
@@ -153,9 +161,11 @@ export function HeroMap() {
           })}
         </div>
 
-        {/* The key sits in the corner the map leaves empty: a subject is narrow at its
-            foundations and wide at the top, so the bottom-left is always free. */}
-        <ul className={styles.legend} aria-label="Key">
+        {/* The key sits in the bottom corner the map leaves emptier: a subject is narrow at
+            its foundations and wide at the top, but which side its foundations lean to
+            depends on the data (it moved right when the big-topic links started being
+            worked out from the subtopics', 14 Nov 2026), so it is measured, not assumed. */}
+        <ul className={styles.legend} data-side={keySide} aria-label="Key">
           {LEGEND.map((s) => (
             <li key={s}>
               <StatusMark status={s} size={10} />

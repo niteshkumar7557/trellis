@@ -23,9 +23,10 @@ describe("findPath", () => {
   });
 
   it("returns the shortest chain when there are several", async () => {
-    const result = await findPath("rn-js", "rn-websockets");
+    // Components → Props → FlatList → SectionList (4), not through View and ScrollView (5).
+    const result = await findPath("rn-components", "rn-sectionlist");
 
-    expect(result).toHaveLength(3);
+    expect(result?.map((topic) => topic.id)).toEqual(["rn-components", "rn-props", "rn-flatlist", "rn-sectionlist"]);
   });
 
   it("always picks the same chain when two are equally short", async () => {

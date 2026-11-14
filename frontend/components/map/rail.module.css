@@ -412,6 +412,16 @@
   background: var(--active);
   color: var(--muted);
 }
+.panelActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pathSwitch {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+}
 .panelHint {
   display: inline-flex;
   align-items: center;

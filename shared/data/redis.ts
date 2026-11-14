@@ -552,36 +552,13 @@ export const redisDifficulty: DifficultyTable = {
   "rd-ent-when": "easy", "rd-active-active": "hard", "rd-flash": "medium", "rd-compliance": "medium",
 };
 
+// Links between subtopics. Links between big topics are NOT written here: shared/data/index.ts
+// works them out from these (a big topic needs another when one of its core subtopics needs
+// something inside it), so the two levels of the map can never disagree.
 export const redisEdges: Edge[] = edgesFrom(
   [
-    // Big topics.
-    ["rd-setup", "rd-intro"],
-    ["rd-basics", "rd-setup"],
-    ["rd-strings", "rd-basics"],
-    ["rd-lists", "rd-basics"],
-    ["rd-sets", "rd-basics"],
-    ["rd-hashes", "rd-basics"],
-    ["rd-zsets", "rd-sets"],
-    ["rd-keys", "rd-basics"],
-    ["rd-atomic", "rd-strings"],
-    ["rd-tx", "rd-atomic"],
-    ["rd-lua", "rd-atomic"],
-    ["rd-pubsub", "rd-basics"],
-    ["rd-bitmaps", "rd-strings"],
-    ["rd-hll", "rd-sets"],
-    ["rd-streams", "rd-lists"],
-    ["rd-geo", "rd-zsets"],
-    ["rd-persist", "rd-basics"],
-    ["rd-ha", "rd-persist"],
-    ["rd-security", "rd-setup"],
-    ["rd-monitor", "rd-keys"],
-    ["rd-modules", "rd-hashes"],
-    ["rd-prod", "rd-persist"],
-    ["rd-prod", "rd-security"],
-    ["rd-enterprise", "rd-ha"],
-    ["rd-enterprise", "rd-prod"],
-
-    // Subtopics.
+    // You need to know what you are installing before you install it.
+    ["rd-install", "rd-what"],
     ["rd-usecases", "rd-what"],
     ["rd-when", "rd-usecases"],
     ["rd-server", "rd-install"],
@@ -664,6 +641,8 @@ export const redisEdges: Edge[] = edgesFrom(
     ["rd-tls", "rd-net-security"],
     ["rd-info", "rd-cli"],
     ["rd-monitor-cmd", "rd-cli"],
+    // A GUI client connects to the server the same way redis-cli does.
+    ["rd-commander", "rd-cli"],
     ["rd-memory", "rd-info"],
     ["rd-maxmemory", "rd-memory"],
     ["rd-maxmemory", "rd-expiration"],
@@ -688,7 +667,6 @@ export const redisEdges: Edge[] = edgesFrom(
     ["rd-features", "rd-what"],
     ["rd-vs", "rd-what"],
     ["rd-lua", "rd-tx"],
-    ["rd-optimistic", "rd-counters"],
     ["rd-stream-uses", "rd-pubsub-uses"],
     ["rd-monitor", "rd-persist"],
     ["rd-insight", "rd-info"],

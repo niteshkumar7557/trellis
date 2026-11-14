@@ -430,36 +430,21 @@ export const reactNativeDifficulty: DifficultyTable = {
   "rn-appstore": "hard", "rn-playstore": "medium",
 };
 
+// Links between subtopics. Links between big topics are NOT written here: shared/data/index.ts
+// works them out from these (a big topic needs another when one of its core subtopics needs
+// something inside it), so the two levels of the map can never disagree.
 export const reactNativeEdges: Edge[] = edgesFrom(
-  // Big topics: which areas stand on which.
+  // Needs: `from` can't be understood without `to`.
   [
-    ["rn-react", "rn-prereq"],
-    ["rn-env", "rn-intro"],
-    ["rn-workflow", "rn-env"],
-    ["rn-core", "rn-react"],
-    ["rn-core", "rn-workflow"],
-    ["rn-lists", "rn-core"],
-    ["rn-styling", "rn-core"],
-    ["rn-platform", "rn-core"],
-    ["rn-network", "rn-core"],
-    ["rn-interactions", "rn-core"],
-    ["rn-storage", "rn-core"],
-    ["rn-testing", "rn-core"],
-    ["rn-push", "rn-network"],
-    ["rn-deeplink", "rn-interactions"],
-    ["rn-security", "rn-network"],
-    ["rn-security", "rn-storage"],
-    ["rn-perf", "rn-lists"],
-    ["rn-perf", "rn-interactions"],
-    ["rn-native", "rn-platform"],
-    ["rn-publish", "rn-platform"],
-    ["rn-publish", "rn-styling"],
-
-    // Subtopics.
+    // Why pick it, and over what, only makes sense once you know what it is.
+    ["rn-why", "rn-what"],
+    ["rn-alternatives", "rn-what"],
     ["rn-jsx", "rn-js"],
     ["rn-components", "rn-jsx"],
     ["rn-props", "rn-components"],
     ["rn-state", "rn-components"],
+    // You need to know what you are installing before you install it.
+    ["rn-expo", "rn-what"],
     ["rn-create-expo", "rn-expo"],
     ["rn-expo-tradeoffs", "rn-expo"],
     ["rn-device", "rn-create-expo"],
@@ -468,7 +453,9 @@ export const reactNativeEdges: Edge[] = edgesFrom(
     ["rn-logbox", "rn-device"],
     ["rn-sourcemaps", "rn-logbox"],
     ["rn-devtools", "rn-devmenu"],
+    // A component is learnt by running it: View is where the app first has to run somewhere.
     ["rn-view", "rn-components"],
+    ["rn-view", "rn-device"],
     ["rn-text", "rn-components"],
     ["rn-textinput", "rn-state"],
     ["rn-textinput", "rn-text"],
@@ -487,26 +474,30 @@ export const reactNativeEdges: Edge[] = edgesFrom(
     ["rn-flatlist", "rn-state"],
     ["rn-sectionlist", "rn-flatlist"],
     ["rn-refresh", "rn-scrollview"],
-    ["rn-platform-module", "rn-components"],
+    // Platform.OS and Platform.select are used to change how views look and behave.
+    ["rn-platform-module", "rn-view"],
     ["rn-file-ext", "rn-platform-module"],
     ["rn-web", "rn-platform-module"],
     ["rn-stylesheets", "rn-css"],
     ["rn-stylesheets", "rn-view"],
     ["rn-flexbox", "rn-stylesheets"],
     ["rn-a11y", "rn-pressable"],
-    ["rn-fetch", "rn-js"],
+    // Fetching is async JavaScript whose result lands in state; State already brings JS.
     ["rn-fetch", "rn-state"],
     ["rn-connectivity", "rn-fetch"],
     ["rn-websockets", "rn-fetch"],
-    ["rn-navigation", "rn-props"],
-    ["rn-navigation", "rn-components"],
+    // You move between screens from a press; Button already brings Props and Components.
+    ["rn-navigation", "rn-button"],
     ["rn-gestures", "rn-pressable"],
     ["rn-scrolling", "rn-gestures"],
     ["rn-animations", "rn-state"],
     ["rn-animations", "rn-view"],
-    ["rn-asyncstorage", "rn-js"],
+    // What is usually saved is state (a setting, a draft) so it survives a restart.
+    ["rn-asyncstorage", "rn-state"],
     ["rn-securestore", "rn-asyncstorage"],
     ["rn-sqlite", "rn-asyncstorage"],
+    // The other options (MMKV, Realm, ...) are weighed against AsyncStorage.
+    ["rn-storage-other", "rn-asyncstorage"],
     ["rn-push-setup", "rn-fetch"],
     ["rn-push-handle", "rn-push-setup"],
     ["rn-linking", "rn-navigation"],
@@ -517,11 +508,14 @@ export const reactNativeEdges: Edge[] = edgesFrom(
     ["rn-secure-storage", "rn-securestore"],
     ["rn-jest", "rn-js"],
     ["rn-rntl", "rn-jest"],
-    ["rn-rntl", "rn-components"],
+    // Testing Library finds what is on screen by its text (getByText).
+    ["rn-rntl", "rn-text"],
     ["rn-test-renderer", "rn-jest"],
     ["rn-detox", "rn-jest"],
     ["rn-detox", "rn-device"],
     ["rn-appium", "rn-device"],
+    // Frame rates are read off the performance monitor in the developer menu.
+    ["rn-framerate", "rn-devmenu"],
     ["rn-perf-sources", "rn-framerate"],
     ["rn-flatlist-perf", "rn-flatlist"],
     ["rn-flatlist-perf", "rn-perf-sources"],
@@ -533,13 +527,11 @@ export const reactNativeEdges: Edge[] = edgesFrom(
     ["rn-appstore", "rn-device"],
     ["rn-playstore", "rn-device"],
   ],
-  // Helps: useful first, never required.
+  // Helps: useful first, never required. These may join two big topics, or two subtopics.
   [
     ["rn-env", "rn-prereq"],
-    ["rn-expo", "rn-what"],
     ["rn-snack", "rn-expo"],
     ["rn-cli", "rn-expo-tradeoffs"],
-    ["rn-flexbox", "rn-css"],
     ["rn-touchables", "rn-pressable"],
     ["rn-scrolling", "rn-scrollview"],
     ["rn-flatlist-perf", "rn-profiling"],
@@ -547,6 +539,10 @@ export const reactNativeEdges: Edge[] = edgesFrom(
     ["rn-native-ios", "rn-cli"],
     ["rn-native-android", "rn-cli"],
     ["rn-secure-storage", "rn-auth"],
+    // Both are about the top of the screen: the notch, the clock and the battery.
+    ["rn-statusbar", "rn-safearea"],
+    // Files are for what AsyncStorage is the wrong place for (photos, downloads).
+    ["rn-filesystem", "rn-asyncstorage"],
   ],
 );
 

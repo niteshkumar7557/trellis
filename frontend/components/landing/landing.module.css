@@ -255,6 +255,7 @@
   color: var(--muted);
   font-size: var(--t-small);
 }
+.legend[data-side="right"] { left: auto; right: 4px; }
 .legend li { display: flex; align-items: center; gap: 8px; }
 .legend .legendNote { grid-column: 1 / -1; }
 

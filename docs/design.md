@@ -149,9 +149,11 @@ The heart of Trellis. It has two parts.
 - **Topics.** Each smaller topic has a name, a one-line description of what it covers, the
   common mistakes people make with it, roughly how long it takes, and whether it is
   **core** or **optional** inside its big topic.
-- **"Needs" links.** Topic B *needs* topic A: you cannot really get B without A. Links join
-  two big topics, or two smaller ones. A smaller topic may need one in another big topic
-  only if its own big topic stands on that one.
+- **"Needs" links.** Topic B *needs* topic A: you cannot really get B without A. We write
+  them between smaller topics; a big topic needs another when one of its core smaller
+  topics needs something inside it, so the two levels can't disagree. An optional smaller
+  topic may need one in another big topic only if its own big topic already stands on
+  that one.
 - **"Helps" links.** A *helps* with B, but you can manage without it.
 - **Goals.** A goal is a set of target big topics. It needs those, every big topic they
   stand on, the core smaller topics inside them, and anything those need in turn.

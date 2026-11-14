@@ -250,14 +250,26 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
 - Names and grouping follow roadmap.sh; summaries, mistakes, links and core/optional marks
   are ours. Never copy roadmap.sh's descriptions. Credit lines exist on /start and in the
   landing footer.
-- Links are `[from, to]` pairs meaning "from needs to" (or "helps"). Links join two big
-  topics, or two subtopics. A subtopic may need one in another big topic **only if** its own
-  big topic stands on that one; otherwise make it a "helps" link.
+- Links are `[from, to]` pairs meaning "from needs to" (or "helps"). A subject file writes
+  **"needs" links between subtopics only.** The "needs" links between big topics are worked
+  out in `shared/data/index.ts` (`bigNeedsFrom`): big topic A needs B when a **core**
+  subtopic of A needs something in B, minus any link a longer path already implies. Before
+  14 Nov 2026 both levels were written by hand and drifted apart (Networking "needed" Core
+  components while Fetch only needed State), which broke the hover chains. "Helps" links
+  are written by hand and may join two big topics or two subtopics.
+- An optional subtopic may need one in another big topic **only if** its own big topic
+  already stands on that one; otherwise make it a "helps" link. (Optional subtopics never
+  create a big-topic link: a skippable topic must not hold a whole area back.)
+- Every subtopic must have at least one link: a box with no lines says nothing about where
+  it fits. A "helps" link must not repeat what a chain of "needs" links already says.
 - `shared/data/index.ts` checks everything on load: no duplicate ids, a parent for every
   subtopic, at least one core subtopic per big topic, no missing ids, no cross-subject
-  links, no loops, the cross-big-topic rule, and goals targeting big topics. **The console
-  must stay silent.** To check outside the browser, run `index.ts` with `npx jiti`,
-  overriding `console.assert` to collect failures.
+  links, no loops, the cross-big-topic rule, no hand-written big-topic needs links, no
+  unlinked subtopic, no "helps" that repeats a "needs" path, and goals targeting big topics.
+  **The console must stay silent.** `backend/test/data-checks.test.ts` fails on any of them;
+  `backend/test/big-links.test.ts` pins the worked-out links, and
+  `backend/test/map-layout.test.ts` checks the drawn map (below). Run `npm test` in
+  `backend/` after editing a subject.
 - Goals: `targets` lists big topics; they bring everything they stand on.
 
 ### `shared/graph.ts` (the rules from design.md §6 and §8)
@@ -283,45 +295,94 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
 - dagre over **big topics only**, `rankdir: BT` (foundations at the bottom), nodesep 28,
   ranksep 56. A closed big topic is 212×58; an **open** one is a frame sized to hold its
   subtopics.
-- Inside a frame, subtopics sit in rows by in-frame depth, at most 3 per row. Each row is
-  ordered by where its prerequisites sit, so lines run upward. Gaps are 12px horizontal and
-  **24px vertical** (room for arrowheads). Subtopic nodes are 188×36.
+- Inside a frame (`arrangeFrame`), the subtopics linked to each other are laid out by a
+  **second dagre** (same direction; gaps 12px across, **24px** between rows). Each level is
+  one row, however wide, and dagre routes long links around boxes. Until 14 Nov 2026 rows
+  wrapped at 3, and lines from the row below ran through the boxes in between (View →
+  Pressable through Switch); a wider frame was the price of fixing it. Subtopics with no
+  "needs" link inside their frame sit in rows along the frame's **bottom**. Subtopic nodes
+  are 188×36.
 - Each `LaidEdge` carries `d` (SVG path), `mid`, `trail` (sample points for placing
-  labels) and `head` (where the arrowhead goes and its angle). Lines between big topics are
-  Catmull-Rom curves through dagre's points; links inside a frame or across frames use
-  `link()`, a vertical cubic.
+  labels) and `head` (where the arrowhead goes). Every hard line, between big topics or
+  inside a frame, is drawn by `route()`: from the **top** of the prerequisite to the
+  **bottom** of the dependent, through dagre's bend points (which sit in the gaps between
+  rows), vertical at both ends, with control points kept between each segment's ends so
+  the curve never swings past a bend. It reads as: up, across in a gap, up. Dagre's own end
+  points sit where a line from the box's centre leaves it, often a side; curving through
+  those made lines leave sideways and hook back under the box (11 of 27 Redis arrowheads
+  pointed more than 45° off up). Soft links are not laid out by dagre and use `link()`, a
+  plain vertical cubic.
+- A link between subtopics in **different** big topics is never drawn on its own: it shows
+  as the line between their big topics (MapCanvas below).
 - **Arrowheads** are drawn as their own triangles (`Arrowhead` in MapCanvas), not SVG
-  markers. The tip sits on the line's end, turned along its **last 8px**
-  (`HEAD_LENGTH`). Markers used the single last pixel and looked crooked on bends. Don't
-  straighten line ends to fix tips: that was tried and looked worse.
+  markers. Every hard line ends in a straight **stem as long as the head** (`HEAD_LENGTH`,
+  8px), so every head points straight up. Turned along a curve's last 8px instead (the rule
+  until 14 Nov 2026), heads came out tilted wherever a line covers a lot of ground sideways
+  in little height. An earlier note here said straightened line ends "looked worse"; that
+  was with lines that started from box sides, before `route()`.
+- `backend/test/map-layout.test.ts` checks, for both subjects with everything closed and
+  everything open: no boxes overlap, no hard line crosses a box or another frame, every
+  head points up, and the hover rules below hold.
 - Transforms are rounded to two decimals: the server and the browser otherwise differ in
   the last digit and break hydration.
 - Layouts are cached by subject + open set.
 
 ### The canvas (`MapCanvas.tsx`)
 
-- **Camera:** drag (Draggable with inertia), wheel to pan, Ctrl/⌘ + wheel or buttons to zoom
-  (0.3–1.6). It opens fitted if the whole map is readable (≥ 0.72), else at 0.86 on the
+- **Camera:** drag (Draggable with inertia), wheel to pan, Ctrl/⌘ + wheel or buttons to zoom,
+  up to 1.6 and down to whatever fits the whole map (0.3 when that is enough, never below
+  0.05). The floor was a fixed 0.3 until 14 Nov 2026, and Redis with every big topic open
+  (about 5000px wide) didn't fit at 0.3; it fits at about 13% on a 1440px screen. It opens fitted if the whole map is readable (≥ 0.72), else at 0.86 on the
   focus topic. Until the student moves the camera, it follows the focus as the map loads
   and grows. It brings the selected topic or trace into view, but never zooms below 0.62
   to do it, and keeps clear of the topic sheet (`rightInset`). Scroll on the viewport is
   pinned to 0: keyboard focus would otherwise scroll it.
 - **Statuses** show on each node's mark; skippable topics are faded; optional ones have a
   dashed box; the next topic has an ink ring and a "Next" tag.
+- **What lights up** is worked out in `focus.ts` (pure, no React), from the topic in focus:
+  the **selected** topic while its path is on, otherwise the **hovered** one. A selected
+  topic with its path on holds the map: hovering other topics changes nothing (owner's
+  call, 14 Nov 2026). The topic sheet's top bar has the switch, **Hide path / Show path**
+  (`PathSwitch` in `Rail.tsx`); it stays as set for the next topic and is remembered per
+  browser (`trellis-map-path`). Path hidden, the map is at rest and hover works again.
+  The picture is the same for both:
+  - its **own relations, one step each way**: what it needs, what it unlocks, and what
+    helps it or it helps (both ways; until 14 Nov 2026 a subtopic only showed what helps
+    it);
+  - the **chain below**: every hard prerequisite, all the way down;
+  - everything else dims, and beads run up the lit lines.
+  - **Every relation that gets a name has its line lit.** Until 14 Nov 2026 hover lit only
+    the chain below, so the topic's own "unlocks" and "helps" lines were named but dimmed to
+    12%: the "labels out of nowhere".
 - **Lines:** solid means needed, dashed means helps (helps lines appear only for the topic in
-  focus). Links that leave a frame show only for the topic in focus. On hover the
-  prerequisite chain lights up, everything else dims, and pulses flow up the lit lines.
-- **Labels:** names appear only for the hovered or selected topic's own lines: *needed
-  first*, *unlocks*, *helps*.
-  - A label sits on its line only if the line is long enough on screen to hold it and the
-    spot covers no topic. Otherwise it becomes a small tag on the topic at the other end.
-  - More than 3 lines of one kind are never named one by one: the focused topic gets a dark
-    summary tag instead (*unlocks 7*).
+  focus). A relation between subtopics in different big topics lights **the line between
+  their big topics** (every big-topic line on the way, when they aren't joined directly:
+  FlatList needs Props goes Lists → Core components → React basics); the subtopic at the
+  far end is lit and tagged. A soft link across big topics is drawn between the two big
+  boxes. Until 14 Nov 2026 such relations were drawn as their own subtopic-to-subtopic
+  lines, which crossed every frame between them.
+- A big topic needed as a whole (hovering a big topic) keeps everything inside it bright.
+- On hover, **beads** (ink dots) run up the lit lines. They used to be gaps in the surface
+  colour, which made every lit line look dashed, the mark for "helps".
+- The SVG of lines has `pointer-events: none`: it sits above the frames, and until
+  14 Nov 2026 it swallowed the pointer over every open big topic's header, so those could
+  not be hovered or clicked.
+- **Labels:** names appear only for the focus topic's own relations: *needed first*,
+  *unlocks*, *helps*.
+  - A name sits on its line when one line joins the two boxes, the line is long enough on
+    screen to hold it, and the spot covers no box, frame header name or count, "Next" pill
+    or other label. Otherwise it is a small **tag just outside the other box**, at the first
+    clear corner (top-right, top-left, bottom-right, bottom-left; the least-covering one
+    when zoomed far out). Relations across big topics are always tags. Two relations to
+    the same box share one tag ("unlocks · helps").
+  - More than 3 relations of one kind are never named one by one: the focused topic gets a
+    dark summary tag instead (*unlocks 7*).
   - Tags are placed first, then labels slide along their lines to clear tags, topics and
     each other.
-  - Labels keep their size on screen at any zoom.
+  - Labels keep their size on screen at any zoom (up to 1.6× their world size).
 - **Stuck trace:** a red line drawn (DrawSVG) from the stuck topic down to its likely cause,
-  with its own arrowheads and a *may be why* label. It shows while the Stuck button is
+  with its own arrowheads and a *may be why* label, slid along the last step until it
+  covers no name. It shows while the Stuck button is
   hovered or a stuck topic is selected.
 - **Motion:** when a big topic opens, the nodes slide to their new places (FLIP) and the
   new subtopics grow in; a status change pulses once. All of this is off for reduced
@@ -462,7 +523,7 @@ These are the shapes the screens consume (`shared/types.ts`). The backend return
 |---|---|
 | `Subject` | `id: "react-native" \| "redis", name, shortName, blurb` |
 | `Topic` | `id, subjectId, parentId` (null for a big topic)`, name, summary, mistakes[], minutes, optional, difficulty, keywords[]` (`difficulty`: `easy`/`medium`/`hard`; a big topic's is its hardest core subtopic) |
-| `Edge` | `from` (the dependent)`, to` (its prerequisite)`, kind: "needs" \| "helps"`: two big topics, or two subtopics |
+| `Edge` | `from` (the dependent)`, to` (its prerequisite)`, kind: "needs" \| "helps"`: two big topics, or two subtopics. Big-topic "needs" are worked out from the subtopics' |
 | `Goal` | `id, subjectId, name, blurb, targets[]` (big topics) |
 | `Claim` | `topicId, claim: "know" \| "shaky" \| "new", at`: from the sort, usually on a big topic |
 | `CheckIn` | `id, at, text, topicId` (always a subtopic)`, outcome: "got" \| "partly" \| "stuck", messageId?` |

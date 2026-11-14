@@ -28,10 +28,12 @@ afterAll(async () => {
 
 describe("a conversation", () => {
   it("asks one question about how it went, and stores both messages", async () => {
-    const res = await say("I finished Components");
+    // State, not an easy topic: since 14 Nov 2026 the helper asks nothing after Got it on an
+    // easy one (design.md §7), and Components is rated easy.
+    const res = await say("I finished State");
     expect(res.status).toBe(201);
     const [student, helper] = res.body.messages;
-    expect(student).toMatchObject({ role: "student", text: "I finished Components", subjectId: "react-native" });
+    expect(student).toMatchObject({ role: "student", text: "I finished State", subjectId: "react-native" });
     expect(helper.role).toBe("helper");
     expect(helper.asks).toMatchObject({ kind: "easy", pending: { updates: [{ outcome: "got" }] } });
     // clock_timestamp(): the reply comes after. Compared in Postgres, at microseconds:

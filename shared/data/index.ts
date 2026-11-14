@@ -23,7 +23,59 @@ export const SOURCE = { name: "roadmap.sh", url: "https://roadmap.sh" };
 
 const raw: RawTopic[] = [...reactNativeTopics, ...redisTopics];
 const difficultyOf: Record<string, Difficulty> = { ...reactNativeDifficulty, ...redisDifficulty };
-export const edges: Edge[] = [...reactNativeEdges, ...redisEdges];
+const written: Edge[] = [...reactNativeEdges, ...redisEdges];
+
+/**
+ * The "needs" links between big topics, worked out from the links between subtopics.
+ *
+ * Big topic A needs big topic B when a CORE subtopic of A needs a subtopic inside B. Optional
+ * subtopics don't count: a big topic's links decide what a goal requires and when a big topic
+ * is ready (graph.ts, requiredFor and isReady), and something the student may skip must not
+ * hold a whole area back. A link that a longer path already implies is dropped (A → C when
+ * A → B → C), because the map would draw it as one more line saying nothing new.
+ *
+ * Why not write them by hand, as before 14 Nov 2026: the two levels drifted apart. The map
+ * said Networking needs Core components while Fetch only needed State, so hovering Fetch lit
+ * React basics and left the Core components arrow dark. Worked out, they can't disagree.
+ * The cost: changing one subtopic link can move a big topic on the map. That is the point,
+ * but check the map after editing links (docs/frontend.md, "Editing the topic graphs").
+ */
+function bigNeedsFrom(links: Edge[]): Edge[] {
+  const byId = new Map(raw.map((t) => [t.id, t]));
+  const pairs = new Map<string, Set<string>>();
+  for (const e of links) {
+    const a = byId.get(e.from);
+    const b = byId.get(e.to);
+    if (e.kind !== "needs" || !a?.parentId || !b?.parentId || a.parentId === b.parentId || a.optional) continue;
+    pairs.set(a.parentId, (pairs.get(a.parentId) ?? new Set()).add(b.parentId));
+  }
+  // Is `to` reachable from `from` without using the direct link between them?
+  const reachesAround = (from: string, to: string): boolean => {
+    const stack = [...(pairs.get(from) ?? [])].filter((n) => n !== to);
+    const seen = new Set<string>();
+    while (stack.length) {
+      const cur = stack.pop()!;
+      if (cur === to) return true;
+      if (seen.has(cur)) continue;
+      seen.add(cur);
+      stack.push(...(pairs.get(cur) ?? []));
+    }
+    return false;
+  };
+  // In the order the subject files list the big topics, so the output is stable from run to
+  // run (the graph seed stores edges in this order).
+  const order = raw.filter((t) => !t.parentId).map((t) => t.id);
+  const out: Edge[] = [];
+  for (const from of order) {
+    for (const to of order) {
+      if (pairs.get(from)?.has(to) && !reachesAround(from, to)) out.push({ from, to, kind: "needs" });
+    }
+  }
+  return out;
+}
+
+/** Every link: big-topic needs (worked out), then what the subject files write. */
+export const edges: Edge[] = [...bigNeedsFrom(written), ...written];
 export const goals: Goal[] = [...reactNativeGoals, ...redisGoals];
 
 const RANK: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
@@ -104,6 +156,11 @@ export function goalsOf(subjectId: SubjectId): Goal[] {
     console.assert(Boolean(topicById.get(id)?.parentId), `difficulty rating for ${id}, which isn't a subtopic`);
   }
 
+  // Big-topic "needs" links are worked out above; a subject file writing one would bypass that.
+  for (const e of written) {
+    console.assert(!(e.kind === "needs" && !topicById.get(e.from)?.parentId), `${e.from} → ${e.to}: big-topic needs links are worked out, don't write them`);
+  }
+
   const bigNeeds = new Map<string, string[]>();
   for (const e of edges) {
     const a = topicById.get(e.from);
@@ -132,7 +189,8 @@ export function goalsOf(subjectId: SubjectId): Goal[] {
     const a = topicById.get(e.from);
     const b = topicById.get(e.to);
     if (!a?.parentId || !b?.parentId || e.kind !== "needs" || a.parentId === b.parentId) continue;
-    // A subtopic may only need one from another big topic if its own big topic stands on that one.
+    // A subtopic may only need one from another big topic if its own big topic stands on that
+    // one. Core subtopics always pass (they make the big-topic links); this catches optional ones.
     console.assert(reaches(a.parentId, b.parentId), `${e.from} needs ${e.to}, but ${a.parentId} doesn't stand on ${b.parentId}`);
   }
 
@@ -149,6 +207,30 @@ export function goalsOf(subjectId: SubjectId): Goal[] {
     state.set(id, 2);
   };
   for (const t of topics) visit(t.id, []);
+
+  // A "helps" link that a chain of "needs" already covers is one more line saying less.
+  const needsPath = (from: string, to: string): boolean => {
+    const stack = [...(needs.get(from) ?? [])];
+    const seen = new Set<string>();
+    while (stack.length) {
+      const cur = stack.pop()!;
+      if (cur === to) return true;
+      if (seen.has(cur)) continue;
+      seen.add(cur);
+      stack.push(...(needs.get(cur) ?? []));
+    }
+    return false;
+  };
+  for (const e of edges) {
+    if (e.kind === "helps") console.assert(!needsPath(e.from, e.to), `${e.from} helps ${e.to}, but it already needs it`);
+  }
+
+  // Every subtopic is linked to something: a box with no lines tells the student nothing
+  // about where it fits, and the map has no good place to put it. (Big topics are linked
+  // through their subtopics.)
+  for (const t of topics) {
+    if (t.parentId) console.assert(edges.some((e) => e.from === t.id || e.to === t.id), `${t.id} has no links`);
+  }
 
   for (const g of goals) {
     for (const id of g.targets) {

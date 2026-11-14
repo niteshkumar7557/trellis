@@ -282,11 +282,13 @@ button.finding:hover { border-color: var(--control); color: var(--text); }
   position: absolute;
   inset: 0;
   overflow: visible;
+  /* The lines sit above the open big topics' frames. Without this the SVG's box caught the
+     pointer over every frame header, so an open big topic couldn't be hovered or clicked. */
+  pointer-events: none;
 }
 
 .edge,
 .edgeSoft,
-.edgeReach,
 .trace {
   fill: none;
   transition: opacity 160ms ease, stroke 160ms ease;
@@ -302,8 +304,13 @@ button.finding:hover { border-color: var(--control); color: var(--text); }
 }
 .edge[data-off],
 .edgeSoft[data-off] { opacity: 0.35; }
-[data-hovering] .edge[data-off],
-[data-hovering] .edgeSoft[data-off] { opacity: 0.12; }
+[data-lit] .edge[data-off],
+[data-lit] .edgeSoft[data-off] { opacity: 0.12; }
+/* A soft line of the topic in focus: still dashed, in ink so it reads next to the lit ones. */
+.edgeSoft[data-on] {
+  stroke: var(--text);
+  opacity: 0.75;
+}
 .edge[data-on],
 .edgeInner[data-on] {
   stroke: var(--text);
@@ -318,14 +325,7 @@ button.finding:hover { border-color: var(--control); color: var(--text); }
   transition: opacity 160ms ease, stroke 160ms ease;
 }
 .edgeInner[data-off] { opacity: 0.4; }
-[data-hovering] .edgeInner[data-off] { opacity: 0.12; }
-/* A link out of a frame, drawn only for the topic in focus. Solid: dashed means "helps". */
-.edgeReach {
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
+[data-lit] .edgeInner[data-off] { opacity: 0.12; }
 .trace {
   stroke: var(--stuck);
   stroke-width: 3;
@@ -584,26 +584,27 @@ button.finding:hover { border-color: var(--control); color: var(--text); }
   fill: var(--edge);
   transition: opacity 160ms ease;
 }
-.arrowHead[data-k="on"],
-.arrowHead[data-k="reach"] { fill: var(--text); }
+.arrowHead[data-k="on"] { fill: var(--text); }
 .arrowHead[data-k="soft"] { fill: var(--edge-soft); }
 .arrowHead[data-k="trace"] { fill: var(--stuck); }
 /* A head fades with its line. */
 .line[data-off] .arrowHead { opacity: 0.35; }
-[data-hovering] .line[data-off] .arrowHead { opacity: 0.12; }
+[data-lit] .line[data-off] .arrowHead { opacity: 0.12; }
 
-/* Hover: pulses run up the lit chain, the way you'd learn it. */
+/* Hover: beads run up the lit lines, the way you'd learn it. A zero-length dash with a round
+   cap is a dot, drawn in ink ON the line, so the line stays whole. (The old pulses were gaps
+   in the surface colour, which made every lit line look dashed: the mark for "helps".) */
 .flow {
   fill: none;
-  stroke: var(--surface);
-  stroke-width: 2;
+  stroke: var(--text);
+  stroke-width: 5;
   stroke-linecap: round;
-  stroke-dasharray: 1.5 14;
-  animation: flow 0.9s linear infinite;
+  stroke-dasharray: 0 40;
+  animation: flow 1.2s linear infinite;
   pointer-events: none;
 }
 @keyframes flow {
-  from { stroke-dashoffset: 31; }
+  from { stroke-dashoffset: 40; }
   to { stroke-dashoffset: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -646,9 +647,9 @@ button.finding:hover { border-color: var(--control); color: var(--text); }
 .legendEdgeSoft { stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 3 3; fill: none; }
 .legendHeadSoft { fill: var(--muted); }
 
-/* A relation name sitting on a topic's corner, for lines too short to carry it. */
+/* A relation name sitting just above a topic's corner (MapCanvas sets its side and origin),
+   for relations whose line is too short to carry it or that cross big topics. */
 .nodeTag {
-  transform-origin: right center;
   z-index: 4;
 }
 .summaryTag {
