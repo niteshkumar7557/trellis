@@ -88,4 +88,15 @@ describe("config", () => {
     expect(config.rate_limits).toBe(true);
     expect(config.is_production).toBe(true);
   });
+
+  it("trusts two proxies in production (CloudFront, Caddy), none in development", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    expect((await loadConfig()).trust_proxy_hops).toBe(2);
+    vi.resetModules();
+    vi.stubEnv("NODE_ENV", "development");
+    expect((await loadConfig()).trust_proxy_hops).toBe(0);
+    vi.resetModules();
+    vi.stubEnv("TRUST_PROXY_HOPS", "1"); // the fallback with Caddy alone, no CloudFront
+    expect((await loadConfig()).trust_proxy_hops).toBe(1);
+  });
 });

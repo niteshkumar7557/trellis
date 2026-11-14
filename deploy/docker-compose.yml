@@ -1,0 +1,181 @@
+# Production: everything that runs on the one server, in /opt/trellis (docs/aws.md §4, §6).
+#
+#   docker compose up -d        start or update (pulls nothing; run `pull` first)
+#   docker compose ps           what is running, and its health
+#   docker compose logs -f api  follow one service's log
+#
+# Values come from /opt/trellis/.env, which deploy/env-from-ssm.sh writes from Parameter
+# Store. Compose reads that file only to fill in the ${...} below, and each service gets
+# ONLY the values it lists: the database never sees the JWT secret, Caddy never sees the
+# database password.
+#
+# Images are built on the laptop (deploy/release.sh) and pulled from ECR: a Next.js build
+# needs more memory than this 2 GB server has to spare. TAG is the git commit they were
+# built from, so `docker compose ps` says exactly what is running.
+#
+# Memory: 2 GB for everything, so every container has a limit (aws.md §4 "Memory"). When
+# memory runs out, the container over its limit is restarted, not the database.
+
+name: trellis
+
+# Every container's log is rotated: 5 files of 10 MB at most, so logs can't fill the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-backend-image: &backend-image ${REGISTRY}/trellis/backend:${TAG}
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    # The only published ports. 80: Let's Encrypt's check and the redirect to HTTPS.
+    # 443: CloudFront (the security group allows nothing else on it).
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+      ORIGIN_VERIFY: ${ORIGIN_VERIFY}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The certificate lives here. Losing it on every restart would hit Let's Encrypt's
+      # weekly limit, so it is a named volume.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api, web]
+    mem_limit: 64m
+    logging: *logging
+
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # Sized for a 384 MB limit and a few dozen students: Postgres's defaults assume a
+    # machine to itself. 30 connections is far above the API's pool of 10.
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=30"]
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 384m
+    logging: *logging
+
+  neo4j:
+    image: neo4j:5
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
+      # The graph is ~230 topics: it needs very little. Without these, Neo4j sizes itself
+      # for the whole machine and starves everything else. Java also needs a few hundred
+      # MB OUTSIDE the heap (class metadata, threads, network buffers): with a 384 MB heap
+      # and 128 MB page cache it went over its 768 MB limit and was killed in a loop on
+      # the first day (14 Nov 2026). 256 + 64 leaves that room.
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 256m
+      NEO4J_server_memory_pagecache_size: 64m
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    mem_limit: 768m
+    # At most one of the two cores. A Java start uses every core it sees for a minute;
+    # on 14 Nov 2026 a restart loop did that and the API stopped answering. With this the
+    # API, Next and Caddy always keep a core, and Java, seeing one CPU, starts fewer
+    # threads and uses less memory.
+    cpus: 1.0
+    logging: *logging
+
+  # One-shot: the database migrations, then the content seed. Runs on every `up` and exits;
+  # both are safe to run twice. The API waits for it to finish successfully.
+  migrate:
+    image: *backend-image
+    command: ["sh", "-c", "node dist/db/migrate.js && node dist/db/seed.js"]
+    environment: &db-env
+      NODE_ENV: production
+      DB_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET} # config refuses to load without it, even here
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    logging: *logging
+
+  # One-shot: loads the topic graph into Neo4j (MERGE, safe to rerun). Nothing waits for
+  # it: the site runs without Neo4j (backend-design.md §2).
+  seed-graph:
+    image: *backend-image
+    command: ["node", "dist/db/seed-graph.js"]
+    environment:
+      <<: *db-env
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    restart: "no"
+    logging: *logging
+
+  api:
+    image: *backend-image
+    restart: unless-stopped
+    environment:
+      <<: *db-env
+      PORT: "8000"
+      PUBLIC_URL: https://trellis.niteshkumar.xyz
+      # CloudFront, then Caddy (backend-design.md §8, aws.md §4).
+      TRUST_PROXY_HOPS: "2"
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      # The helper's AI. No AWS keys: the SDK gets the server role's credentials from the
+      # instance metadata (hop limit 2, aws.md §4). AI_PROVIDER=off turns it off.
+      AI_PROVIDER: ${AI_PROVIDER:-bedrock}
+      BEDROCK_REGION: ap-southeast-2
+      AI_DAILY_BUDGET_USD: ${AI_DAILY_BUDGET_USD:-0.50}
+      # Keeps Node's heap inside the container's limit, so Node collects garbage before
+      # the limit kills it.
+      NODE_OPTIONS: --max-old-space-size=192
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      # NOT neo4j: the API starts without it and answers 503 on the graph routes only.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    mem_limit: 256m
+    logging: *logging
+
+  web:
+    image: ${REGISTRY}/trellis/frontend:${TAG}
+    restart: unless-stopped
+    environment:
+      NODE_OPTIONS: --max-old-space-size=256
+    mem_limit: 384m
+    logging: *logging
+
+volumes:
+  postgres_data:
+  neo4j_data:
+  caddy_data:
+  caddy_config:

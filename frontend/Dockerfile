@@ -3,7 +3,7 @@ FROM node:24-alpine AS base
 # Stage 1: build
 FROM base AS builder
 RUN apk add --no-cache libc6-compat
-# Built from the repo root (see docker-compose.yml), because the app imports ../shared.
+# Built from the repo root (see deploy/release.sh), because the app imports ../shared.
 WORKDIR /home/build/frontend
 
 COPY frontend/package*.json ./
@@ -12,8 +12,16 @@ RUN npm ci
 COPY frontend/ ./
 COPY shared/ ../shared/
 
-ARG NEXT_PUBLIC_API_URL
+# NEXT_PUBLIC_* values are written INTO the JavaScript at build time; setting them when the
+# container starts does nothing. And .env files are kept out of the image
+# (Dockerfile.dockerignore), so they arrive here as build arguments (deploy/release.sh).
+#   NEXT_PUBLIC_API_URL       where Next's /api rewrite forwards. In production Caddy sends
+#                             /api straight to the API, so this is only a fallback.
+#   NEXT_PUBLIC_GOOGLE_SIGNIN "on" shows the Sign in with Google button.
+ARG NEXT_PUBLIC_API_URL=http://api:8000
+ARG NEXT_PUBLIC_GOOGLE_SIGNIN=off
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_GOOGLE_SIGNIN=$NEXT_PUBLIC_GOOGLE_SIGNIN
 
 RUN npm run build
 

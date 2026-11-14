@@ -26,7 +26,7 @@ The tools, in one place. Where this disagrees with `design.md` §13, `backend-de
 | AI | **GLM 5 on Amazon Bedrock** (`@aws-sdk/client-bedrock-runtime`), one call per typed helper message; the rule-based reader is the fallback |
 | Rate limiting | express-rate-limit (in memory; one server) |
 | Logging | pino, JSON lines to stdout |
-| Hosting | AWS, Mumbai: one EC2 server (t4g.small, arm64) running Docker Compose |
+| Hosting | AWS, Sydney: one EC2 server (t4g.small, arm64) running Docker Compose, behind CloudFront |
 | HTTPS and routing | Caddy (certificates from Let's Encrypt) |
 | DNS | Route 53 for `trellis.niteshkumar.xyz`; the parent domain stays at GoDaddy |
 | Images | Amazon ECR |

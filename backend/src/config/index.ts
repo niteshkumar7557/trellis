@@ -55,6 +55,13 @@ const config = {
   node_env: nodeEnv,
   is_production: nodeEnv === "production",
 
+  // How many proxies stand in front of the API and add to X-Forwarded-For. In production:
+  // CloudFront, then Caddy = 2 (docs/aws.md §4). Express then takes the visitor's address
+  // from the right place, and the rate limits count each visitor, not each proxy. Too low
+  // and everyone shares one limit; too high and a visitor can forge their address. 0 in
+  // development, where nothing sits in front and a forged header must not be believed.
+  trust_proxy_hops: num("TRUST_PROXY_HOPS", nodeEnv === "production" ? 2 : 0),
+
   // Where the site lives, as the browser sees it. Used to build reset links (and, in M6.3,
   // the Google redirect). Replaces CLIENT_URL: with one origin there is no separate client.
   public_url: str("PUBLIC_URL", "http://localhost:3000").replace(/\/$/, ""),

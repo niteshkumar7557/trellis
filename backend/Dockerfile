@@ -1,6 +1,6 @@
 FROM node:24-alpine AS base
 
-# Built from the REPO ROOT (see docker-compose.yml), not from backend/, because the API
+# Built from the REPO ROOT (see deploy/release.sh), not from backend/, because the API
 # imports ../shared. Every COPY path below is therefore relative to the repo root.
 
 # Stage 1: build. Has the dev tools (TypeScript, tsup); thrown away afterwards.

@@ -27,11 +27,12 @@ import { makeHealthHandler } from "./utils/health.js";
 
 const app = express();
 
-// In production Caddy sits in front and passes the visitor's address in X-Forwarded-For.
-// "1" means: trust exactly one proxy hop. Without it, req.ip is Caddy's address for every
+// In production a request passes CloudFront, then Caddy, and each adds an address to
+// X-Forwarded-For. "trust proxy" = 2 tells Express to skip exactly those two and take the
+// visitor's address from the header. Without it, req.ip is Caddy's address for every
 // visitor, and the rate limits would treat the whole site as one person. Not set locally,
-// where a forged X-Forwarded-For header would otherwise be believed.
-if (config.is_production) app.set("trust proxy", 1);
+// where a forged X-Forwarded-For header would otherwise be believed (config.ts).
+if (config.trust_proxy_hops > 0) app.set("trust proxy", config.trust_proxy_hops);
 
 app.use(helmet());
 

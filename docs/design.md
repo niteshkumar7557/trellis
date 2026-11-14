@@ -60,8 +60,9 @@ music), or cramming for an exam next week.
 
 **The first real users** are the owner's classmates and juniors, most of them near Delhi.
 People from outside may sign up, but the first rounds of feedback come from people the
-owner can talk to. That is why the first version is hosted in Mumbai, is free, and has no
-payment or growth features.
+owner can talk to. That is why the first version is free and has no payment or growth features. It runs in
+AWS's Sydney region (the only one the free plan allows), with the pages cached at edges in
+India.
 
 **v1 subjects:** **React Native** and **Redis**. Their topic lists are adapted from the
 roadmaps at [roadmap.sh](https://roadmap.sh) (topic names and grouping). The links between
@@ -360,7 +361,7 @@ The map remembers where they were, so they do not have to.
 | The helper | Reading what you type: which topic, how it went, your answer as a clean line | Nothing is saved until you confirm, and you can change it first; Undo after; the topic buttons work without AI |
 
 **One model, one call.** The model is **GLM 5** (by Z.AI), used through **Amazon Bedrock**
-in the Mumbai region.
+in the Sydney region, beside the server.
 
 | What you do | Who handles it |
 |---|---|
@@ -390,7 +391,7 @@ these limits protect the site itself (`docs/aws.md`).
 | Graph | **Neo4j**: topics, links and goals, seeded from the reviewed files. The site keeps working when it is down (backend-design.md §2) |
 | Accounts and history | **Postgres**: users, sign-in, goals, claims, check-ins, experiences, prompts taken and helper conversations |
 | AI | **GLM 5 on Amazon Bedrock**, one call per typed helper message (§12) |
-| Hosting | **AWS**, Mumbai: one small EC2 server running Docker Compose, backups in S3, DNS in Route 53 (`docs/aws.md`) |
+| Hosting | **AWS**, Sydney: one small EC2 server running Docker Compose behind CloudFront (pages cached in India), backups in S3, DNS in Route 53 (`docs/aws.md`) |
 
 ---
 
@@ -516,7 +517,7 @@ Each row is a choice we made, what else we could have done, and why we did not.
 
 | Decision | Alternatives we rejected | Why |
 |---|---|---|
-| AWS, Mumbai region (v7) | Cloudflare Tunnel to a home machine; a US region | The owner has a six-month AWS free plan, and the users are near Delhi |
+| AWS, Sydney region, behind CloudFront (14 Nov 2026; was Mumbai in v7) | Mumbai; upgrading to the paid plan to get Mumbai; Cloudflare Tunnel to a home machine | The free plan allows EC2 only in Sydney on this account (checked: Mumbai is denied by AWS's own policy). CloudFront caches the pages at edges in India and ends HTTPS there, which wins back most of the distance. Upgrading early would make every bill real money |
 | One EC2 server with Docker Compose (v7) | Lightsail; managed database (RDS); containers on ECS | It fits the credits, and EC2 is what production jobs use. RDS alone would use most of the budget |
 | Neo4j kept, but the site runs without it (v7) | Neo4j required at start; dropping Neo4j | It is kept for the course and for v2. Nothing a student sees needs it, so it must not be able to take the site down |
 | Only the subdomain's DNS moves to Route 53 (v7) | Move the whole domain; keep everything at GoDaddy | The parent domain is untouched, and every Trellis record lives next to the rest of the setup |

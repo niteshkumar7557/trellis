@@ -9,9 +9,10 @@ runs) and `docs/frontend.md` (the screens and the data contract).
 
 **Status (14 Nov 2026):** M0 to M6 and MS are done and on `main` (M5 squashed in on
 14 Nov). **The helper reads typed messages with GLM 5 on Bedrock in Sydney**, tried
-against the real service (§5 "The first real call"). M7 (deploy) is next, planned for
-15 Nov (§10, §11). **Open before M7:** Bedrock moved to Sydney "close to the hosting"; is
-the server going to Sydney too? `docs/aws.md` still plans Mumbai.
+against the real service (§5 "The first real call"). **M7 (deploy) is done: Trellis is live at https://trellis.niteshkumar.xyz** (14 Nov
+2026), on `backend/m7`, not merged yet. Everything runs in Sydney (the free plan allows
+EC2 nowhere else, `docs/aws.md` §3) behind CloudFront, which serves the pages from New
+Delhi (§4). A release is `./deploy/release.sh` (`docs/aws.md` §6).
 
 **AWS on this machine:** the `trellis` profile exists (`aws login --profile trellis`,
 account `631603562964`, checked 14 Nov 2026). Run the check in `docs/aws.md` §2 before
@@ -93,8 +94,13 @@ adding subjects.
 ```
                  trellis.niteshkumar.xyz  (HTTPS)
                           │
-                    ┌─────▼─────┐
-                    │   Caddy   │   gets and renews the HTTPS certificate by itself
+                 ┌────────▼─────────┐
+                 │ CloudFront edge  │  near the student (India): caches pages and
+                 │                  │  scripts; never caches /api/* (docs/aws.md §4)
+                 └────────┬─────────┘
+                          │  HTTPS + secret header, to origin.trellis.niteshkumar.xyz
+                    ┌─────▼─────┐      (the server, in Sydney)
+                    │   Caddy   │   gets and renews the origin's certificate by itself
                     └──┬─────┬──┘
               /api/*   │     │   everything else
             ┌──────────▼─┐ ┌─▼──────────┐
@@ -107,7 +113,7 @@ adding subjects.
      │ record │ │ graph │      │ called by the API only   │
      └────────┘ └───────┘      └──────────────────────────┘
 
-  All five boxes are containers on ONE server (Docker Compose). Bedrock is an AWS service
+  All five boxes below CloudFront are containers on ONE server (Docker Compose). Bedrock is an AWS service
   the API calls over the network. shared/ is compiled into both the API and the frontend.
 ```
 
@@ -935,6 +941,7 @@ start and **throws on a missing or bad value**.
 | Variable | Example | Notes |
 |---|---|---|
 | `NODE_ENV`, `PORT` | `production`, `8000` | |
+| `TRUST_PROXY_HOPS` | `2` | Proxies in front that add to `X-Forwarded-For`: CloudFront and Caddy. Default 2 in production, 0 otherwise (§8 Security) |
 | `PUBLIC_URL` | `https://trellis.niteshkumar.xyz` | Used for the Google redirect and reset links. Replaces `CLIENT_URL` |
 | `DB_URL` | `postgresql://trellis:…@db:5432/trellisdb` | Required |
 | `JWT_SECRET` | 32+ random characters | Required. `openssl rand -hex 32` |
@@ -968,9 +975,12 @@ deploy (`docs/aws.md` §6). Secrets are never committed and never baked into an 
   | `POST /api/helper/*/messages` | 30 per minute | user id |
   | everything else under `/api` | 300 per minute | user id, or IP when signed out |
 
-  Behind Caddy the visitor's address arrives in a header, so `app.set("trust proxy", 1)`
-  is required in production (set in `src/app.ts` when `NODE_ENV=production`). Without it
-  every visitor looks like Caddy and shares one limit.
+  Behind CloudFront and Caddy the visitor's address arrives in `X-Forwarded-For`, so
+  Express must skip exactly those two proxies: `app.set("trust proxy", 2)`, from
+  `TRUST_PROXY_HOPS` (2 by default in production, 0 in development; 1 if CloudFront is
+  ever dropped). Too few and every visitor looks like a CloudFront edge and shares one
+  limit; too many and a visitor can forge their address. `test/trust-proxy.test.ts` pins
+  this down. Caddy keeps the header it gets (`trusted_proxies`, `deploy/Caddyfile`).
   The limits are off under Vitest (`config.rate_limits`), because tests sign up many
   users from one address; `test/rate-limit.test.ts` checks the limiter itself.
   Built so far: the auth rows and the helper row. **The general 300-a-minute limit is not
@@ -1032,9 +1042,12 @@ backend/src/
 
 ### Deploy and backups
 
-In `docs/aws.md` §6 and §7. In short: images are built for arm64 and pushed to Amazon ECR;
-the server pulls them; migrations and the graph seed run as one-shot containers before the
-API starts; Postgres is dumped to S3 every night and the dumps expire after 14 days.
+In `docs/aws.md` §4, §6 and §7, and the files in `deploy/`. In short: `deploy/release.sh`
+builds the images for arm64 on the laptop and pushes them to Amazon ECR; the server pulls
+them (`deploy/deploy.sh`); migrations and the graph seed run as one-shot containers before
+the API starts; CloudFront's cache is cleared; Postgres is dumped to S3 every night and the
+dumps expire after 14 days. Everything regional is in Sydney (`ap-southeast-2`), the only
+region the free plan allows for EC2 (`docs/aws.md` §3).
 
 ## 9. Connecting the frontend
 
@@ -1125,11 +1138,13 @@ Each line is one task, built in order, each with its tests. The dates are the pl
   student's bad request.
 - M5.3 The daily message limit and the daily AI budget; tests with Bedrock mocked.
 
-**M7: Deploy** (15 Nov; the steps are in `docs/aws.md` §9)
-- M7.1 The production compose file: Caddy, Postgres, Neo4j with memory caps, the API,
-  Next, one-shot `migrate` and `seed-graph` services. Remove pgAdmin. arm64 images in ECR.
-- M7.2 The AWS resources: server, role, DNS, backup bucket, budgets.
-- M7.3 The nightly backup, one tested restore, and the smoke test.
+**M7: Deploy** (the steps are in `docs/aws.md` §9; everything in Sydney, behind CloudFront)
+- M7.1 ✅ The production compose file (`deploy/`): Caddy, Postgres, Neo4j with memory
+  caps, the API, Next, one-shot `migrate` and `seed-graph` services, the deploy scripts.
+  pgAdmin removed. `TRUST_PROXY_HOPS`. Run locally end to end (14 Nov 2026).
+- M7.2 ✅ The AWS resources: server, role, DNS, backup bucket, budgets, ECR, the certificate
+  and the CloudFront distribution (14 Nov 2026; ids in `docs/aws.md` §9).
+- M7.3 ✅ The nightly backup, one tested restore, and the smoke test (14 Nov 2026).
 
 **18 to 21 Nov:** friends use it. Fix what they hit.
 
@@ -1173,10 +1188,12 @@ Update this table at the start of each planning session from `git log` and merge
 | M5.2 `src/ai/reader.ts`, the fallback, the warm-up, `validateBody` wraps its errors | done | `main`, 14 Nov 2026 (squashed) |
 | M5.3 The daily message limit (the budget is in M5.2) | done | `main`, 14 Nov 2026 (squashed) |
 | M5 against the real Bedrock (§5 "The first real call"), Bedrock moved to Sydney | done | `main`, 14 Nov 2026 (squashed) |
-| M7 | not started | — |
+| M7.1 The production compose file, Caddy behind CloudFront, the deploy scripts, `TRUST_PROXY_HOPS` | done | `backend/m7`, not merged |
+| M7.2 The AWS resources (`docs/aws.md` §9), CloudFront; first release; Neo4j's limits fixed | done; **live at https://trellis.niteshkumar.xyz** | `backend/m7`, not merged |
+| M7.3 Nightly backup, restore test, smoke test | done (Google sign-in to be tried by the owner in a browser) | `backend/m7`, not merged |
 
-**Expected test counts after M5:** 246 passed in `npm test`, 86 in
-`npm run test:integration`, none skipped (checked 14 Nov 2026). After MS
+**Expected test counts after M7.1:** 250 passed in `npm test`, 86 in
+`npm run test:integration`, none skipped (checked 14 Nov 2026). After M5: 246 and 86. After MS
 they were 211 and 81. After M6 they were 193 and 81; after M4, 178 and 77. M6 was also checked by
 hand in a browser against the real API (sign-up to delete, a reset link, the helper's
 question, Save, reload); the frontend has no automated tests of its own yet.
@@ -1209,7 +1226,6 @@ text and can't be converted), so everyone signs in once more.
 - `users.role` is still a column but nothing reads it (the token no longer carries it,
   and there are no admin routes). Harmless; drop it in a later migration if it stays
   unused.
-- `docker-compose.yml` (production) has pgAdmin, no Neo4j and no Caddy. → M7.1
 - `frontend/next.config.ts` strips `/api` when forwarding. → M6.1
 
 ## 12. Open questions
@@ -1221,8 +1237,8 @@ Nothing blocks M7. To settle when reached:
   and the 11th sign-up in 15 minutes gets `429`. Watch for it in the 18 Nov testing. The
   usual fix is to key login by IP **and** email, with a looser cap per IP alone.
 
-- **Where the server runs.** Bedrock is in Sydney "close to the hosting" (owner, 14 Nov
-  2026), but `docs/aws.md` plans the server in Mumbai. Settle before M7.
+- ~~Where the server runs.~~ Settled 14 Nov 2026: Sydney, the only region the free plan
+  allows for EC2 (`docs/aws.md` §3), with CloudFront caching near India (§4).
 - ~~Bedrock on the free plan; does GLM 5 reason first?~~ Settled 14 Nov 2026 by real
   calls: it works, and it doesn't (§5).
 - **Does the warm-up keep the schema cached?** Watch `latency_ms` in `ai_calls` for the

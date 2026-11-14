@@ -1,0 +1,44 @@
+# Caddy on the server: the one container with ports open (docs/aws.md §4).
+#
+#   visitor → CloudFront (an edge near them, e.g. New Delhi) → Caddy (here, Sydney)
+#                                                                ├─ /api/* → api (Express)
+#                                                                └─ the rest → web (Next.js)
+#
+# Caddy gets and renews the HTTPS certificate for the ORIGIN name by itself (Let's
+# Encrypt, through port 80). CloudFront connects to that name over HTTPS, so passwords and
+# tokens are encrypted on the whole way, not only between the visitor and the edge.
+#
+# Two env values, from /opt/trellis/.env (deploy/docker-compose.yml passes them in):
+#   SITE_ADDRESS   origin.trellis.niteshkumar.xyz in production; ":80" to try it locally
+#   ORIGIN_VERIFY  a long random secret that only CloudFront sends (see below)
+
+{
+	servers {
+		# CloudFront puts the visitor's address in X-Forwarded-For. Caddy must keep that
+		# header and append its own peer, or the API would see only CloudFront's address.
+		# Trusting every source is safe HERE because port 443 only accepts CloudFront (the
+		# security group) and the secret header is checked below; the API then skips
+		# exactly two hops (TRUST_PROXY_HOPS=2), so a forged first entry is never used.
+		trusted_proxies static 0.0.0.0/0 ::/0
+	}
+}
+
+{$SITE_ADDRESS} {
+	# Only OUR CloudFront distribution knows this secret. The security group already
+	# limits port 443 to CloudFront's addresses, but those are shared by every CloudFront
+	# customer: without this check, anyone could point their own distribution here and
+	# skip our caching and limits.
+	@notOurCloudFront not header X-Origin-Verify {$ORIGIN_VERIFY}
+
+	encode zstd gzip
+
+	# `route` runs these in the order written. (Outside a route Caddy sorts directives by
+	# its own fixed order, where `handle` comes before `respond`, and the check above was
+	# silently skipped: found by running this stack locally.) reverse_proxy answers the
+	# request, so the first line that matches is the last that runs.
+	route {
+		respond @notOurCloudFront "Not here. Use https://trellis.niteshkumar.xyz" 403
+		reverse_proxy /api/* api:8000
+		reverse_proxy web:3000
+	}
+}

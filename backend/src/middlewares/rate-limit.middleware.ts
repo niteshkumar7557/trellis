@@ -6,9 +6,10 @@
 // count separately and you would need a shared store such as Redis. A restart resets the
 // counts, which is acceptable for limits measured in minutes.
 //
-// The visitor is told apart by IP address. Behind Caddy that address arrives in the
-// X-Forwarded-For header, which is why src/app.ts sets "trust proxy" in production.
-// Without it, every visitor would look like Caddy and share one limit.
+// The visitor is told apart by IP address. Behind CloudFront and Caddy that address
+// arrives in the X-Forwarded-For header, which is why src/app.ts sets "trust proxy" to 2
+// in production (TRUST_PROXY_HOPS). Without it, every visitor would look like Caddy and
+// share one limit.
 
 import type { Request } from "express";
 import rateLimit from "express-rate-limit";

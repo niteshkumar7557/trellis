@@ -57,17 +57,18 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   the API, real sign-in, Google sign-in (on in development), the reset
   page, "how did it go?", the short sort, with MS.3) and MS (the new stuck ranking and
   prompt note rules) and M5 (GLM 5 on Bedrock in **Sydney**, tried against the real
-  service; `AI_PROVIDER=bedrock` in `backend/.env`) are done and on `main`. **Next up:
-  M7 (deploy)**, on 15 Nov. Open first: is the server hosted in Sydney too (Bedrock moved
-  there "close to the hosting"; `aws.md` still says Mumbai)? The `trellis` AWS profile
-  exists (account `631603562964`); still run the `docs/aws.md` §2 check every time.
+  service; `AI_PROVIDER=bedrock` in `backend/.env`) are done and on `main`. **M7
+  (deploy) is done: live at https://trellis.niteshkumar.xyz** since 14 Nov 2026 (Sydney,
+  behind CloudFront; on `backend/m7`, not merged). Release with `./deploy/release.sh`.
+  The `trellis` AWS profile exists (account `631603562964`); still run the `docs/aws.md`
+  §2 check every time.
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS and M5 went into `main` as
   one squashed commit each, on the owner's request; §0 still says merge commits. Ask
   for M7.
 - **Plan (re-planned 13 Nov 2026):** M3 on 13 Nov; M4, M6 and MS on 14 Nov; M5 and M7 on
   15 Nov. Testing with real users 18 to 21 Nov.
-- **AWS:** no resources created yet (Bedrock needs none). The plan and the setup steps
-  are in `docs/aws.md`.
+- **AWS:** everything is created and live, in Sydney; every resource id is in
+  `docs/aws.md` §9. CloudFront `E6RLEBVGF9SWB`, server `i-03c628dea103abc86`.
 - **Git:** `main` is the only branch. Each milestone gets its own branch from `main`
   (`backend/m2`, …); commit only there. **Push and merge only on the owner's say-so.** It goes
   into `main` with a **merge commit, never a squash**, and is deleted after.
@@ -106,9 +107,11 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 - **Storage:** Postgres for accounts and every student record; **Neo4j for the topic graph**
   (kept for v1, owner's call), but **the site must run without it**; statuses are derived,
   never stored.
-- **Hosting:** AWS free plan, Mumbai. One EC2 `t4g.small` with Docker Compose and Caddy;
-  backups in S3; DNS for `trellis.niteshkumar.xyz` in Route 53 (the parent domain stays at
-  GoDaddy). The free plan ends by 12 May 2027, and **running out of credits closes the
+- **Hosting:** AWS free plan, **Sydney** (`ap-southeast-2`): the free plan allows EC2
+  nowhere else (checked 14 Nov 2026, `aws.md` §3). **CloudFront** in front caches the
+  pages at edges in India; `/api/*` is never cached. One EC2 `t4g.small` with Docker
+  Compose and Caddy (`deploy/`); backups in S3; DNS for `trellis.niteshkumar.xyz` in
+  Route 53 (the parent domain stays at GoDaddy). The free plan ends by 12 May 2027, and **running out of credits closes the
   account**, so cost limits are uptime limits.
 - **Privacy:** the promise names its limits (design.md §11). No admin tool that reads
   records; no pgAdmin in production; backups expire after 14 days.

@@ -1,0 +1,10 @@
+# The nightly Postgres backup (docs/aws.md §7). Started by trellis-backup.timer.
+# Its output: journalctl -u trellis-backup
+[Unit]
+Description=Trellis: back up Postgres to S3
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/trellis/backup.sh

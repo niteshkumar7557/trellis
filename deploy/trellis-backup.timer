@@ -1,0 +1,12 @@
+# Every night at 21:00 UTC, which is 02:30 in India: the quietest hour for students.
+# Persistent: if the server was off at that time, the backup runs when it starts.
+# Next run: systemctl list-timers trellis-backup.timer
+[Unit]
+Description=Trellis: nightly Postgres backup
+
+[Timer]
+OnCalendar=*-*-* 21:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
