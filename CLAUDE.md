@@ -39,10 +39,13 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 - **Before any AWS action, run the account check in `docs/aws.md` §2.** The AWS tools on
   this machine were signed in to a different account. Never act on that one.
 
-## Where things stand (12 Nov 2026)
+## Where things stand (14 Nov 2026)
 
-- **Design:** reviewed on 12 Nov 2026. `design.md` v7, `backend-design.md` and `aws.md` are
-  the result. The docs are written; nothing in them beyond M0 and M1 is built yet.
+- **In one line:** every milestone of v1 (M0 to M7, MS, ML) is built, merged and **live at
+  https://trellis.niteshkumar.xyz**. Production runs `2e9ebc7` (the last code change on
+  `main`; later commits are docs only). Next: testing with real users, 18 to 21 Nov.
+- **Design:** reviewed on 12 Nov 2026 (`design.md` v7, `backend-design.md`, `aws.md`), and
+  kept in step with every change since; the docs describe the code as it stands.
 - **Frontend:** the screens are finished and connected to the API (M6, on `main`):
   signed in is **live** (the record from the backend), signed out is a **demo** on the
   sample student. The topic graphs are real (`shared/data/react-native.ts`, `redis.ts`,
@@ -62,8 +65,8 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   behind CloudFront; squashed into `main` and pushed, 14 Nov 2026). Release with `./deploy/release.sh`.
   The `trellis` AWS profile exists (account `631603562964`); still run the `docs/aws.md`
   §2 check every time.
-- **AI limits per account (ML, 14 Nov 2026): built on the branch `feature/ai-limits`,
-  not merged or deployed yet.** Each account has $0.06 a day and $0.25 a week of AI
+- **AI limits per account (ML, 14 Nov 2026): on `main` (merge commit `6159270`) and
+  live.** Each account has $0.06 a day and $0.25 a week of AI
   (`AI_USER_DAILY_USD`, `AI_USER_WEEKLY_USD`), inside the site's $0.50 a day. Every model
   call is reserved in `ai_calls` under a lock before Bedrock is called (migration 0019,
   `src/ai/limits.ts`). Students see a percentage in the sidebar and in Settings
@@ -76,17 +79,33 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   `components/brand/`; the tab icon, touch icon, manifest, share image and 404 page are
   new. A signed-in visitor gets "Open your map" there, and `/login` and `/signup` send
   them on. See `docs/frontend.md` §3a and §3b.
-- **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7 and the landing page went
-  into `main` as one squashed commit each, on the owner's request; §0 still says merge commits. Ask
-  for the next one.
-- **Plan (re-planned 13 Nov 2026):** M3 on 13 Nov; M4, M6 and MS on 14 Nov; M5 and M7 on
-  15 Nov. Testing with real users 18 to 21 Nov.
+- **Topic difficulty (14 Nov 2026): on `main` and live** (`d67de24`). Every topic is Easy,
+  Medium or Hard; the helper no longer asks "what felt easy, and was anything hard?" after
+  Got it on an easy topic. Details under "Decisions" below and in `design.md` §7.
+- **Small fixes (14 Nov 2026): on `main` and live** (`2e9ebc7`):
+  - suggestion chips under the helper's **latest** reply only, worked out when shown from
+    the record (`suggestionsFor` in `shared/helper.ts`), never saved with the message and
+    never an invented problem; "Nothing to add" while it waits on its question;
+  - `/map` with no goal anywhere says "Your map", not "React Native";
+  - a big topic's soft link is drawn and named once (it showed "helps" twice);
+  - long chips wrap inside their border.
+- **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
+  topic difficulty and the small fixes went into `main` as one squashed commit each, on the
+  owner's request; ML went in with a merge commit. `backend-design.md` §0 still says merge
+  commits. Ask which for the next one.
+- **Releasing:** run `./deploy/release.sh` on its own, **never piped** (`| tail` hides a
+  failed build behind a success code). Every build downloads IBM Plex Sans from Google
+  Fonts; on 14 Nov one build failed there for a moment (`next-font-loader … reading '1'`).
+  Production keeps running the old release when a build fails; run it again.
+- **Plan (re-planned 13 Nov 2026):** everything planned for 13 to 15 Nov was done by
+  14 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** everything is created and live, in Sydney; every resource id is in
   `docs/aws.md` §9. CloudFront `E6RLEBVGF9SWB`, server `i-03c628dea103abc86`.
-- **Git:** `main` is the only branch. Each milestone gets its own branch from `main`
-  (`backend/m2`, …); commit only there. **Push and merge only on the owner's say-so.** It goes
-  into `main` with a **merge commit, never a squash**, and is deleted after.
-  No Claude co-author line.
+- **Git:** `main` is the only branch, in step with GitHub. Each piece of work gets its own
+  branch from `main` (`backend/m2`, `feature/…`, `fix/…`); commit only there. **Push,
+  merge and deploy only on the owner's say-so.** The rule in `backend-design.md` §0 is a
+  merge commit; the owner has asked for squashes since 14 Nov (see "Merging"), so ask.
+  The branch is deleted after. No Claude co-author line.
 
 ## Decisions already made (don't re-ask; the reasons are in design.md §16)
 

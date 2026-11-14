@@ -15,11 +15,13 @@ to your own AI (ChatGPT, Claude, Gemini), from what you know, what you've said a
 and fixed instructions; no AI writes it. The learning happens there; Trellis does the part your AI
 can't: it knows the shape of the subject and your history inside it.
 
-**Status:** v1 in progress. The frontend is connected to the backend: accounts (email and
-password, Google to come), each student's record, and the helper on its rule-based reader.
-Signed-out visitors get a demo on a sample student. Still to come: the AI reader for the
-helper, two rule changes, and hosting. It will be hosted on AWS
-at `trellis.niteshkumar.xyz` (`docs/aws.md`).
+**Status:** v1 is built and live at
+[trellis.niteshkumar.xyz](https://trellis.niteshkumar.xyz) (AWS, Sydney, behind
+CloudFront; `docs/aws.md`). Accounts (email and password, Google), each student's record,
+the helper (GLM 5 on Amazon Bedrock reads typed messages, with rules as the fallback and a
+daily and weekly AI allowance per account), and an Easy / Medium / Hard rating on every
+topic. Signed-out visitors get a demo on a sample student. Testing with real users starts
+18 Nov 2026.
 
 ---
 

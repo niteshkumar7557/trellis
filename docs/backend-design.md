@@ -1326,13 +1326,17 @@ Update this table at the start of each planning session from `git log` and merge
 | M7.1 The production compose file, Caddy behind CloudFront, the deploy scripts, `TRUST_PROXY_HOPS` | done | `main`, 14 Nov 2026 (squashed) |
 | M7.2 The AWS resources (`docs/aws.md` §9), CloudFront; first release; Neo4j's limits fixed | done; **live at https://trellis.niteshkumar.xyz** | `main`, 14 Nov 2026 (squashed) |
 | M7.3 Nightly backup, restore test, smoke test | done (Google sign-in to be tried by the owner in a browser) | `main`, 14 Nov 2026 (squashed) |
+| ML.1 Migration 0019, the money rules, reserve and settle under a lock | done; live | `main`, 14 Nov 2026 (merge commit `6159270`) |
+| ML.2 `GET /api/usage`, `usage` on state and helper replies, `npm run ai:spend` | done; live | `main`, 14 Nov 2026 (merge commit `6159270`) |
+| ML.3 The sidebar meter, Settings "AI usage", the chat's basic-mode notice | done; checked in a browser against the real API with Bedrock unreachable; live | `main`, 14 Nov 2026 (merge commit `6159270`) |
+| Landing page and brand assets (frontend only) | done; live | `main`, 14 Nov 2026 (squashed, `253c556`) |
+| Topic difficulty: `Topic.difficulty`, stored in Neo4j and returned with every topic; no "what felt easy?" after an easy topic | done; live | `main`, 14 Nov 2026 (squashed, `d67de24`) |
+| Helper suggestion chips (`suggestionsFor`), "Nothing to add" read as declining, three map and chat fixes | done; live | `main`, 14 Nov 2026 (squashed, `2e9ebc7`) |
 
-| ML.1 Migration 0019, the money rules, reserve and settle under a lock | done | `feature/ai-limits`, 14 Nov 2026 (not merged or deployed yet) |
-| ML.2 `GET /api/usage`, `usage` on state and helper replies, `npm run ai:spend` | done | `feature/ai-limits`, 14 Nov 2026 |
-| ML.3 The sidebar meter, Settings "AI usage", the chat's basic-mode notice | done; checked in a browser against the real API with Bedrock unreachable | `feature/ai-limits`, 14 Nov 2026 |
-
-**Expected test counts after ML:** 279 passed in `npm test`, 112 in
-`npm run test:integration`, none skipped (checked 14 Nov 2026). After M7.1: 250 and 86.
+**Expected test counts now:** 300 passed in `npm test` (checked 14 Nov 2026, after
+`2e9ebc7`). `npm run test:integration` was 112 after ML and has not been run since: the
+later changes added unit tests only, so expect 112, and check it the next time Docker's
+databases are up. After ML: 279 and 112. After M7.1: 250 and 86.
 After M5: 246 and 86. After MS
 they were 211 and 81. After M6 they were 193 and 81; after M4, 178 and 77. M6 was also checked by
 hand in a browser against the real API (sign-up to delete, a reset link, the helper's

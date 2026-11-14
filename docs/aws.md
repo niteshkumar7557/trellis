@@ -455,6 +455,14 @@ One command on the laptop, from the repo root, on a committed tree:
 
 Then check `https://trellis.niteshkumar.xyz/api/health`.
 
+**When a build fails:** nothing has changed on the server yet (steps 3 to 5 never run),
+so the site keeps running the previous release. Run the script on its own, not piped
+(`| tail` turns its failure into a success code). The frontend build downloads its font
+from Google Fonts; on 14 Nov 2026 one build failed there for a moment
+(`next-font-loader … Cannot read properties of null (reading '1')`) and the next run
+passed. If it keeps failing, the next step is to serve the font from the repo with
+`next/font/local`, so a build needs no network.
+
 **Going back:** on the server, `sudo /opt/trellis/deploy.sh <previous tag>`, then clear
 the cache (step 5 by hand: `aws cloudfront create-invalidation --distribution-id <id>
 --paths "/*"`). Migrations only move forward,
