@@ -17,7 +17,7 @@
 
 .titleRow {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   flex-wrap: wrap;
   gap: 8px 16px;
   min-width: 0;
@@ -31,27 +31,46 @@
   letter-spacing: -0.01em;
 }
 
-.goalSelect {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+/* Subject and goal: a small label over each, bottoms aligned. */
+.subjectField,
+.goalField {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
-.goalSelect select {
-  appearance: none;
-  height: var(--control-height);
-  padding: 0 32px 0 12px;
-  border: 1px solid var(--control);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  font-size: 14px;
-  max-width: 340px;
-  text-overflow: ellipsis;
-}
-.goalSelect svg {
-  position: absolute;
-  right: 10px;
-  pointer-events: none;
+.goalField { max-width: 340px; }
+/* The name as tall as the goal button, so the two small labels line up. */
+.subjectField .title { line-height: var(--control-height); }
+.eyebrow {
   color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 14px;
+}
+
+/* After a goal change: what it did, with Undo. */
+.goalNote {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.goalNoteActions { display: inline-flex; gap: 12px; white-space: nowrap; }
+.goalNote strong { color: var(--text); font-weight: 500; }
+.goalNote button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .findings {

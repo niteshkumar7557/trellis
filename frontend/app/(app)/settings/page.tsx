@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import ui from "@/components/ui/ui.module.css";
 import { goalById, subjectById } from "@shared/data";
@@ -18,9 +18,7 @@ export default function SettingsPage() {
   const [name, setName] = useState(student.name);
   const [accountSaved, setAccountSaved] = useState(false);
   const [themeSaved, setThemeSaved] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const [password, setPassword] = useState("");
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const notes = experiences.length;
   const goals = Object.entries(goalIds).filter(([, g]) => g);
@@ -48,14 +46,10 @@ export default function SettingsPage() {
     }
   };
 
-  const deleteRecord = async () => {
-    setDeleteError(null);
-    try {
-      await act.erase(needsPassword ? password : undefined);
-      router.push(live ? "/" : "/start");
-    } catch (err) {
-      setDeleteError(err instanceof ApiError ? err.message : "Something went wrong.");
-    }
+  // Throws back to the dialog on failure, so it can show the error where the student is.
+  const deleteRecord = async (password?: string) => {
+    await act.erase(needsPassword ? password : undefined);
+    router.push(live ? "/" : "/start");
   };
 
   return (
@@ -84,9 +78,15 @@ export default function SettingsPage() {
           </label>
           <label className={styles.field}>
             <span>Email</span>
-            {/* Read-only: changing it needs a way to prove the new address is yours, which
-                comes with email in a later version (backend-design.md §4). */}
-            <input type="email" value={student.email} readOnly aria-readonly="true" />
+            {/* Disabled, not just read-only: read-only looked editable and invited a click
+                that did nothing. Changing it needs a way to prove the new address is yours,
+                which comes with email in a later version (backend-design.md §4). A disabled
+                input isn't submitted with the form, which is fine: the form only saves the
+                name. */}
+            <input type="email" value={student.email} disabled aria-describedby="email-note" />
+            <small id="email-note" className={styles.hint}>
+              The email you sign in with can&rsquo;t be changed yet.
+            </small>
           </label>
           <div className={styles.panelFoot}>
             {accountSaved && <span className={styles.stamp}>Saved</span>}
@@ -208,21 +208,6 @@ export default function SettingsPage() {
           </p>
         </div>
         <div className={styles.panel}>
-          <label className={styles.field}>
-            <span>Type “delete my record” to confirm</span>
-            <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoComplete="off" />
-          </label>
-          {needsPassword && (
-            <label className={styles.field}>
-              <span>Your password</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-            </label>
-          )}
-          {deleteError && (
-            <p className={styles.prose} role="alert">
-              {deleteError}
-            </p>
-          )}
           <div className={styles.panelFoot}>
             {!live && (
               <button
@@ -236,18 +221,119 @@ export default function SettingsPage() {
                 Restore the sample data
               </button>
             )}
-            <button
-              type="button"
-              className={ui.danger}
-              disabled={confirmText.trim().toLowerCase() !== "delete my record" || (needsPassword && !password)}
-              onClick={deleteRecord}
-            >
+            <button type="button" className={ui.danger} onClick={() => setConfirming(true)}>
               <Icon name="trash" />
-              Delete my record
+              Delete my record…
             </button>
           </div>
         </div>
+        {confirming && (
+          <ConfirmDelete
+            needsPassword={needsPassword}
+            onCancel={() => setConfirming(false)}
+            onConfirm={deleteRecord}
+          />
+        )}
       </section>
     </div>
+  );
+}
+
+const PHRASE = "delete my record";
+
+/**
+ * The last step before deleting, as a pop-up: typing the phrase (and the password, for a
+ * password account) only appears once the student has asked to delete, so the settings
+ * page doesn't show a half-filled destructive form to everyone who opens it.
+ *
+ * A native <dialog> opened with showModal(): the browser traps focus inside it, closes it
+ * on Esc, makes the page behind inert and puts it above everything (the "top layer").
+ * Writing that by hand, as the ⌘K search does for its own reasons, is a lot more code to
+ * get the same thing.
+ */
+function ConfirmDelete({
+  needsPassword,
+  onCancel,
+  onConfirm,
+}: {
+  needsPassword: boolean;
+  onCancel: () => void;
+  onConfirm: (password?: string) => Promise<void>;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [text, setText] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const ready = text.trim().toLowerCase() === PHRASE && (!needsPassword || password.length > 0);
+
+  useEffect(() => {
+    const dialog = ref.current!;
+    dialog.showModal();
+    return () => dialog.close();
+  }, []);
+
+  return (
+    <dialog
+      ref={ref}
+      className={styles.dialog}
+      aria-labelledby="delete-title"
+      aria-describedby="delete-what"
+      // Esc fires "cancel"; let the parent unmount it instead of the browser closing it
+      // behind React's back.
+      onCancel={(e) => {
+        e.preventDefault();
+        onCancel();
+      }}
+      // A press on the dim area outside the box lands on the <dialog> element itself.
+      onClick={(e) => e.target === e.currentTarget && !busy && onCancel()}
+    >
+      <form
+        className={styles.dialogBox}
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (!ready) return;
+          setBusy(true);
+          setError(null);
+          try {
+            await onConfirm(password);
+          } catch (err) {
+            setError(err instanceof ApiError ? err.message : "Something went wrong.");
+            setBusy(false);
+          }
+        }}
+      >
+        <h2 id="delete-title" className={styles.dialogTitle}>
+          Delete your record?
+        </h2>
+        <p id="delete-what" className={styles.prose}>
+          Your account, goals, sort, check-ins and notes are removed for good. There is no undo.
+        </p>
+        <label className={styles.field}>
+          <span>Type &ldquo;{PHRASE}&rdquo; to confirm</span>
+          <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" autoFocus />
+        </label>
+        {needsPassword && (
+          <label className={styles.field}>
+            <span>Your password</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+          </label>
+        )}
+        {error && (
+          <p className={styles.dialogError} role="alert">
+            {error}
+          </p>
+        )}
+        <div className={styles.panelFoot}>
+          <button type="button" className={ui.ghost} onClick={onCancel} disabled={busy}>
+            Cancel
+          </button>
+          <button type="submit" className={ui.danger} disabled={!ready || busy}>
+            <Icon name="trash" />
+            {busy ? "Deleting…" : "Delete my record"}
+          </button>
+        </div>
+      </form>
+    </dialog>
   );
 }

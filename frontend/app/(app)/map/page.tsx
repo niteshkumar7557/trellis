@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chat } from "@/components/map/Chat";
+import { GoalChangeNote, GoalPicker, type GoalChange } from "@/components/map/GoalPicker";
 import { layoutFor } from "@/components/map/layout";
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { BigPanel, TopicPanel } from "@/components/map/Rail";
@@ -12,7 +13,7 @@ import styles from "@/components/map/map.module.css";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
-import { goalsOf, isBig, subjectById, topicById } from "@shared/data";
+import { isBig, subjectById, topicById } from "@shared/data";
 import {
   daysBetween,
   importanceOf,
@@ -35,6 +36,9 @@ export default function MapPage() {
   const helper = useHelper();
   const { asking } = useStore();
   const rail = useRail();
+  // The last goal change, so the header can say what it did (and undo it). Tied to its
+  // subject: switching subjects hides it rather than showing it on the wrong map.
+  const [change, setChange] = useState<(GoalChange & { subjectId: string }) | null>(null);
 
   // A question typed into search goes to the helper.
   useEffect(() => {
@@ -114,19 +118,32 @@ export default function MapPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.titleRow}>
-          <h1 className={styles.title}>{subject.name}</h1>
-          <label className={styles.goalSelect}>
-            <span className="visually-hidden">Goal</span>
-            <select value={goal.id} onChange={(e) => void act.setGoal(subjectId, e.target.value)}>
-              {goalsOf(subjectId).map((g) => (
-                <option key={g.id} value={g.id}>
-                  Goal: {g.name}
-                </option>
-              ))}
-            </select>
-            <Icon name="chevron" />
-          </label>
+          {/* Subject and goal each get a small label: they were easy to mix up. */}
+          <div className={styles.subjectField}>
+            <span className={styles.eyebrow}>Subject</span>
+            <h1 className={styles.title}>{subject.name}</h1>
+          </div>
+          <GoalPicker
+            subjectId={subjectId}
+            goal={goal}
+            statuses={statuses}
+            onChange={(c) => {
+              setChange({ ...c, subjectId });
+              void act.setGoal(subjectId, c.to);
+            }}
+          />
         </div>
+
+        {change?.subjectId === subjectId && change.to === goal.id && (
+          <GoalChangeNote
+            change={change}
+            onUndo={() => {
+              setChange(null);
+              void act.setGoal(subjectId, change.from);
+            }}
+            onDismiss={() => setChange(null)}
+          />
+        )}
 
         {/* After a goal change: the new goal's areas that were never sorted, offered as a
             short sort. Only for a student who sorted this subject before; a first sort

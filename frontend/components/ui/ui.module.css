@@ -76,6 +76,9 @@
   border-color: var(--stuck);
 }
 .danger:hover { background: var(--stuck-bg); border-color: var(--stuck); }
+/* Until the confirmation is typed: plainly not ready, like every other disabled button. */
+.danger:disabled,
+.danger:disabled:hover { color: var(--faint); background: var(--raised); border-color: var(--border); }
 
 /* Segmented control: as wide as its options. */
 .segmented {

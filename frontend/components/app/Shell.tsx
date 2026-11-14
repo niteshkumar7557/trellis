@@ -69,6 +69,9 @@ function SidebarBody() {
   const router = useRouter();
   const { subjectId, goalIds, statuses, student, mode, dispatch } = useStore();
 
+  // "Active" means a goal is picked: that's when a subject has a route to show progress on.
+  const active = subjects.filter((s) => goalIds[s.id]);
+
   const open = (id: SubjectId) => {
     dispatch({ type: "subject", subjectId: id });
     router.push(goalIds[id] ? "/map" : "/start");
@@ -91,10 +94,9 @@ function SidebarBody() {
       </nav>
 
       <div className={styles.group}>
-        <p className={styles.groupLabel}>Subjects</p>
-        {subjects.map((s) => {
-          const goal = goalIds[s.id] ? goalById.get(goalIds[s.id]!) : null;
-          const sum = goal ? summarise(goal, statuses) : null;
+        {active.length > 0 && <p className={styles.groupLabel}>Your subjects</p>}
+        {active.map((s) => {
+          const sum = summarise(goalById.get(goalIds[s.id]!)!, statuses);
           return (
             <button
               key={s.id}
@@ -105,23 +107,22 @@ function SidebarBody() {
             >
               <span className={styles.subjectName}>{s.shortName}</span>
               <span className={`${styles.subjectFig} num`}>
-                {sum ? (
-                  <>
-                    {sum.done}
-                    <span className={styles.of}>/{sum.route.length}</span>
-                  </>
-                ) : (
-                  <span className={styles.of}>Start</span>
-                )}
+                {sum.done}
+                <span className={styles.of}>/{sum.route.length}</span>
               </span>
-              {sum && (
-                <span className={styles.track} aria-hidden="true">
-                  <span style={{ width: `${(sum.done / sum.route.length) * 100}%` }} />
-                </span>
-              )}
+              <span className={styles.track} aria-hidden="true">
+                <span style={{ width: `${(sum.done / sum.route.length) * 100}%` }} />
+              </span>
             </button>
           );
         })}
+
+        {/* Subjects not started yet aren't listed here; "New subject" goes to /start,
+            which shows only those (and the request form for anything else). */}
+        <Link href="/start" className={styles.newSubject}>
+          <Icon name="plus" size={14} />
+          New subject
+        </Link>
       </div>
 
       <div className={styles.user}>

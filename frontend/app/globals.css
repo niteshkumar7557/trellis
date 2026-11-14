@@ -139,6 +139,44 @@ button {
   color: var(--text);
 }
 
+/*
+  Scrollbars, everywhere, in the theme's colours: a thin rounded thumb in --control on a
+  clear track. The OS default (a wide grey gutter, white even in dark mode on Windows)
+  looked like it belonged to another app.
+
+  Two ways to style them, because browsers disagree:
+  - Chrome, Edge and Safari read ::-webkit-scrollbar, which allows the rounded,
+    inset thumb and a hover colour.
+  - Firefox only reads the standard scrollbar-width / scrollbar-color. Chrome reads those
+    too, and when they are set it IGNORES ::-webkit-scrollbar, so they are given only to
+    browsers without ::-webkit-scrollbar (the @supports below), i.e. Firefox.
+  The colours follow light and dark on their own, since they are tokens.
+*/
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  /* The transparent border plus padding-box clip draws a 6px thumb inside a 10px gutter,
+     so it doesn't touch the edge of the panel it scrolls. */
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--control) padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--faint) padding-box;
+}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--control) transparent;
+  }
+}
+
 .num {
   font-variant-numeric: tabular-nums;
 }

@@ -73,6 +73,51 @@
   outline: none;
 }
 .field input:focus { border-color: var(--control); }
+/* The email: plainly not editable, so nobody clicks it expecting to change it. */
+.field input:disabled {
+  background: var(--raised);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.hint {
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-weight: 400;
+}
+
+/* The delete confirmation (ConfirmDelete). */
+.dialog {
+  width: min(440px, calc(100vw - 32px));
+  /* Tailwind's reset sets margin: 0 on everything, which undoes the browser's centring
+     of a modal <dialog> (it centres with margin: auto). */
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-float);
+}
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--ground) 70%, transparent);
+  backdrop-filter: blur(4px);
+}
+.dialogBox {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+.dialogTitle {
+  margin: 0;
+  font-size: var(--fs-section);
+  font-weight: 600;
+  color: var(--stuck);
+}
+.dialogError {
+  margin: 0;
+  color: var(--stuck);
+  font-size: 14px;
+}
 
 .panelFoot {
   display: flex;

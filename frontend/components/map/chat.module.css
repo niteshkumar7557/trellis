@@ -166,7 +166,8 @@
   justify-content: stretch !important;
   gap: 6px !important;
 }
-.changeNote select,
+/* The note-kind dropdown keeps its own width instead of stretching. */
+.changeNote > div:first-child { justify-self: start; }
 .changeNote textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -175,10 +176,10 @@
   color: var(--text);
   font: inherit;
   font-size: 13px;
+  padding: 6px 8px;
+  line-height: 19px;
+  resize: vertical;
 }
-.changeNote select { justify-self: start; width: auto; height: 28px; padding: 0 6px; }
-.changeNote textarea { padding: 6px 8px; line-height: 19px; resize: vertical; }
-.changeNote select:focus,
 .changeNote textarea:focus { outline: 2px solid var(--text); outline-offset: -1px; }
 .changeNote > span { color: var(--text); }
 

@@ -74,8 +74,11 @@ dependencies. `next.config.ts` sets `devIndicators: false`.
 | `/check-ins` | Every update and note; edit or delete | `app/(app)/check-ins/page.tsx` |
 | `/settings` | Account, theme, export, delete everything, restore sample | `app/(app)/settings/page.tsx` |
 
-The app screens share `components/app/Shell.tsx`: sidebar (pages, subjects with progress,
-the student) and top bar (search trigger, theme button).
+The app screens share `components/app/Shell.tsx`: sidebar (pages, the student's subjects
+with progress, the student) and top bar (search trigger, theme button). The sidebar lists
+only **started** subjects (a goal is picked). **"New subject"** goes to `/start`, which lists
+only subjects not started yet, plus the request form for anything else; once every subject
+is started, it shows just that form.
 
 ### The map page
 
@@ -83,24 +86,32 @@ the student) and top bar (search trigger, theme button).
 ┌ frame ────────────────────────────────────────────────────────────────────────┐
 │ Trellis            [ Search topics, notes and pages  ⌘K ]              ◐  N   │
 │ ┌ sidebar ┐ ┌ sheet ────────────────────────────────────────────────────────┐ │
-│ │ Map     │ │ React Native  Goal ▾                      18/31 · 13 · 48     │ │
+│ │ Map     │ │ Subject       Goal                        18/31 · 13 · 48     │ │
+│ │         │ │ React Native  [Build and ship… ▾]                             │ │
 │ │ Check-  │ │ [◆ Stuck: FlatList · may be State] [○ Next: State]  Map|List  │ │
 │ │  ins    │ │ ┌ canvas ───────────────────────────┐ ┌ helper (drag ↔) ───┐ │ │
 │ │ Settings│ │ │  graph grows upward    ┌ topic ─┐ │ │ chat, confirm cards│ │ │
 │ │         │ │ │  arrows point the way  │ sheet  │ │ │ ▸ Prompt for State │ │ │
-│ │ Subjects│ │ │  you learn             │        │ │ │                    │ │ │
-│ │ React N.│ │ │               [− + Fit]└────────┘ │ │ [ What did you…  ↵]│ │ │
-│ │ Redis   │ │ └───────────────────────────────────┘ └────────────────────┘ │ │
+│ │ Your    │ │ │  you learn             │        │ │ │                    │ │ │
+│ │ subjects│ │ │               [− + Fit]└────────┘ │ │ [ What did you…  ↵]│ │ │
+│ │ React N.│ │ └───────────────────────────────────┘ └────────────────────┘ │ │
+│ │ + New   │ │                                                              │ │
 │ │ Nitesh  │ └──────────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Header:** subject, goal select, figures (done / to learn / you can skip, counted in
+- **Header:** subject and goal, each with a small label (`GoalPicker.tsx`), figures (done / to learn / you can skip, counted in
   subtopics), Map|List toggle, and the **finding buttons**: *Stuck* (hover draws the "may be
   why" trace), *Next*, *New on your map*. Each opens its topic.
+- **Subject vs goal:** the subject is what you learn; the goal is how far you go in it. The
+  goal decides the route, so changing it changes Next, the figures and "Can skip"; check-ins,
+  notes and the sort stay. Each option in the goal dropdown says what picking it would do
+  ("31 topics, 19 done · 13 drop off vs now"), and after a change a note says what changed,
+  with Undo.
 - **Canvas** (`MapCanvas`): the map; §7.
 - **Topic sheet:** clicking a topic opens `TopicPanel` (subtopic) or `BigPanel` (big topic)
   in a sheet over the canvas's right edge. Esc or × closes it, and the helper stays put.
+  "Your prompt" shows a 160px preview that fades out, with "Show the whole prompt".
 - **Helper** (right column): `Chat` driven by `useHelper`; §8. You can drag its edge
   (320–560px, or arrow keys on the edge) or fold it to a 52px strip. Width and folded state
   are saved in localStorage `trellis-helper-width`.
@@ -113,11 +124,13 @@ frontend/
   app/                     routes (above); globals.css holds every token
   components/
     app/Shell.tsx          sidebar + top bar;   Search.tsx  ⌘K full-page search (§9)
+    ui/Dropdown.tsx        our own dropdown (ARIA listbox); used instead of every <select>
     map/
       layout.ts            dagre layout: big topics, frames, links, midpoints, arrowheads (§7)
       MapCanvas.tsx        pan/zoom camera, hover chains, labels, trace, frame-open motion (§7)
       Rail.tsx             TopicPanel, BigPanel, PromptView (the three-part prompt), rows
       Chat.tsx             the helper's thread, confirm cards, folded prompt cards, compose
+      GoalPicker.tsx       the goal dropdown, what a goal change does, the note after one
       useHelper.ts         runs the conversation against shared/helper.ts (the API later)
       RouteList.tsx        the list view (and the phone view), grouped by big topic
       MiniMap.tsx          the small whole-map drawing on /start
@@ -330,9 +343,13 @@ shows in the shell's error bar (`error`, `fail()`). `dispatch` stays for screen 
   the latest 50 per subject).
 - **"How did State go?"** (`HowDidItGo` in `Chat.tsx`) uses `awaitingReport()`; the short
   sort after a goal change uses `unsortedAreas()` and `/start/sort?only=unsorted`.
-- **Settings in live mode:** the name saves to the server, the email is read-only, Download
-  uses `GET /api/export`, Delete asks for the password on password accounts, and there is
-  Log out. "Restore the sample data" exists only in demo mode.
+- **Settings in live mode:** the name saves to the server, the email is disabled (not
+  editable, and looks it), Download uses `GET /api/export`, and there is Log out. "Delete my
+  record…" opens a pop-up (a native `<dialog>`) where the student types "delete my record"
+  and, on password accounts, the password. "Restore the sample data" exists only in demo mode.
+- **Scrollbars** are themed in `globals.css` (thin, `--control` thumb): `::-webkit-scrollbar`
+  for Chrome and Safari, `scrollbar-color` only where that isn't supported (Firefox), since
+  Chrome ignores the first when the second is set.
 
 ## 12. Data contract
 
@@ -385,7 +402,7 @@ Done in M6.2, except the topic-panel wording: no "Gemini" was left in the UI.
 | Sign-up page | "No streaks, no reminders, no one watching." | Keep it, and add one line: *"What you type to the helper is read by an AI model to work out the topic. Nothing is saved until you confirm."* |
 | Settings → Privacy | "No teacher, admin, group organiser or classmate can see it…" | The exact promise in design.md §11: no other person has a screen that shows your record; the operator can technically reach the database and does not read it; helper messages are read by an AI model inside our AWS account, not used for training |
 | Settings → Delete everything | "permanently. There is no undo." | Add: *"Backups that still hold it are deleted within 14 days."* Ask for the password again when the account has one |
-| Settings → Account | Email is an editable field | Read-only in v1. Changing it needs a way to verify the new address |
+| Settings → Account | Email is an editable field | Disabled in v1. Changing it needs a way to verify the new address |
 | Topic panel and design copy | "ChatGPT, Claude or Gemini" | "ChatGPT or Claude", with Copy for any other AI. Gemini has no link that pre-fills a prompt |
 
 ### Planned changes to the data contract (`shared/types.ts`)

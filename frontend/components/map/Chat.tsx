@@ -14,6 +14,7 @@ import { buildPrompt, chatGptUrl, claudeUrl } from "@shared/prompt";
 import { useStore } from "@/lib/store";
 import type { Card, ChatMessage, ExperienceKind, Outcome, Proposal } from "@shared/types";
 import { PromptView } from "./Rail";
+import { Dropdown } from "@/components/ui/Dropdown";
 import styles from "./chat.module.css";
 import type { Helper } from "./useHelper";
 
@@ -283,13 +284,13 @@ function ConfirmCard({
           <li key={i} className={styles.changeNote}>
             {open ? (
               <>
-                <select value={e.kind} onChange={(ev) => setExperience(i, { kind: ev.target.value as ExperienceKind })} aria-label="What kind of note">
-                  {KINDS.map((k) => (
-                    <option key={k.value} value={k.value}>
-                      {k.label}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  label="What kind of note"
+                  size="sm"
+                  value={e.kind}
+                  options={KINDS}
+                  onChange={(kind) => setExperience(i, { kind })}
+                />
                 <textarea rows={2} value={e.text} onChange={(ev) => setExperience(i, { text: ev.target.value, line: tidy(ev.target.value) })} aria-label="Your words" />
               </>
             ) : (

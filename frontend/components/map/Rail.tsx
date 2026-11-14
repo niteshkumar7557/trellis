@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark, StatusPill } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
@@ -109,7 +109,8 @@ export function TopicPanel({ topic, statuses, checkIns, experiences, importance,
 
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Your prompt</h3>
-        <PromptView prompt={prompt} topicId={topic.id} />
+        {/* key: a different topic gets a fresh, collapsed preview. */}
+        <PromptView key={topic.id} prompt={prompt} topicId={topic.id} />
       </section>
 
       <section className={styles.section}>
@@ -283,9 +284,32 @@ export function PromptView({ prompt, topicId, compact = false }: { prompt: Promp
   const { act } = useStore();
   // Taking the prompt is recorded (so the helper can ask how it went); looking at it isn't.
   const took = (via: "copy" | "chatgpt" | "claude") => void act.tookPrompt(topicId, via);
+  // In the topic panel the prompt starts as a short preview: the full one pushed "How did
+  // it go?" and the notes below the fold, and the student copies it, not reads it. The
+  // button appears only when there's more than the preview shows.
+  const box = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || compact) return;
+    // Measured again when the panel is resized, since a narrower panel wraps more lines.
+    const check = () => setOverflows(el.scrollHeight > el.clientHeight + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [compact, prompt.text]);
+
   return (
     <div className={styles.promptView} data-compact={compact || undefined}>
-      <div className={styles.prompt}>
+      <div
+        ref={box}
+        id={`prompt-${topicId}`}
+        className={styles.prompt}
+        data-expanded={expanded || undefined}
+        data-clipped={(!compact && !expanded && overflows) || undefined}
+      >
         <p className={styles.promptPart}>
           <span className={styles.promptLabel}>Known</span>
           {prompt.known}
@@ -316,6 +340,18 @@ export function PromptView({ prompt, topicId, compact = false }: { prompt: Promp
           </p>
         )}
       </div>
+      {!compact && (overflows || expanded) && (
+        <button
+          type="button"
+          className={styles.promptToggle}
+          aria-expanded={expanded}
+          aria-controls={`prompt-${topicId}`}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? "Show less" : "Show the whole prompt"}
+          <Icon name="chevron" size={14} />
+        </button>
+      )}
       <div className={styles.actions}>
         <button
           type="button"

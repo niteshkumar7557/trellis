@@ -254,13 +254,39 @@
   background: var(--raised);
   font-size: 14px;
   line-height: 21px;
-  max-height: 320px;
-  overflow-y: auto;
+  /* A preview: half of the 320px it used to show. The whole prompt is one click away. */
+  max-height: 160px;
+  overflow: hidden;
 }
+.prompt[data-expanded] {
+  max-height: none;
+}
+/* Fade the last lines out so it's plain there's more below. A mask only uses the
+   colour's opacity, so any opaque token works; --text is just one that always is. */
+.prompt[data-clipped] {
+  -webkit-mask-image: linear-gradient(to bottom, var(--text) 60%, transparent);
+  mask-image: linear-gradient(to bottom, var(--text) 60%, transparent);
+}
+.promptToggle {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: -4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.promptToggle:hover { text-decoration: underline; text-underline-offset: 2px; }
+.promptToggle[aria-expanded="true"] svg { transform: rotate(180deg); }
 .promptView[data-compact] .prompt {
   font-size: 13px;
   line-height: 19px;
   max-height: 200px;
+  overflow-y: auto;
 }
 /* Each of the three parts says where it comes from. */
 .promptPart {

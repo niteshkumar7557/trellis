@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusPill } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
-import { TopicOptions } from "@/components/map/TopicOptions";
+import { topicOptions } from "@/components/map/TopicOptions";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { subjectById, subjects, topicById } from "@shared/data";
 import { relativeDay } from "@shared/graph";
 import { useStore } from "@/lib/store";
@@ -154,12 +155,17 @@ function Editor({ checkIn, onSave, onCancel }: { checkIn: CheckIn; onSave: (c: C
         <input value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} />
       </label>
       <div className={styles.editRow}>
-        <label className={styles.editField}>
-          <span>Topic</span>
-          <select value={draft.topicId} onChange={(e) => setDraft({ ...draft, topicId: e.target.value })}>
-            <TopicOptions first={topicById.get(draft.topicId)?.subjectId ?? "react-native"} />
-          </select>
-        </label>
+        <div className={styles.editField}>
+          <span aria-hidden="true">Topic</span>
+          <Dropdown
+            label="Topic"
+            block
+            menuWidth={320}
+            value={draft.topicId}
+            options={topicOptions(topicById.get(draft.topicId)?.subjectId ?? "react-native")}
+            onChange={(topicId) => setDraft({ ...draft, topicId })}
+          />
+        </div>
         <div className={styles.editField}>
           <span id={`o-${checkIn.id}`}>How it went</span>
           <div className={ui.segmented} role="group" aria-labelledby={`o-${checkIn.id}`}>

@@ -115,6 +115,22 @@
   border-radius: 2px;
 }
 
+/* "New subject": quieter than the subjects in progress. */
+.newSubject {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin-top: 4px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.newSubject:hover { color: var(--text); background: color-mix(in srgb, var(--active) 55%, transparent); }
+
 .user {
   display: flex;
   align-items: center;
