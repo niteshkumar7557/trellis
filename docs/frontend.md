@@ -342,6 +342,11 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
   the answer, unless it is clearly a new question or a new report. Then comes a **confirm
   card** with the proposal: the student can change the outcome, kind or words, then Save or
   Cancel, with **Undo** after saving.
+- **Chips under the latest reply:** `suggestionsFor(reply, ctx)` in `shared/helper.ts`,
+  called by `useHelper` for the newest helper message (or the greeting) and shown by
+  `<Suggestions>` in `Chat.tsx`. They are worked out when shown, not saved with the
+  message, so Save, Cancel or Undo (which change the map without a new message) can never
+  leave a stale chip. Older `suggest` cards saved in the database are ignored.
 - **Details:**
   - The question is skipped when the message already gives a reason ("got flatlist, keys
     confused me").
@@ -464,7 +469,7 @@ These are the shapes the screens consume (`shared/types.ts`). The backend return
 | `Experience` | `id, at, topicId, kind: "easy" \| "hard" \| "clicked", text` (their words)`, line` (clean)`, messageId?` |
 | `Instruction` | `id, scope: "base" \| "status" \| "topic", status?, topicId?, text` (may use `{topic}`, `{gap}`) |
 | `ChatMessage` | `id, subjectId, at, role: "student" \| "helper", text, cards?, asks?: { kind, pending: Proposal }` |
-| `Card` | `confirm` (`proposal, state: open \| saved \| cancelled \| undone, saved?: {checkIns[], experiences[]}`) · `prompt` (`topicId`) · `choose` (`outcome, options[{label, topicIds, outcome?}]`) · `suggest` (`options[]`) |
+| `Card` | `confirm` (`proposal, state: open \| saved \| cancelled \| undone, saved?: {checkIns[], experiences[]}`) · `prompt` (`topicId`) · `choose` (`outcome, options[{label, topicIds, outcome?}]`) · `suggest` (`options[]`; no longer made: chips come from `suggestionsFor()`, and saved ones are ignored) |
 | `Proposal` | `updates: {topicId, outcome}[], experiences: {topicId, kind, text, line}[], said`. Nothing is written until the student saves it |
 | `Student` | `id, name, email, joinedAt, hasPassword, goals: {subjectId, goalId, since}[]` |
 | `AiUsage` | `on, day: {usedPct, resetsAt}, week: {usedPct, resetsAt}, basic: "day" \| "week" \| "site" \| null`: the account's AI allowance. Percentages (0 to 100) and ISO times only |

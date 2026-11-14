@@ -10,7 +10,7 @@
 // through a confirm card.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { afterSave, greeting, respond, type HelperContext, type Input, type Reply } from "@shared/helper";
+import { afterSave, greeting, respond, suggestionsFor, type HelperContext, type Input, type Reply } from "@shared/helper";
 import { nextTopic, revealed } from "@shared/graph";
 import { ApiError, api } from "@/lib/api";
 import { newId, useStore } from "@/lib/store";
@@ -23,6 +23,8 @@ export interface Helper {
   messages: ChatMessage[];
   /** Shown before the student has said anything. Not saved. */
   hello: Reply;
+  /** Chips under the latest helper reply (or the greeting); none while it's thinking. */
+  suggestions: string[];
   thinking: boolean;
   /** Live mode: older messages exist on the server. */
   more: boolean;
@@ -189,8 +191,17 @@ export function useHelper(): Helper {
   const messages = useMemo(() => store.messages.filter((m) => m.subjectId === store.subjectId), [store.messages, store.subjectId]);
   const hello = useMemo(() => greeting(toContext(store)), [store]);
   const more = store.moreMessages[store.subjectId] ?? false;
+  // Only the latest reply gets chips, worked out from the map as it is NOW (see
+  // suggestionsFor in shared/helper.ts for why they aren't saved with the message). None
+  // once the student has spoken and the reply is still coming.
+  const suggestions = useMemo(() => {
+    if (thinking) return [];
+    const last = messages.at(-1);
+    const reply = !last ? hello : last.role === "helper" ? last : null;
+    return reply ? suggestionsFor(reply, toContext(store)) : [];
+  }, [thinking, messages, hello, store]);
 
-  return { messages, hello, thinking, more, loadOlder, say, pick, save, cancel, undo };
+  return { messages, hello, suggestions, thinking, more, loadOlder, say, pick, save, cancel, undo };
 }
 
 function toContext(s: ReturnType<typeof useStore>): HelperContext {

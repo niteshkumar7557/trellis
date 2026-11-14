@@ -90,13 +90,19 @@ export function MapCanvas({ layout, statuses, required, targets, nextId, selecte
       const a = shownAs(pre, layout);
       const b = shownAs(dep, layout);
       if (!a || !b || a === b) return;
-      if (kind === "needs" && layout.edges.some((e) => e.from === b.topic.id && e.to === a.topic.id && e.kind === "needs")) return;
+      // Already a line on the map (the layout draws it, or another link shown between the
+      // same two boxes was added just before): drawing it again would also name it twice.
+      // This used to check "needs" only, so a big topic's soft link showed "helps" twice.
+      if (layout.edges.some((e) => e.from === b.topic.id && e.to === a.topic.id && e.kind === kind)) return;
+      if (out.some((o) => o.key === `${kind}-${a.topic.id}-${b.topic.id}`)) return;
       if (a.kind === "frame" && b.topic.parentId === a.topic.id) return;
       if (b.kind === "frame" && a.topic.parentId === b.topic.id) return;
       const incoming = b === self;
       const l = link(a, b);
       out.push({
-        key: `${kind}-${pre}-${dep}`,
+        // Keyed by the boxes it joins, not the topics behind them: two subtopic links shown
+        // between the same two closed big topics are one line.
+        key: `${kind}-${a.topic.id}-${b.topic.id}`,
         ...l,
         kind,
         label: kind === "helps" ? "helps" : incoming ? "needed first" : "unlocks",

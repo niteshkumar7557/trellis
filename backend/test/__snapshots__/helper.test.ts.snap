@@ -302,17 +302,6 @@ exports[`respond(): the rule-based helper > answering the helper's question > wh
 
 exports[`respond(): the rule-based helper > asdf qwerty 1`] = `
 {
-  "cards": [
-    {
-      "options": [
-        "What should I do next?",
-        "I finished State",
-        "I'm stuck on State",
-        "Can I skip Why use React Native??",
-      ],
-      "type": "suggest",
-    },
-  ],
   "text": "I can update a topic on your map, give you a prompt for your own AI, tell you what's next, or say whether you can skip something.",
 }
 `;
@@ -488,17 +477,6 @@ exports[`respond(): the rule-based helper > got flatlist, but the keys confused 
 
 exports[`respond(): the rule-based helper > hello 1`] = `
 {
-  "cards": [
-    {
-      "options": [
-        "What should I do next?",
-        "I finished State",
-        "I'm stuck on State",
-        "Can I skip Why use React Native??",
-      ],
-      "type": "suggest",
-    },
-  ],
   "text": "I can update a topic on your map, give you a prompt for your own AI, tell you what's next, or say whether you can skip something.",
 }
 `;

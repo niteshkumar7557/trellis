@@ -225,7 +225,7 @@ export function replyFor(r: Reading, ctx: HelperContext): Reply {
           ],
         };
       }
-      return { text: CAPABILITIES, cards: [{ type: "suggest", options: suggestions(ctx) }] };
+      return { text: CAPABILITIES };
     }
   }
 }
@@ -479,25 +479,81 @@ function contextTopic(ctx: HelperContext): string | null {
   return null;
 }
 
-/** Things to try saying, built from the student's own map. */
-export function suggestions(ctx: HelperContext): string[] {
-  const next = ctx.goal ? nextTopic(ctx.goal, ctx.statuses) : null;
-  const out = ["What should I do next?"];
-  if (next) out.push(`I finished ${next.name}`, `I'm stuck on ${next.name}`);
-  const optional = ctx.goal
-    ? sortByRoute([...requiredFor(ctx.goal)].map((id) => topicById.get(id)!).filter((t) => t.parentId))
-        .flatMap((t) => kids(t.parentId!))
-        .find((t) => t.optional && !requiredFor(ctx.goal!).has(t.id))
-    : null;
-  if (optional) out.push(`Can I skip ${optional.name}?`);
-  return out;
+// ---------------------------------------------------------------- what to say next
+
+/** The chip offered while the helper waits on its one question. parse.ts reads it as declining. */
+export const NOTHING_TO_ADD = "Nothing to add";
+
+/**
+ * What the student might say next: the chips under the helper's LATEST reply. Older
+ * replies show none, so there is only ever one set and it is never out of date.
+ *
+ * Worked out when the reply is shown, from the reply and the student's map as they are
+ * now, rather than saved with the message. The reason: a saved set goes stale the moment
+ * the student taps Save, Cancel or Undo (the map changes, no new message comes), and a
+ * chip that offers "I finished State" after State is done is wrong. Same rules in demo and
+ * live mode, and no model: a chip has to be true, so it comes from the record.
+ *
+ * What a chip may say: a question about the map, or a report the student can make about
+ * a topic ("I finished X", "I'm stuck on X"). Never a made-up problem ("keys confused
+ * me"): what went wrong is the student's to say, in their own words.
+ */
+export function suggestionsFor(reply: Reply, ctx: HelperContext): string[] {
+  const cards = reply.cards ?? [];
+  // Waiting on its question: the only useful chip is to decline it. Anything else typed
+  // now would be read as the answer.
+  if (reply.asks) return [NOTHING_TO_ADD];
+  // A choice to tap or a confirm card to decide: those ARE the next step. Chips beside
+  // them would leave the card hanging.
+  if (cards.some((c) => c.type === "choose" || (c.type === "confirm" && c.state === "open"))) return [];
+
+  const goal = ctx.goal;
+  const next = goal ? nextTopic(goal, ctx.statuses) : null;
+  const prompted = cards.find((c): c is Extract<typeof c, { type: "prompt" }> => c.type === "prompt")?.topicId ?? null;
+  // The topic the reply is about (its prompt), else the one to study next.
+  const focus = prompted && topicById.get(prompted)?.parentId ? topicById.get(prompted)! : next;
+  const out: string[] = [];
+
+  // "What next?" only when there's an answer and this reply didn't just give it.
+  if (next && prompted !== next.id) out.push("What should I do next?");
+
+  // A report on the topic in focus, unless it's already done or known.
+  if (focus && focus.subjectId === ctx.subjectId) {
+    const s = statusOf(ctx.statuses, focus.id);
+    if (!isFooting(s)) out.push(`I finished ${focus.name}`);
+    if (!isFooting(s) && s !== "stuck") out.push(`I'm stuck on ${focus.name}`);
+  }
+
+  // "Why am I stuck?" when something on the route is stuck and this reply isn't already
+  // about it (a prompt for the stuck topic or for what may be underneath it).
+  if (goal) {
+    const stuck = sortByRoute([...requiredFor(goal)].map((id) => topicById.get(id)!).filter((t) => t.parentId)).find(
+      (t) => statusOf(ctx.statuses, t.id) === "stuck",
+    );
+    const under = stuck ? suspectsFor(stuck.id, ctx.statuses, ctx.checkIns, ctx.experiences)[0]?.topic.id : undefined;
+    if (stuck && prompted !== stuck.id && prompted !== under) out.push("Why am I stuck?");
+  }
+
+  // One optional topic near the route that the goal doesn't need: "can I skip it?" has a
+  // real answer (yes, with the reason), which is worth knowing.
+  if (goal) {
+    const required = requiredFor(goal);
+    const optional = sortByRoute([...required].map((id) => topicById.get(id)!).filter((t) => t.parentId))
+      .flatMap((t) => kids(t.parentId!))
+      .find((t) => t.optional && !required.has(t.id) && !isFooting(statusOf(ctx.statuses, t.id)));
+    // Some names end in "?" ("Why use React Native?"): don't ask "…Native??".
+    if (optional) out.push(`Can I skip ${optional.name.replace(/\?$/, "")}?`);
+  }
+
+  // Not the thing the student just said: offering it straight back reads as a glitch.
+  const last = [...ctx.messages].reverse().find((m) => m.role === "student")?.text.trim().toLowerCase();
+  return [...new Set(out)].filter((o) => o.toLowerCase() !== last).slice(0, 4);
 }
 
-/** A first message for an empty conversation. Not saved. */
+/** A first message for an empty conversation. Not saved. Its chips come from suggestionsFor(). */
 export function greeting(ctx: HelperContext): Reply {
   const subject = subjectById.get(ctx.subjectId)!;
   return {
     text: `Hi. Tell me what you studied in ${subject.name} and how it went, and I'll keep your map up to date. I'll always check with you before saving anything.`,
-    cards: [{ type: "suggest", options: suggestions(ctx) }],
   };
 }

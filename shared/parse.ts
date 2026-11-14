@@ -81,6 +81,6 @@ export function tidy(text: string): string {
 
 /** "Not now", "nothing", "skip": the student would rather not answer. */
 export const declines = (text: string) =>
-  /^(no|nope|nah|nothing|none|skip|pass|not now|later|idk|dunno|n\/a|-)[.!]?$/i.test(text.trim());
+  /^(no|nope|nah|nothing|nothing to add|none|skip|pass|not now|later|idk|dunno|n\/a|-)[.!]?$/i.test(text.trim());
 
 export const nameOf = (id: string) => topicById.get(id)?.name ?? id;

@@ -88,6 +88,7 @@ export function Chat({ helper, onOpen }: { helper: Helper; onOpen: (id: string) 
               <Entry role="helper" at={null}>
                 <p className={styles.text}>{helper.hello.text}</p>
                 <Cards cards={helper.hello.cards} message={null} helper={helper} onOpen={onOpen} />
+                <Suggestions helper={helper} />
               </Entry>
             </li>
           )}
@@ -100,6 +101,7 @@ export function Chat({ helper, onOpen }: { helper: Helper; onOpen: (id: string) 
                 <Entry role={m.role} at={m.at}>
                   <p className={styles.text}>{m.text}</p>
                   <Cards cards={m.cards} message={m} helper={helper} onOpen={onOpen} />
+                  {i === helper.messages.length - 1 && m.role === "helper" && <Suggestions helper={helper} />}
                 </Entry>
               </li>
             );
@@ -192,18 +194,24 @@ function Cards({ cards, message, helper, onOpen }: { cards?: Card[]; message: Ch
               ))}
             </div>
           );
-        if (c.type === "suggest")
-          return (
-            <div key={i} className={styles.suggest}>
-              {c.options.map((o) => (
-                <button key={o} type="button" disabled={helper.thinking} onClick={() => helper.say(o)}>
-                  {o}
-                </button>
-              ))}
-            </div>
-          );
+        // A "suggest" card saved by an older version: ignored. Chips now come only from
+        // <Suggestions>, under the latest reply.
         return null;
       })}
+    </div>
+  );
+}
+
+/** What the student might say next. Only under the latest reply; older ones show none. */
+function Suggestions({ helper }: { helper: Helper }) {
+  if (!helper.suggestions.length) return null;
+  return (
+    <div className={styles.suggest} role="group" aria-label="Things you could say">
+      {helper.suggestions.map((o) => (
+        <button key={o} type="button" disabled={helper.thinking} onClick={() => helper.say(o)}>
+          {o}
+        </button>
+      ))}
     </div>
   );
 }

@@ -29,7 +29,7 @@ import {
 import { useStore } from "@/lib/store";
 
 export default function MapPage() {
-  const { subjectId, goal, statuses, claims, checkIns, experiences, opened, selected, today, dispatch, act } = useStore();
+  const { subjectId, goal, goalIds, statuses, claims, checkIns, experiences, opened, selected, today, dispatch, act } = useStore();
   const [view, setView] = useState<"map" | "list">("map");
   const [tracing, setTracing] = useState(false);
   const narrow = useNarrow();
@@ -90,18 +90,24 @@ export default function MapPage() {
   };
 
   if (!goal || !summary) {
+    // No goal in ANY subject means no subject was chosen either: the store's subject is
+    // only its default (React Native), so naming it would claim a choice the student never
+    // made. Name the subject only when they have one elsewhere and came here on purpose.
+    const none = Object.keys(goalIds).length === 0;
     return (
       <div className={styles.page}>
         <header className={styles.header}>
           <div className={styles.titleRow}>
-            <h1 className={styles.title}>{subject.name}</h1>
+            <h1 className={styles.title}>{none ? "Your map" : subject.name}</h1>
           </div>
-          <p className={styles.finding}>You haven&apos;t picked a goal for this subject yet.</p>
+          <p className={styles.finding}>
+            {none ? "You haven't picked a subject yet. Your map appears here once you do." : "You haven't picked a goal for this subject yet."}
+          </p>
         </header>
         <div className={styles.body} style={{ gridTemplateColumns: "1fr" }}>
           <div style={{ padding: "var(--pad)" }}>
             <Link href="/start" className={ui.primary}>
-              Pick a goal and sort the topics
+              {none ? "Pick a subject and a goal" : "Pick a goal and sort the topics"}
               <Icon name="forward" />
             </Link>
           </div>

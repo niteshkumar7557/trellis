@@ -131,7 +131,7 @@ experiences: what they said about how it went, one item per point.
 - kind: hard = something was confusing or difficult. easy = something felt easy. clicked = what made it make sense after being stuck.
 - text: the student's own words for that point, copied, not reworded.
 - line: the same point as one short, clean sentence in the student's voice, for a future study prompt. No advice.
-- [] when they gave no reason, or declined to say ("no", "nothing", "skip", "not now").
+- [] when they gave no reason, or declined to say ("no", "nothing", "nothing to add", "skip", "not now").
 help: only for app_help: the key of the guide entry below that answers the question, or null if none does. null for every other path.
 
 Guide entries (key: what it says):

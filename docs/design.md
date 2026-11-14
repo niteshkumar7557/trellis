@@ -229,6 +229,14 @@ and it looks like a study diary that answers back, not like ChatGPT.
 
   Stuck and partly always ask, whatever the difficulty: stuck on an easy topic is the most
   telling case of all.
+- **Offers what to say next** (14 Nov 2026): a few chips under its **latest** reply only;
+  older replies show none. They come from rules on the student's record, never a model,
+  so each one is true: "What should I do next?" (unless the reply just said), "I finished
+  X" and "I'm stuck on X" for the topic in focus (unless it's already done, or already
+  stuck), "Why am I stuck?" when something on the route is, and one "Can I skip X?". They
+  never suggest a problem ("keys confused me"): what went wrong is the student's to say.
+  While it waits on its question the only chip is **"Nothing to add"**, and beside an open
+  confirm card or a choice there are none.
 
   One question per update, never repeated. If your message already says why (*"got
   flatlist, keys confused me"*), it skips the question and goes straight to the confirm
