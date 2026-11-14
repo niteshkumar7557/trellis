@@ -100,19 +100,23 @@ on that account by mistake would create or change resources in the wrong place.
 
 ### How the account is set up
 
-- **Root user:** turn on MFA, create no access keys, and use it only for billing and plan
-  changes. Why: root can do everything, including closing the account, and cannot be
-  limited.
-- **An IAM user for the owner** (`nitesh`) with MFA and the `AdministratorAccess` policy,
-  for daily work in the console and the CLI. Why not root for daily work: a mistake or a
-  leaked session then has the widest possible reach.
-- **CLI sign-in:** short-lived credentials under the `trellis` profile (the
-  `signing-in-to-aws` skill). Avoid long-lived access keys on the laptop where possible.
-- **An account alias** (for example `trellis-nitesh`), so the console's top bar shows
-  which account you are in.
-- **Where this falls short of production practice:** real teams use IAM Identity Center
-  with one role per job and no IAM users at all. That needs AWS Organizations, which ends
-  the free plan, so it waits until the account is on the paid plan.
+**On the free plan, you sign in with the account's email, and AWS hands every session the
+role `managed/AccountFullAccessRole`** (the console and `aws login` alike). AWS's own policy
+for free-plan accounts (`p-f3m8t97b`, checked 14 Nov 2026 with IAM's policy simulator)
+**denies console passwords for IAM users and account aliases**. So the usual setup (a
+daily IAM user with MFA, an alias) is not possible here:
+
+| Usual practice | On this free plan |
+|---|---|
+| An IAM user for daily work, with MFA | It can be created but can never sign in to the console (no password allowed), so the console offers no MFA for it. **Don't create one**; an unused admin user is only a risk |
+| An account alias | Denied |
+| Long-lived access keys | Allowed, and still not used: `aws login` gives short-lived credentials |
+| MFA on the sign-in itself | In the console: account menu (top right) → **Security credentials**. Turn it on if that page offers it |
+
+- **The CLI:** `aws login --profile trellis`, short-lived credentials. Never create access
+  keys for the laptop.
+- **After upgrading to the paid plan (§10):** these limits go away. Then set up IAM
+  Identity Center with one role per job and no IAM users, which is what real teams use.
 
 ## 3. The free plan
 
@@ -528,12 +532,12 @@ credits can be applied to it, which suggests yes. Check in the console when the 
 ## 9. Setup steps (M7)
 
 Do them in this order. Each step says why it comes where it does. **All regional steps are
-in `ap-southeast-2`.** **All done on 14 Nov 2026** except the owner's
-console tasks in step 1 (MFA, the IAM user, the alias). The DNS zone was created first
+in `ap-southeast-2`.** **All done on 14 Nov 2026.** The DNS zone was created first
 of all, so the GoDaddy change could spread while the rest was built.
 
 1. ✅ **Sign in to the right account** and run the check in §2. The Account ID is in §2.
-   Still to do by hand in the console: MFA for root, the IAM user, the account alias.
+   MFA on the sign-in if the console offers it. No IAM user and no alias: the free plan
+   forbids their console use (§2 "How the account is set up").
 2. ✅ **Find out what the plan allows, before building on it** (§3 "Regions"): EC2 only in
    Sydney; Route 53, ECR, Parameter Store, ACM in `us-east-1`, CloudFront (listing),
    Budgets and IAM all answer; GLM 5 works. Not yet proven: that creating each one is
@@ -606,7 +610,6 @@ of all, so the GoDaddy change could spread while the rest was built.
 | Resource | Name or id |
 |---|---|
 | Account ID | `631603562964` |
-| IAM user | `nitesh` |
 | Budget | `trellis-monthly` ($30, alerts at 50/80/100% to the root email) |
 | S3 bucket | `trellis-backups-631603562964` |
 | Role and instance profile | `trellis-ec2` |
