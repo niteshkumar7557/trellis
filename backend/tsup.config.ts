@@ -16,6 +16,8 @@ export default defineConfig({
     "db/seed-graph": "src/db/seed-graph.ts",
     // The admin's forgotten-password tool: `node dist/db/reset-link.js <email>`.
     "db/reset-link": "src/db/reset-link.ts",
+    // The operator's AI cost report: `node dist/db/ai-spend.js`.
+    "db/ai-spend": "src/db/ai-spend.ts",
   },
   format: ["esm"], // package.json says "type": "module"
   platform: "node",

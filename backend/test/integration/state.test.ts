@@ -47,8 +47,16 @@ describe("GET /api/state", () => {
     expect(res.headers["cache-control"]).toBe("no-store");
     const s = res.body;
     expect(Object.keys(s).sort()).toEqual(
-      ["checkIns", "claims", "experiences", "goalIds", "messages", "moreMessages", "opened", "promptTakes", "student"].sort(),
+      ["checkIns", "claims", "experiences", "goalIds", "messages", "moreMessages", "opened", "promptTakes", "student", "usage"].sort(),
     );
+    // The AI allowance rides along (test/integration/ai-limits.test.ts covers its numbers).
+    // These tests run with the AI off, so there is nothing used and no limit to report.
+    expect(s.usage).toEqual({
+      on: false,
+      day: { usedPct: 0, resetsAt: expect.any(String) },
+      week: { usedPct: 0, resetsAt: expect.any(String) },
+      basic: null,
+    });
     expect(s.student.email).toBe(ada.email);
     expect(s.goalIds).toEqual({ "react-native": "goal-rn-first-app" });
     expect(s.claims).toEqual([{ topicId: "rn-intro", claim: "shaky", at: expect.any(String) }]);

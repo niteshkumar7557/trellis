@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { errorHandler, notFound } from "../src/middlewares/error.middleware.js";
 import { readByModel } from "../src/ai/reader.js";
 import { findMessages, insertMessage, listMessages, messageExists, typedToday } from "../src/repos/chat.repo.js";
+import { usageFor } from "../src/controllers/usage.controller.js";
 import helperRoutes from "../src/routes/helper.routes.js";
 import { bearerToken } from "./auth-token.js";
 
@@ -33,6 +34,10 @@ vi.mock("../src/repos/opened.repo.js", () => ({ listOpened: vi.fn(async () => []
 // The model reader, faked: null (the default here) means "the model didn't read it",
 // which is what happens with AI_PROVIDER=off. Its own tests are in reader.test.ts.
 vi.mock("../src/ai/reader.js", () => ({ readByModel: vi.fn(async () => null) }));
+// The allowance that rides along on every reply. Its own tests: limits.test.ts,
+// usage.routes.test.ts and test/integration/ai-calls.test.ts.
+const USAGE = { on: true, day: { usedPct: 40, resetsAt: "2026-11-15T00:00:00.000Z" }, week: { usedPct: 12, resetsAt: "2026-11-16T00:00:00.000Z" }, basic: null };
+vi.mock("../src/controllers/usage.controller.js", () => ({ usageFor: vi.fn(async () => USAGE) }));
 
 const app = express();
 app.use(express.json());
@@ -64,6 +69,12 @@ describe("POST /api/helper/:subjectId/messages", () => {
     expect(student![3]).toEqual({ role: "student", text: "what should I do next?", readBy: "rules" });
     expect(helper![3]).toMatchObject({ role: "helper", text: expect.stringMatching(/^Next up: /) });
     expect(findMessages).toHaveBeenCalledWith(4, ["id-student", "id-helper"]);
+  });
+
+  it("answers with the account's AI usage beside the messages, so the meter moves with the reply", async () => {
+    const res = await request(app).post(URL).set(AUTH).send({ text: "what should I do next?" });
+    expect(res.body.usage).toEqual(USAGE);
+    expect(usageFor).toHaveBeenCalledWith(4);
   });
 
   it("uses the model's Reading when there is one, and stores the message as read by the model", async () => {

@@ -3,8 +3,9 @@
 //
 //   readByModel(text, ctx, userId) → Reading | null
 //
-// null means "the model didn't read it": the AI is off, today's budget is spent, the call
-// failed, or what came back was unusable. The caller then uses readByRules(), so the
+// null means "the model didn't read it": the AI is off, a spending limit is reached (this
+// account's day or week, or the whole site's day), the call failed, or what came back was
+// unusable. The caller then uses readByRules(), so the
 // student always gets an answer. Whichever reader read the message, replyFor() in
 // shared/helper.ts decides the reply: the model only fills in the Reading. It never
 // decides statuses, the next topic, skip or not, or why someone is stuck.
@@ -19,7 +20,6 @@ import { tidy } from "@shared/parse";
 import type { SubjectId } from "@shared/types";
 import { z } from "zod";
 import config from "../config/index.js";
-import { spentTodayUsd } from "../repos/ai-calls.repo.js";
 import { callForJson } from "./bedrock.js";
 
 const PATHS = ["report", "answer", "next", "skip", "why_stuck", "explain", "app_help", "other"] as const;
@@ -32,6 +32,7 @@ const EXPERIENCES_MAX = 4;
 
 // A Reading's JSON is about 60 to 150 tokens. 600 leaves room for a model that writes a
 // short reasoning block first, and still caps the cost of a runaway reply at $0.0023.
+// It is also what every call reserves for its output before it is sent (limits.ts).
 const MAX_TOKENS = 600;
 
 // ---------------------------------------------------------------- the schema
@@ -214,18 +215,15 @@ export function checkReading(raw: unknown, said: string, subjectId: SubjectId): 
 
 // ---------------------------------------------------------------- the call
 
-/** Whether a model call is allowed right now: the AI is on and today's budget isn't spent. */
-export async function modelAvailable(): Promise<boolean> {
-  if (config.ai.provider !== "bedrock") return false;
-  // Checked before every call, from the database, so a restart doesn't reset it. Two
-  // messages at the same moment can both pass and overshoot by one call (~$0.0025);
-  // a lock to prevent that would cost more than it saves.
-  return (await spentTodayUsd()) < config.ai.daily_budget_usd;
-}
-
-/** A typed message, read by GLM 5. null: read it with the rules instead. */
+/**
+ * A typed message, read by GLM 5. null: read it with the rules instead.
+ *
+ * The spending limits are not checked here: callForJson() checks them in the same step
+ * that reserves the call's cost (bedrock.ts), so there is no gap between "is there room?"
+ * and "count this call" for a second message to slip through.
+ */
 export async function readByModel(text: string, ctx: HelperContext, userId: number): Promise<Reading | null> {
-  if (!(await modelAvailable())) return null;
+  if (config.ai.provider !== "bedrock") return null;
   return callForJson({
     purpose: "read",
     userId,
@@ -246,6 +244,7 @@ export async function readByModel(text: string, ctx: HelperContext, userId: numb
 // messages after each expiry would all fall back to the rules. So the server sends one
 // tiny call with the same schema at start and then every few hours, with a long timeout.
 // Each costs about $0.0005 (a few hundred tokens), $0.004 a day: under 1% of the budget.
+// A warm-up belongs to no account, so only the site's daily budget can stop it.
 //
 // Where this falls short: AWS doesn't say whether the 24 hours count from the first use
 // or the last, so the interval is a guess that is safe either way. Check latency_ms in
@@ -255,7 +254,7 @@ const WARMUP_EVERY_MS = 3 * 60 * 60 * 1000;
 const WARMUP_TIMEOUT_MS = 120_000; // the Bedrock page's own advice for the first request
 
 export async function warmUp(): Promise<boolean> {
-  if (!(await modelAvailable())) return false;
+  if (config.ai.provider !== "bedrock") return false;
   const ok = await callForJson({
     purpose: "warmup",
     userId: null,

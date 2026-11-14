@@ -7,7 +7,7 @@ import { replyFor, type HelperContext } from "@shared/helper";
 import type { ChatMessage } from "@shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { READING_SCHEMA, checkReading, instructionsFor, messageFor, readByModel, warmUp } from "../src/ai/reader.js";
-import { insertAiCall, spentTodayUsd } from "../src/repos/ai-calls.repo.js";
+import { reserveAiCall, settleAiCall } from "../src/repos/ai-calls.repo.js";
 
 // The reader only calls the model when AI_PROVIDER=bedrock. vi.hoisted runs before the
 // imports above, so config/index.ts sees it when it first loads.
@@ -23,7 +23,7 @@ vi.mock("@aws-sdk/client-bedrock-runtime", () => ({
     constructor(public input: unknown) {}
   },
 }));
-vi.mock("../src/repos/ai-calls.repo.js", () => ({ insertAiCall: vi.fn(), spentTodayUsd: vi.fn() }));
+vi.mock("../src/repos/ai-calls.repo.js", () => ({ reserveAiCall: vi.fn(), settleAiCall: vi.fn() }));
 
 const ctx = (over: Partial<HelperContext> = {}): HelperContext => ({
   subjectId: "react-native",
@@ -55,7 +55,8 @@ const sent = () => (send.mock.calls[0]![0] as { input: Record<string, any> }).in
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(spentTodayUsd).mockResolvedValue(0);
+  // By default no limit is reached: the call is reserved as row 1.
+  vi.mocked(reserveAiCall).mockResolvedValue({ id: "1", blockedBy: null });
 });
 
 describe("readByModel", () => {
@@ -78,7 +79,7 @@ describe("readByModel", () => {
       help: null,
       said: "stuck on flatlist, keyExtractor makes no sense",
     });
-    expect(insertAiCall).toHaveBeenCalledWith(expect.objectContaining({ userId: 9, purpose: "read", ok: true }));
+    expect(settleAiCall).toHaveBeenCalledWith("1", expect.objectContaining({ ok: true, error: null }));
   });
 
   it("feeds replyFor like any reader: the model's 'what comes after FlatList' is a question, not stuck", async () => {
@@ -96,22 +97,28 @@ describe("readByModel", () => {
   ])("returns null for %s, so the rules read it", async (_, reply) => {
     send.mockResolvedValue(reply);
     expect(await readByModel("finished flatlist", ctx(), 9)).toBeNull();
-    expect(insertAiCall).toHaveBeenCalledWith(expect.objectContaining({ ok: false }));
+    expect(settleAiCall).toHaveBeenCalledWith("1", expect.objectContaining({ ok: false }));
   });
 
   it("returns null when Bedrock times out", async () => {
     const log = vi.spyOn(console, "warn").mockImplementation(() => {});
     send.mockRejectedValue(Object.assign(new Error("aborted"), { name: "AbortError" }));
     expect(await readByModel("finished flatlist", ctx(), 9)).toBeNull();
-    expect(insertAiCall).toHaveBeenCalledWith(expect.objectContaining({ ok: false, error: "timeout" }));
+    expect(settleAiCall).toHaveBeenCalledWith("1", expect.objectContaining({ ok: false, error: "timeout" }));
     log.mockRestore();
   });
 
-  it("doesn't call the model at all once today's budget is spent", async () => {
-    vi.mocked(spentTodayUsd).mockResolvedValue(0.5);
+  it.each(["day", "week", "site"] as const)("doesn't call the model at all once the %s limit is reached", async (blockedBy) => {
+    vi.mocked(reserveAiCall).mockResolvedValue({ id: null, blockedBy });
     expect(await readByModel("finished flatlist", ctx(), 9)).toBeNull();
     expect(send).not.toHaveBeenCalled();
-    expect(insertAiCall).not.toHaveBeenCalled();
+    expect(settleAiCall).not.toHaveBeenCalled();
+  });
+
+  it("reserves each call for the student who typed it", async () => {
+    send.mockResolvedValue(model());
+    await readByModel("hello", ctx(), 9);
+    expect(reserveAiCall).toHaveBeenCalledWith(expect.objectContaining({ userId: 9, purpose: "read" }), expect.anything());
   });
 
   it("sends the subject's instructions and the message, and nothing about the student", async () => {
@@ -223,11 +230,13 @@ describe("warmUp", () => {
     const input = sent();
     expect(input.outputConfig.textFormat.structure.jsonSchema.schema).toBe(JSON.stringify(READING_SCHEMA));
     expect(input.system[0].text.length).toBeLessThan(100); // not the topic list: it would cost more
-    expect(insertAiCall).toHaveBeenCalledWith(expect.objectContaining({ userId: null, purpose: "warmup", ok: true }));
+    // No account: only the site's budget can stop a warm-up.
+    expect(reserveAiCall).toHaveBeenCalledWith(expect.objectContaining({ userId: null, purpose: "warmup" }), expect.anything());
+    expect(settleAiCall).toHaveBeenCalledWith("1", expect.objectContaining({ ok: true }));
   });
 
-  it("skips when the budget is spent", async () => {
-    vi.mocked(spentTodayUsd).mockResolvedValue(1);
+  it("skips when the site's budget is spent", async () => {
+    vi.mocked(reserveAiCall).mockResolvedValue({ id: null, blockedBy: "site" });
     expect(await warmUp()).toBe(false);
     expect(send).not.toHaveBeenCalled();
   });

@@ -171,5 +171,26 @@ export interface Student {
   goals: { subjectId: SubjectId; goalId: string; since: string }[];
 }
 
+/**
+ * How much of an account's AI allowance is used (backend-design.md §5 "Cost limits").
+ *
+ * Percentages and times only, on purpose: the allowance is counted in dollars on the
+ * server, and what a message costs is the operator's business, not something a screen
+ * should show. The backend builds this in src/ai/limits.ts.
+ */
+export interface AiUsage {
+  /** False when this server runs without the AI: there is no allowance to show. */
+  on: boolean;
+  /** Whole numbers from 0 to 100. `resetsAt` is an ISO time: when the window starts again. */
+  day: { usedPct: number; resetsAt: string };
+  week: { usedPct: number; resetsAt: string };
+  /**
+   * Why typed messages are read by the rules ("basic mode") right now, or null when the AI
+   * reads them. "day" and "week": this account's allowance is used. "site": the whole
+   * site's daily AI budget is, which is nobody's fault and resets with the day.
+   */
+  basic: "day" | "week" | "site" | null;
+}
+
 /** Derived from claims and check-ins; never stored. */
-export type Status = "new" | "know" | "shaky" | "learning" | "stuck" | "done";
+export type Status ="new" | "know" | "shaky" | "learning" | "stuck" | "done";

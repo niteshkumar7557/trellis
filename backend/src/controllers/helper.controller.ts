@@ -5,7 +5,8 @@
 //
 // What a POST does:
 //   1. load the student's record and work out statuses   (shared/graph.ts)
-//   2. READ the message into a Reading                    (GLM 5, else the rules)
+//   2. READ the message into a Reading                    (GLM 5, else the rules: also
+//                                                           at a spending limit)
 //   3. REPLY with replyFor()                               (shared/helper.ts)
 //   4. store the student's message, the reply and any proposal, in ONE transaction
 // Nothing here writes a check-in or an experience. Only saving a proposal does (M4.3).
@@ -29,6 +30,7 @@ import { listGoals } from "../repos/goals.repo.js";
 import { listOpened } from "../repos/opened.repo.js";
 import { HttpError } from "../utils/http-error.js";
 import { uuidOr404 } from "../utils/row-id.js";
+import { usageFor } from "./usage.controller.js";
 
 // The helper looks back this far for context: the question it just asked, and the topic
 // last discussed ("finished it" means that one). 50 is several sessions; older messages
@@ -102,7 +104,7 @@ export const PostMessageBody = z.union([
     .strict(),
 ]);
 
-/** → 201 { messages: [studentMessage, helperReply] } */
+/** → 201 { messages: [studentMessage, helperReply], usage } */
 export async function postMessage(req: Request<{ subjectId: string }>, res: Response) {
   const userId = currentUserId(req);
   const subjectId = subjectOr404(req.params.subjectId);
@@ -113,10 +115,12 @@ export async function postMessage(req: Request<{ subjectId: string }>, res: Resp
     if (wrong.length) throw new HttpError(400, "invalid_request", "Those topics aren't in this subject.");
   }
 
-  // The daily limit on TYPED messages (backend-design.md §5 "Cost limits"). It is what
-  // stops one student, or a script with their token, from spending the whole site's AI
-  // budget. Taps are never limited: marking a topic must always work. Two messages sent
-  // at the same moment can both pass at 99; one over the limit is harmless.
+  // The daily limit on TYPED messages (backend-design.md §5 "Cost limits"). This one is
+  // not about money (the spending limits are, and they are checked where a model call
+  // is reserved, in src/ai/bedrock.ts): it stops a script with a student's token from
+  // filling the chat table with messages the rules would read for free. Taps are never
+  // limited: marking a topic must always work. Two messages sent at the same moment can
+  // both pass at 99; one over the limit is harmless.
   if ("text" in body && (await typedToday(userId)) >= config.ai.helper_daily_messages) {
     throw new HttpError(
       429,
@@ -128,8 +132,9 @@ export async function postMessage(req: Request<{ subjectId: string }>, res: Resp
   const ctx = await loadContext(userId, subjectId, "text" in body ? (body.selected ?? null) : null);
 
   // A tap needs no reading: our own code knows what was tapped, so it never calls the
-  // model. Typed text goes to GLM 5 when the AI is on and today's budget allows; if that
-  // gives nothing usable (null), the rules read it, so the student always gets a reply.
+  // model. Typed text goes to GLM 5 when the AI is on and no spending limit is reached
+  // (this account's day or week, the site's day); if that gives nothing usable (null),
+  // the rules read it, so the student always gets a reply.
   let reading: Reading;
   let readBy: "tap" | "model" | "rules";
   let studentText: string;
@@ -149,7 +154,9 @@ export async function postMessage(req: Request<{ subjectId: string }>, res: Resp
     await insertMessage(db, userId, subjectId, { role: "student", text: studentText, readBy }),
     await insertMessage(db, userId, subjectId, { role: "helper", ...reply }),
   ]);
-  res.status(201).json({ messages: await findMessages(userId, ids) });
+  // The allowance after this message, so the meter moves with the reply. Read after the
+  // model call has been settled, so it shows this message's real cost.
+  res.status(201).json({ messages: await findMessages(userId, ids), usage: await usageFor(userId) });
 }
 
 // ------------------------------------------------------------------ GET older history
