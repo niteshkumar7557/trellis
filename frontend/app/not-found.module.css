@@ -1,0 +1,67 @@
+/* The 404 page: the same frame and sheet as the sign-in screens, one column, centred. */
+
+.frame {
+  min-height: 100svh;
+  padding: 8px;
+  background: var(--ground);
+}
+
+.sheet {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: calc(100svh - 16px);
+  padding: 28px 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sheet);
+  background: var(--surface);
+}
+
+.brand {
+  justify-self: start;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.body {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 24px 0 64px;
+  text-align: center;
+}
+
+.art {
+  width: min(240px, 60vw);
+  height: auto;
+  margin-bottom: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.text {
+  max-width: 420px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .frame { padding: 0; }
+  .sheet { min-height: 100svh; padding: 20px 16px; border: 0; border-radius: 0; }
+}

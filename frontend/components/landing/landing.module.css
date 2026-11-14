@@ -1,7 +1,20 @@
 /*
-  Landing: dressed as a horticultural plate book. One typeface (IBM Plex Sans), the
-  app's palette: a charcoal counter for the plate, paper grounds, one leaf-green accent.
+  Landing: the page is the map. One typeface (IBM Plex Sans) and the app's palette: a
+  charcoal wall, paper grounds, one leaf-green accent, and the topic-status colours on data.
+
   Grid: 12 columns, 32px outer margins (16px on a phone), one gutter.
+  Type: two faces. Headings are Fraunces (--display, loaded in fonts.ts); everything else
+  is IBM Plex Sans. Six sizes, each with one job, far enough apart to tell at a glance:
+    --t-display   the hero line, and the five "won't" words
+    --t-heading   one per section
+    --t-title     names of things: a subject, the start card
+    --t-lead      the sentence under a heading
+    --t-body      running text
+    --t-small     captions and notes
+  Corners: 16px on sheets (the app's --radius-sheet), 8px on controls.
+
+  The page has its own --l-* tokens because it is a poster, not an app screen: it uses
+  whole fields of colour, which the app's "colour on data only" rule forbids.
 */
 
 .page {
@@ -18,10 +31,19 @@
   --l-accent: #2b6a3f;
   --l-on-accent: #eef0e9;
 
-  background: var(--l-paper);
+  --display: var(--font-display), Georgia, serif;
+  --t-display: clamp(44px, 5.4vw, 80px);
+  --t-heading: clamp(34px, 3.7vw, 54px);
+  --t-title: clamp(26px, 2.2vw, 32px);
+  --t-lead: clamp(18px, 1.5vw, 22px);
+  --t-body: 17px;
+  --t-small: 14px;
+
+  background: var(--l-charcoal);
   color: var(--l-ink);
-  font-size: 17px;
+  font-size: var(--t-body);
   line-height: 1.55;
+  overflow-x: clip;
 }
 
 :global([data-theme="dark"]) .page {
@@ -35,88 +57,628 @@
   --l-on-accent: #f2f4ef;
 }
 
+/* The content slides up over the footer like a sheet (see .footer). */
 .page main {
   position: relative;
   z-index: 2;
-  background: var(--l-paper);
 }
 
+/* Headings: the serif, a little lighter than bold (it is large enough to carry itself). */
 .h2 {
   margin: 0;
-  font-size: clamp(28px, 2.5vw, 36px);
-  line-height: 1.1;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: var(--t-heading);
+  line-height: 1.06;
+  font-weight: 500;
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
-/* ------------------------------------------------------------ hero: the counter */
+.lead {
+  margin: 0;
+  color: var(--l-soft);
+  font-size: var(--t-lead);
+  line-height: 1.45;
+}
+
+/*
+  The hero stands on a charcoal wall in both themes, so its map is always the app's map as
+  it looks at night: this class pins the app's dark tokens (copied from app/globals.css;
+  keep the two in step). A light sheet there glared against the wall.
+  Everything else on the page (the trace, the prompt slip, the espalier) just follows the
+  visitor's theme through the app's tokens.
+*/
+.night {
+  --ground: #0b0c0b;
+  --surface: #141614;
+  --raised: #1a1c1a;
+  --active: #252825;
+  --border: #262926;
+  --control: #40443f;
+  --text: #f1f2f0;
+  --muted: #b3b7b1;
+  --faint: #959a93;
+  --primary: #f1f2f0;
+  --on-primary: #111311;
+  --accent: #63b77e;
+  --done: #63b77e;      --done-bg: #1a2b1f;      --done-ink: #8fd3a5;
+  --learning: #6fa4e4;  --learning-bg: #18243a;  --learning-ink: #a6c8f2;
+  --stuck: #ee6b72;     --stuck-bg: #33191c;     --stuck-ink: #f7a5aa;
+  --shaky: #d9a64c;     --shaky-bg: #2f2512;     --shaky-ink: #ecc983;
+  --know: #f1f2f0;
+  --edge: #4b4f4a;
+  --edge-soft: #343733;
+
+  background: var(--raised);
+  color: var(--text);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: var(--t-body);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+.button[data-tone="paper"] { background: var(--l-on-charcoal); color: #141813; }
+.button[data-tone="paper"]:hover { background: #ffffff; }
+.button:active { transform: translateY(1px); }
+
+/* ------------------------------------------------------------ hero: the map on the wall */
 
 .hero {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  min-height: 100svh;
-  padding: 80px var(--l-margin) 56px;
+  padding: 0 var(--l-margin) 40px;
   background: var(--l-charcoal);
   color: var(--l-on-charcoal);
-  text-align: center;
 }
+.hero :focus-visible { outline-color: var(--l-on-charcoal); }
 
 .nav {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px var(--l-margin);
+  height: 72px;
 }
 
 .navBrand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
   color: var(--l-on-charcoal);
-  font-size: 17px;
-  font-weight: 600;
   text-decoration: none;
 }
-.navBrand svg path { stroke: #8fd3a5; }
 
 .navLinks {
   display: flex;
+  align-items: center;
   gap: 28px;
 }
-.navLinks a {
+.navLinks a:not(.button) {
   color: var(--l-on-charcoal);
-  font-size: 16px;
   text-decoration: none;
   transition: opacity 150ms ease;
 }
-.navLinks a:hover { opacity: 0.7; }
+.navLinks a:not(.button):hover { opacity: 0.7; }
 
+.navAccount {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.navAccount[data-loading] { visibility: hidden; }
+
+.heroHead {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--l-gutter);
+  align-items: end;
+  padding: 20px 0 28px;
+}
+
+.heroTitle {
+  grid-column: 1 / 8;
+  margin: 0;
+  font-family: var(--display);
+  font-size: var(--t-display);
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.heroSide {
+  grid-column: 8 / 13;
+}
+
+.heroSub {
+  text-wrap: pretty;
+  margin: 0;
+  color: var(--l-on-charcoal);
+  font-size: var(--t-lead);
+  line-height: 1.45;
+}
+
+.heroFacts {
+  margin: 10px 0 0;
+  color: var(--l-on-charcoal-soft);
+}
+
+.heroCaption {
+  margin: 14px 0 0;
+  color: var(--l-on-charcoal-soft);
+  font-size: var(--t-small);
+}
+
+/* The app's map canvas, set into the wall. Borders are fine here: it is a piece of the app. */
+.sheet {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.sheet :focus-visible { outline-color: var(--text); }
+
+/*
+  The map is laid out in pixels and scaled to fit (HeroMap.tsx sets --s from the width).
+  The aspect-ratio on .mapFit (set inline) gives it the right height before any script runs.
+*/
+.mapFit {
+  --s: 0.9;
+  position: relative;
+  overflow: hidden;
+}
+.mapWorld {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  transform: scale(var(--s));
+}
+
+/* The node itself is styled by the app map's .closed class; this only adds what a
+   landing-page button needs. */
+.heroNode {
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+.legend {
+  position: absolute;
+  left: 4px;
+  bottom: 2px;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--t-small);
+}
+.legend li { display: flex; align-items: center; gap: 8px; }
+.legend .legendNote { grid-column: 1 / -1; }
+
+/* Under the map: what the picked topic is, whether to skip it, and the goal that decides. */
+.readout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 40px;
+  align-items: center;
+  margin-top: 20px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.readName {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: var(--t-lead);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.verdict {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: var(--t-small);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.verdict[data-verdict="keep"] { background: var(--done-bg); color: var(--done-ink); }
+.verdict[data-verdict="skip"] { background: var(--active); color: var(--muted); }
+
+.readWhy {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--t-small);
+  line-height: 1.45;
+  /* Two lines at most, so the hero doesn't change height as topics are picked. */
+  min-height: 2.9em;
+}
+
+.readGoal {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.seg {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--active);
+}
+
+.segBtn {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--t-small);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 200ms ease, color 200ms ease, transform 150ms ease;
+}
+.segBtn:hover { color: var(--text); }
+.segBtn:active { transform: scale(0.98); }
+.segBtn[aria-checked="true"] { background: var(--primary); color: var(--on-primary); }
+
+.readCount {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--t-small);
+}
+
+/* ------------------------------------------------------------ stuck: the trace, played by the scroll */
+
+.stuck {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--l-gutter);
+  align-items: center;
+  min-height: 100svh;
+  padding: 96px var(--l-margin);
+  background: var(--l-paper);
+}
+
+.stuckText {
+  grid-column: 1 / 7;
+  padding-right: 56px;
+}
+.stuckText p {
+  max-width: 28em;
+  margin: 24px 0 0;
+  font-size: var(--t-lead);
+  line-height: 1.45;
+}
+
+.stuckArt {
+  grid-column: 7 / 13;
+  display: grid;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--raised);
+  color: var(--text);
+}
+.stuckArt > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* What the student said, first, because the trace starts from it. */
+.said {
+  order: -1;
+  justify-self: start;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--stuck-bg);
+  color: var(--stuck-ink);
+}
+
+.traceLine {
+  fill: none;
+  stroke: var(--stuck);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+}
+/* Once the verdict is in, the lines that led nowhere step back. */
+.traceLine[data-cleared] { opacity: 0.28; }
+
+.traceBox {
+  fill: var(--surface);
+  stroke: var(--control);
+  stroke-width: 1;
+}
+.traceBox[data-tone="stuck"] { fill: var(--stuck-bg); stroke: var(--stuck); stroke-width: 1.5; }
+.traceBox[data-tone="likely"] { fill: var(--shaky-bg); stroke: var(--shaky); stroke-width: 2; }
+
+.traceName {
+  fill: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.evidence {
+  fill: var(--muted);
+  font-family: var(--font);
+  font-size: 14px;
+}
+
+/* The phone's version of the trace; hidden while the drawing fits. */
+.traceList { display: none; }
+
+.verdictTag { fill: var(--primary); }
+.verdictText {
+  fill: var(--on-primary);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+/* ------------------------------------------------------------ prompt: a slip, and where it came from */
+
+.prompt {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--l-gutter);
+  align-items: start;
+  padding: 144px var(--l-margin);
+  background: var(--l-field-1);
+}
+
+.promptText {
+  grid-column: 1 / 7;
+  padding-right: 56px;
+}
+.promptText .lead { margin-top: 20px; max-width: 28em; }
+.sources { max-width: 520px; }
+
+.sources {
+  display: grid;
+  gap: 4px;
+  margin: 32px 0 0 -16px;
+  padding: 0;
+  list-style: none;
+}
+
+.source {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--l-ink);
+  text-align: left;
+  transition: background-color 200ms ease;
+}
+.source:hover,
+.source[aria-pressed="true"] { background: var(--l-field-2); }
+
+.sourceName {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--t-lead);
+  font-weight: 600;
+}
+/* Each source's swatch is the tint its part of the slip takes. */
+.sourceName::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.source[data-part="known"] .sourceName::before { background: #2b6a3f; }
+.source[data-part="experiences"] .sourceName::before { background: #2f6db5; }
+.source[data-part="instructions"] .sourceName::before { background: #a26a0a; }
+
+.sourceText {
+  padding-left: 22px;
+  color: var(--l-soft);
+}
+
+.slip {
+  grid-column: 7 / 13;
+  padding: 32px 36px 36px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  line-height: 1.5;
+}
+.slip p { margin: 0; }
+/* The prompt is plain text with "- " list lines; show it the way it will be pasted. */
+.slip ul { margin: 6px 0 0; padding-left: 16px; list-style: "-  "; }
+.slip li { margin-top: 4px; }
+
+.slipHead {
+  color: var(--muted);
+  font-size: var(--t-small);
+  font-weight: 600;
+}
+
+.slip [data-part] {
+  margin: 14px -14px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  transition: background-color 250ms ease, opacity 250ms ease;
+}
+.slip[data-lit] [data-part] { opacity: 0.4; }
+.slip[data-lit="known"] [data-part="known"] { opacity: 1; background: var(--done-bg); }
+.slip[data-lit="experiences"] [data-part="experiences"] { opacity: 1; background: var(--learning-bg); }
+.slip[data-lit="instructions"] [data-part="instructions"] { opacity: 1; background: var(--shaky-bg); }
+
+.slipActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin-top: 24px;
+}
+.slipActions a {
+  color: var(--text);
+  font-weight: 500;
+  text-underline-offset: 3px;
+}
+.slipCopy {
+  height: 40px;
+  min-width: 152px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.slipCopy:hover { opacity: 0.88; }
+.slipCopy:active { transform: translateY(1px); }
+
+/* ------------------------------------------------------------ subjects: two graphs at their real sizes */
+
+.subjects {
+  padding: 144px var(--l-margin);
+  background: var(--l-paper);
+}
+
+.subjectsHead {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--l-gutter);
+  align-items: end;
+  margin-bottom: 48px;
+}
+.subjectsHead .h2 { grid-column: 1 / 7; }
+.subjectsHead .lead { grid-column: 8 / 13; }
+
+.subjectGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--l-gutter);
+}
+
+.subject {
+  display: grid;
+  gap: 4px;
+  padding: 32px;
+  border-radius: 16px;
+  background: var(--l-field-1);
+  color: var(--l-ink);
+  text-decoration: none;
+  transition: background-color 200ms ease;
+}
+.subject:hover { background: var(--l-field-2); }
+
+.subjectMap {
+  width: 100%;
+  height: auto;
+  margin-bottom: 20px;
+}
+
+.subjectName {
+  font-family: var(--display);
+  font-size: var(--t-title);
+  line-height: 1.15;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.subjectSize { color: var(--l-soft); }
+
+.subjectsNote {
+  margin: 24px 0 0;
+  color: var(--l-soft);
+  font-size: var(--t-small);
+}
+.subjectsNote a { color: inherit; text-underline-offset: 3px; }
+
+/* ------------------------------------------------------------ what it won't do */
+
+/*
+  One grid for the whole section, so every part sits on a shared edge:
+    row 1  the heading, full width
+    row 2  the five promises (columns 1-8)   | the plate (columns 9-12), its top level
+    row 3  who it is for (columns 1-8)       | with the first promise
+*/
+.wont {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--l-gutter);
+  padding: 144px var(--l-margin);
+  background: var(--l-field-2);
+}
+
+.wont .h2 {
+  grid-column: 1 / -1;
+  margin-bottom: 40px;
+}
+
+.wontList {
+  grid-column: 1 / 9;
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Word and sentence share a row and are centred on each other, so a sentence that wraps
+   to two lines still sits level with its word. */
+.wontList li {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 5fr);
+  column-gap: var(--l-gutter);
+  align-items: center;
+  min-height: 104px;
+}
+
+.wontWord {
+  font-family: var(--display);
+  font-size: var(--t-display);
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.wontFact {
+  font-size: var(--t-lead);
+  line-height: 1.4;
+}
+
+.wontFor {
+  grid-column: 1 / 9;
+  max-width: 44em;
+  margin: 32px 0 0;
+  color: var(--l-soft);
+}
+
+/* The espalier plate. Its colours are the app's --plate-* tokens, so it follows the theme. */
 .plate {
-  --plate-paper: #eef0e9;
-  --plate-ink: #1d211c;
-  --plate-leaf: #b6d3bb;
-  --plate-fruit: #2b6a3f;
-  --plate-wire: #a3a99e;
-  --plate-post: #6d7268;
-
+  grid-column: 9 / 13;
+  grid-row: 2 / span 2;
+  align-self: start;
   display: grid;
   gap: 14px;
-  justify-items: center;
   margin: 0;
-  will-change: transform;
 }
 
 .plateArt {
   position: relative;
-  width: min(26vw, 40vh, 400px);
   aspect-ratio: 4 / 5;
+  border-radius: 16px;
   background: var(--plate-paper);
 }
 
@@ -130,514 +692,104 @@
 }
 
 .plate figcaption {
-  color: var(--l-on-charcoal-soft);
-  font-size: 14px;
+  color: var(--l-soft);
+  font-size: var(--t-small);
 }
 
-.heroTitle {
-  margin: 36px 0 0;
-  font-size: clamp(36px, 4.2vw, 60px);
-  line-height: 1.04;
-  font-weight: 600;
-  letter-spacing: -0.03em;
+/* ------------------------------------------------------------ start: a card lying on the page */
+
+.start {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--l-gutter);
+  align-items: end;
+  padding: 120px var(--l-margin) 0;
+  background: var(--l-accent);
+  color: var(--l-on-accent);
+  overflow: hidden;
+}
+.start :focus-visible { outline-color: #151714; }
+
+.startAside {
+  grid-column: 1 / 5;
+  margin: 0 0 72px;
+  font-size: var(--t-lead);
+  line-height: 1.45;
 }
 
-.heroSub {
-  max-width: 600px;
-  margin: 14px 0 0;
-  color: var(--l-on-charcoal-soft);
-  font-size: 17px;
-  line-height: 1.5;
+/* Turned two degrees and cut off by the section's edge: that is what makes it an object. */
+.startCard {
+  grid-column: 6 / 12;
+  display: grid;
+  gap: 12px;
+  margin-bottom: -40px;
+  padding: 48px 48px 88px;
+  border-radius: 16px;
+  background: #f6f7f3;
+  color: #151714;
+  text-align: center;
+  rotate: -2deg;
+}
+.startCard p { margin: 0; color: #3d423b; }
+
+.startTitle {
+  margin: 0;
+  font-family: var(--display);
+  font-size: var(--t-heading);
+  line-height: 1.06;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
-.heroRow {
-  display: flex;
-  align-items: center;
-  gap: 48px;
-  margin-top: 32px;
-  color: var(--l-on-charcoal-soft);
-  font-size: 16px;
-}
-
-.heroAction {
-  display: inline-flex;
-  align-items: center;
-  height: 48px;
-  padding: 0 26px;
-  background: var(--l-on-charcoal);
-  color: var(--l-charcoal);
-  font-size: 16px;
+.startAction {
+  display: grid;
+  place-items: center;
+  height: 56px;
+  margin-top: 16px;
+  border-radius: 8px;
+  background: #151714;
+  color: #f6f7f3;
   font-weight: 600;
   text-decoration: none;
   transition: background-color 150ms ease, transform 150ms ease;
 }
-.heroAction:hover { background: #ffffff; }
-.heroAction:active { transform: translateY(1px); }
-.heroAction:focus-visible { outline-color: var(--l-on-charcoal); }
+.startAction:hover { background: #2b6a3f; }
+.startAction:active { transform: translateY(1px); }
 
-/* ------------------------------------------------------------ showcase: one control, at work */
-
-.showcase {
-  --u: min(0.46vw, 6.6px);
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: var(--l-gutter);
-  align-items: center;
-  padding: 144px var(--l-margin);
-  background: var(--l-field-2);
-  color: var(--l-ink);
-  transition: background-color 500ms ease, color 500ms ease;
-}
-.showcase[data-said="got"] { background: var(--l-accent); color: var(--l-on-accent); }
-.showcase[data-said="partly"] { background: var(--l-field-1); }
-
-.showcaseText {
-  grid-column: 1 / 6;
-}
-
-.showcase .h2 {
-  font-size: clamp(36px, 4.2vw, 60px);
-  line-height: 1.04;
-  letter-spacing: -0.03em;
-}
-
-.word {
-  display: inline-block;
-}
-
-.showcaseLine {
-  max-width: 440px;
-  margin: 24px 0 0;
-  font-size: 18px;
-  line-height: 1.55;
-}
-
-.control {
-  grid-column: 7 / 13;
-  justify-self: end;
-  width: calc(var(--u) * 100);
-  padding: calc(var(--u) * 5) calc(var(--u) * 5.5);
-  border-radius: calc(var(--u) * 3);
-  background: #ffffff;
-  color: #151714;
-  font-family: var(--font);
-}
-
-.controlHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: calc(var(--u) * 4);
-}
-
-.controlTopic {
-  font-size: calc(var(--u) * 4.2);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.controlStamp {
-  color: #5a5f58;
-  font-size: calc(var(--u) * 2.8);
-}
-
-.controlSeg {
-  display: inline-flex;
-  gap: calc(var(--u) * 0.6);
-  margin-top: calc(var(--u) * 3.5);
-  padding: calc(var(--u) * 0.6);
-  border-radius: calc(var(--u) * 2.2);
-  background: #e7eae4;
-}
-
-.controlBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--u) * 1.6);
-  height: calc(var(--u) * 10);
-  padding: 0 calc(var(--u) * 3.6);
-  border: 1px solid transparent; /* taste-skill-ignore: inside a data-ui interface fragment */
-  border-radius: calc(var(--u) * 1.7);
-  background: transparent;
-  color: #565b54;
-  font-size: calc(var(--u) * 3.6);
-  font-weight: 500;
-  transition: background-color 200ms ease, color 200ms ease, transform 150ms ease;
-}
-.controlBtn:hover { color: #151714; }
-.controlBtn:active { transform: scale(0.98); }
-.controlBtn[aria-checked="true"] {
-  background: #ffffff;
-  border-color: #d5d9d1;
-  color: #151714;
-}
-
-.controlDot {
-  width: calc(var(--u) * 2.2);
-  height: calc(var(--u) * 2.2);
-  border-radius: 50%;
-}
-.controlDot[data-s="got"] { background: #2b6a3f; }
-.controlDot[data-s="partly"] { position: relative; overflow: hidden; box-shadow: inset 0 0 0 2px #2f6db5; } /* taste-skill-ignore: inside a data-ui interface fragment */
-.controlDot[data-s="partly"]::after { content: ""; position: absolute; inset: 0 50% 0 0; background: #2f6db5; }
-.controlDot[data-s="stuck"] { background: #c4242a; border-radius: 2px; transform: rotate(45deg) scale(0.85); }
-
-.controlQuote {
-  margin: calc(var(--u) * 4) 0 0;
-  color: #565b54;
-  font-size: calc(var(--u) * 3);
-}
-
-/* ------------------------------------------------------------ how it works: one card, four fields */
-
-.howWrap {
-  background: var(--l-paper);
-}
-
-.howHead {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: var(--l-gutter);
-  align-items: end;
-  padding: 160px var(--l-margin) 48px;
-}
-.howHead .h2 { grid-column: 1 / 6; }
-
-.howIntro {
-  grid-column: 7 / 13;
-  margin: 0;
-  color: var(--l-soft);
-  font-size: 18px;
-}
-
-.how {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.field {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 40px;
-  min-height: 480px;
-  padding: 36px 28px 48px;
-}
-.field[data-field="0"] { background: var(--l-field-1); }
-.field[data-field="1"] { background: color-mix(in srgb, var(--l-field-1) 50%, var(--l-field-2)); }
-.field[data-field="2"] { background: var(--l-field-2); }
-.field[data-field="3"] { background: var(--l-accent); color: var(--l-on-accent); }
-
-.stepCard {
-  align-self: start;
-  justify-self: start;
-  width: min(100%, 280px);
-  display: grid;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #151714;
-  font-size: 14px;
-  line-height: 1.45;
-  transition: transform 150ms ease;
-}
-.stepCard:hover { transform: translateY(-6px); }
-
-.stepPill {
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 9px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  background: #e7eae4;
-  color: #353a34;
-}
-.stepPill[data-s="stuck"] { background: #ffecea; color: #831c1e; }
-.stepPill[data-s="done"] { background: #e2f0e5; color: #143a20; }
-
-.stepName {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.stepMeta {
-  margin: 0;
-  color: #565b54;
-  font-size: 13px;
-}
-
-.stepQuote {
-  margin: 0;
-  font-size: 14px;
-}
-
-.stepButton {
-  justify-self: start;
-  margin-top: 4px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  background: #151714;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.clause {
-  margin: 0;
-  font-size: clamp(22px, 2vw, 32px);
-  line-height: 1.15;
-  font-weight: 500;
-  letter-spacing: -0.015em;
-}
-
-/* ------------------------------------------------------------ one topic, with notes in both margins */
-
-.topic {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: var(--l-gutter);
-  padding: 180px var(--l-margin) 200px;
-}
-
-.topicTitle {
-  grid-column: 1 / 5;
-  text-align: right;
-  align-self: start;
-  margin-bottom: 32px;
-}
-
-.topicGrid {
-  grid-column: 1 / -1;
-  display: grid;
-}
-
-.topicRow {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: var(--l-gutter);
-  align-items: start;
-}
-
-.noteCell[data-side="left"] {
-  grid-column: 1 / 5;
-  justify-self: end;
-  text-align: right;
-}
-.noteCell[data-side="right"] {
-  grid-column: 9 / 13;
-  justify-self: start;
-}
-
-.panelPart {
-  grid-column: 5 / 9;
-  justify-self: center;
-  width: 392px;
-  padding: 18px 20px;
-  background: #ffffff;
-  color: #151714;
-  border-left: 1px solid #e3e6df; /* taste-skill-ignore: inside a data-ui interface fragment */
-  border-right: 1px solid #e3e6df; /* taste-skill-ignore: inside a data-ui interface fragment */
-  border-bottom: 1px solid #eef0eb; /* taste-skill-ignore: inside a data-ui interface fragment */
-  font-size: 14px;
-  line-height: 1.45;
-  transition: box-shadow 200ms ease;
-}
-.panelPart[data-first] { border-top: 1px solid #e3e6df; border-radius: 14px 14px 0 0; } /* taste-skill-ignore: inside a data-ui interface fragment */
-.panelPart[data-last] { border-bottom: 1px solid #e3e6df; border-radius: 0 0 14px 14px; } /* taste-skill-ignore: inside a data-ui interface fragment */
-.topicRow[data-active] .panelPart { box-shadow: inset 0 0 0 2px var(--l-accent); } /* taste-skill-ignore: inside a data-ui interface fragment */
-
-.note {
-  display: grid;
-  gap: 6px;
-  width: 24ch;
-  margin-top: 16px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--l-ink);
-  text-align: inherit;
-  cursor: default;
-}
-.noteName {
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1.3;
-}
-.noteText {
-  color: var(--l-soft);
-  font-size: 16px;
-  line-height: 1.45;
-}
-.note[aria-pressed="true"] .noteName { color: var(--l-accent); }
-:global([data-theme="dark"]) .note[aria-pressed="true"] .noteName { color: #8fd3a5; }
-
-.pHead { display: grid; gap: 8px; }
-.pTitle { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
-.pPills { display: flex; align-items: center; gap: 8px; margin: 0; color: #565b54; font-size: 12px; }
-.pSummary { margin: 0; font-size: 14px; }
-.pUnder { background: #fff5f4; margin: -18px -20px; padding: 18px 20px; }
-.pLabel { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
-.pRow { display: flex; align-items: center; gap: 10px; margin: 0; }
-.pRow span:last-child { margin-left: auto; color: #565b54; font-size: 12px; }
-.ring { width: 10px; height: 10px; border-radius: 50%; border: 1.5px dashed #a26a0a; }
-.pMemory { margin: 10px 0 0; padding: 8px 10px; border-radius: 6px; background: #ffffff; color: #565b54; font-size: 12px; }
-.pPrompt { margin: 0; padding: 10px 12px; border-radius: 8px; background: #f5f7f3; font-size: 13px; line-height: 1.5; }
-.pButtons { display: flex; gap: 8px; }
-.pButtons span { padding: 7px 12px; border: 1px solid #c9cec4; border-radius: 6px; font-size: 13px; font-weight: 500; } /* taste-skill-ignore: inside a data-ui interface fragment */
-.pButtons .pPrimary { background: #151714; border-color: #151714; color: #ffffff; }
-.pSeg { display: inline-flex; gap: 2px; margin: 0; padding: 2px; border-radius: 8px; background: #e7eae4; }
-.pSeg span { padding: 5px 12px; border-radius: 6px; color: #565b54; font-size: 13px; }
-.pSeg span:last-child { background: #ffffff; color: #151714; box-shadow: 0 0 0 1px #e3e6df; } /* taste-skill-ignore: inside a data-ui interface fragment */
-.pNote { margin: 0; font-size: 13px; }
-
-/* ------------------------------------------------------------ what it won't do: a poster */
-
-.wont {
-  padding: 120px var(--l-margin) 80px;
-  background: var(--l-field-1);
-}
-
-.wontHead {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: var(--l-gutter);
-  align-items: end;
-  margin-bottom: 72px;
-}
-.wontHead .h2 { grid-column: 1 / 7; }
-.wontFor {
-  grid-column: 7 / 13;
-  margin: 0;
-  color: var(--l-soft);
-  font-size: 17px;
-}
-
-.wontList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.wontList li {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: var(--l-gutter);
-  align-items: baseline;
-  transition: color 150ms ease;
-}
-.wontList li:hover { color: var(--l-accent); }
-:global([data-theme="dark"]) .wontList li:hover { color: #8fd3a5; }
-
-.wontWord {
-  grid-column: 1 / 7;
-  font-size: clamp(64px, 10vw, 150px);
-  line-height: 0.92;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  text-transform: lowercase;
-}
-
-.wontFact {
-  grid-column: 7 / 13;
-  color: var(--l-soft);
-  font-size: 22px;
-  line-height: 1.3;
-}
-
-/* ------------------------------------------------------------ call to action: one word */
-
-.ctaWrap {
-  background: var(--l-paper);
-}
-
-.cta {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  min-height: 66svh;
-  padding: 0 var(--l-margin) 24px;
-  border-radius: 48px 48px 0 0;
-  background: var(--l-accent);
-  color: var(--l-on-accent);
-  text-decoration: none;
-  overflow: hidden;
-}
-.cta:hover,
-.cta:focus-visible {
-  background: var(--l-on-accent);
-  color: var(--l-accent);
-  outline: none;
-}
-.cta:focus-visible { box-shadow: inset 0 0 0 4px var(--l-accent); } /* taste-skill-ignore: focus ring */
-
-.ctaLine {
-  position: absolute;
-  top: 28px;
-  left: var(--l-margin);
-  max-width: 420px;
-  font-size: 18px;
-  line-height: 1.45;
-}
-
-.ctaArrow {
-  position: absolute;
-  top: 24px;
-  right: var(--l-margin);
-  width: 48px;
-  height: 48px;
-}
-
-.ctaWord {
-  font-size: clamp(160px, 46.5vw, 760px);
-  line-height: 0.74;
-  font-weight: 700;
-  letter-spacing: -0.06em;
+.startSecond {
+  color: #3d423b;
+  font-size: var(--t-small);
+  text-underline-offset: 3px;
 }
 
 /* ------------------------------------------------------------ footer: the name returns */
 
+/*
+  The footer sticks to the bottom of the screen underneath <main> (which has the higher
+  z-index), so the page's last section slides up and uncovers it. No script.
+*/
 .footer {
-  position: relative;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  min-height: 100svh;
-  padding: 40px var(--l-margin) 20px;
+  gap: 56px;
+  padding: 56px var(--l-margin) 20px;
   background: var(--l-charcoal);
   color: var(--l-on-charcoal);
-  --plate-paper: transparent;
-  --plate-ink: #dde2da;
-  --plate-leaf: #3a5a41;
-  --plate-fruit: #63b77e;
-  --plate-wire: #4d524b;
-  --plate-post: #7d8279;
 }
+.footer :focus-visible { outline-color: var(--l-on-charcoal); }
 
 .footCols {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--l-gutter);
-  font-size: 16px;
 }
 .footCols > div { display: grid; align-content: start; gap: 6px; }
 .footCols p { margin: 0; color: var(--l-on-charcoal-soft); }
 .footCols a { color: var(--l-on-charcoal-soft); text-decoration: none; }
 .footCols a:hover { color: var(--l-on-charcoal); }
 .footCols .footHead { color: var(--l-on-charcoal); font-weight: 500; }
-
-.footPlates {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  align-items: end;
-  gap: var(--l-gutter);
-  padding: 48px 6vw 24px;
-}
-.footPlate {
-  width: 100%;
-  max-height: 34svh;
-}
 
 .footBottom {
   display: grid;
@@ -660,78 +812,113 @@
 .legal {
   margin: 0;
   color: var(--l-on-charcoal-soft);
-  font-size: 14px;
+  font-size: var(--t-small);
 }
 
-/* ------------------------------------------------------------ tablet and phone */
+/* ------------------------------------------------------------ narrower screens */
 
+/*
+  Below 1100px the topic names no longer fit their boxes, so the map becomes a miniature:
+  the same drawing with the names, marks and dots hidden and each box filled with its
+  status colour instead (the app's MiniMap does the same).
+*/
 @media (max-width: 1100px) {
-  .how { grid-template-columns: repeat(2, 1fr); }
-  .field { min-height: 420px; }
-  .showcaseText { grid-column: 1 / -1; }
-  .control { grid-column: 1 / -1; justify-self: start; margin-top: 48px; --u: min(0.8vw, 6.6px); }
-  .topicRow,
-  .topic { grid-template-columns: 1fr minmax(0, 392px) 1fr; }
-  .topicTitle { grid-column: 1 / -1; text-align: left; }
-  .noteCell[data-side="left"] { grid-column: 1; }
-  .panelPart { grid-column: 2; width: 100%; }
-  .noteCell[data-side="right"] { grid-column: 3; }
-  .note { width: auto; max-width: 24ch; }
+  .legend { display: none; }
+  .mapWorld .heroNode > * { display: none; }
+  .mapWorld .heroNode { border-color: transparent; border-radius: 29px; background: var(--edge); }
+  .mapWorld .heroNode[data-status="done"] { background: var(--done); }
+  .mapWorld .heroNode[data-status="learning"] { background: var(--learning); }
+  .mapWorld .heroNode[data-status="stuck"] { background: var(--stuck); }
+  .mapWorld .heroNode[data-status="shaky"] { background: var(--shaky); }
+  .mapWorld .heroNode[data-status="know"] { background: var(--know); }
+  .mapWorld .heroNode[aria-pressed="true"] { outline: 6px solid var(--text); outline-offset: 4px; }
+  .mapWorld svg path { stroke-width: 3.5px; }
+
+  .wontList,
+  .wontFor { grid-column: 1 / 8; }
+  .plate { grid-column: 8 / 13; }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .page { --l-margin: 16px; }
 
-  .hero { padding: 80px 20px 56px; }
-  .navLinks { gap: 18px; }
-  .navLinks a:first-child { display: none; }
-  .plateArt { width: 70vw; }
-  .heroTitle { font-size: 34px; }
-  .heroSub { font-size: 16px; }
-  .heroRow { flex-direction: column; gap: 14px; width: 100%; }
-  .heroAction { width: 100%; justify-content: center; }
+  .navLinks,
+  .navAccount { gap: 16px; }
+  .navLinks > a { display: none; }
 
-  .showcase { min-height: 0; padding: 80px 16px; }
-  .showcase .h2 { font-size: 34px; }
-  .showcaseLine { font-size: 17px; }
-  .control { width: 100%; margin-top: 36px; padding: 20px; border-radius: 16px; }
-  .controlTopic { font-size: 18px; }
-  .controlStamp { display: none; }
-  .controlSeg { display: flex; margin-top: 16px; padding: 3px; gap: 3px; border-radius: 12px; }
-  .controlBtn { flex: 1; justify-content: center; gap: 8px; height: 44px; padding: 0 8px; border-radius: 9px; font-size: 15px; }
-  .controlDot { width: 10px; height: 10px; }
-  .controlQuote { margin-top: 16px; font-size: 15px; }
+  .heroHead { grid-template-columns: 1fr; row-gap: 16px; padding: 16px 0 24px; }
+  .heroTitle,
+  .heroSide { grid-column: 1; }
+  .heroSub { font-size: var(--t-body); }
+  .sheet { padding: 12px; }
+  .readout { grid-template-columns: 1fr; margin-top: 14px; }
+  .readGoal { justify-items: start; }
+  .seg { display: flex; width: 100%; }
+  .segBtn { flex: 1; height: 44px; padding: 0 6px; white-space: normal; line-height: 1.2; }
 
-  .how { grid-template-columns: 1fr; }
-  .howHead { grid-template-columns: 1fr; gap: 16px; padding: 96px 16px 32px; }
-  .howHead .h2,
-  .howIntro { grid-column: 1; }
-  .field { min-height: 0; padding: 28px 20px 36px; gap: 24px; }
-  .clause { font-size: 24px; }
+  /* No pin on a phone: the finished trace, under its three sentences. */
+  .stuck { grid-template-columns: 1fr; row-gap: 32px; min-height: 0; padding: 80px var(--l-margin); }
+  .stuckText,
+  .stuckArt { grid-column: 1; }
+  .stuckText,
+  .promptText { padding-right: 0; }
+  .stuckText p { font-size: var(--t-body); margin-top: 16px; }
+  .stuckArt { padding: 14px; }
+  /* The drawing's text would be 6px tall here, so the same result is shown as a list. */
+  .stuckArt > svg { display: none; }
+  .traceList {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .traceList li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 2px 10px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  .traceList li[data-likely] { background: var(--shaky-bg); }
+  .traceListName { font-weight: 600; }
+  .traceListNote { grid-column: 2; color: var(--muted); font-size: var(--t-small); }
 
-  .topic { display: block; padding: 96px 16px 112px; }
-  .topicRow { display: block; }
-  .noteCell { text-align: left !important; }
-  .note { width: 100%; max-width: none; margin: 24px 0 12px; text-align: left; }
-  .panelPart { width: 100%; border-radius: 14px !important; border: 1px solid #e3e6df !important; } /* taste-skill-ignore: inside a data-ui interface fragment */
+  .prompt { grid-template-columns: 1fr; row-gap: 32px; padding: 80px var(--l-margin); }
+  .promptText,
+  .slip { grid-column: 1; }
+  .sources { margin: 20px 0 0; }
+  .source { padding-left: 0; padding-right: 0; }
+  .source:hover,
+  .source[aria-pressed="true"] { background: transparent; }
+  .slip { padding: 20px 18px 24px; }
 
-  .wont { padding: 80px 16px 56px; }
-  .wontHead { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 40px; }
-  .wontHead .h2,
-  .wontFor { grid-column: 1; }
-  .wontList li { grid-template-columns: 1fr; gap: 6px; margin-bottom: 22px; }
-  .wontWord,
-  .wontFact { grid-column: 1; }
-  .wontWord { font-size: 15vw; }
-  .wontFact { text-align: left; font-size: 16px; }
+  .subjects { padding: 80px var(--l-margin); }
+  .subjectsHead { grid-template-columns: 1fr; row-gap: 16px; margin-bottom: 32px; }
+  .subjectsHead .h2,
+  .subjectsHead .lead { grid-column: 1; }
+  .lead { font-size: var(--t-body); }
+  .subjectGrid { grid-template-columns: 1fr; }
+  .subject { padding: 20px; }
 
-  .cta { min-height: 46svh; border-radius: 28px 28px 0 0; }
-  .ctaLine { font-size: 17px; max-width: 70%; }
-  .ctaArrow { width: 32px; height: 32px; }
-  .ctaWord { font-size: 45vw; }
+  .wont { grid-template-columns: 1fr; padding: 80px var(--l-margin); }
+  .wont .h2 { margin-bottom: 24px; }
+  .wontList,
+  .wontFor,
+  .plate { grid-column: 1; grid-row: auto; }
+  .wontList { gap: 20px; }
+  .wontList li { grid-template-columns: 1fr; row-gap: 4px; min-height: 0; }
+  .wontFact { font-size: var(--t-body); }
+  .plate { width: min(420px, 100%); justify-self: center; margin-top: 40px; }
 
-  .footer { padding: 32px 16px 16px; }
-  .footCols { grid-template-columns: 1fr 1fr; row-gap: 32px; font-size: 16px; }
-  .footPlates { padding: 24px 0; }
-  .legal { font-size: 14px; }
+  .start { grid-template-columns: 1fr; padding-top: 72px; }
+  .startAside,
+  .startCard { grid-column: 1; }
+  .startAside { margin-bottom: 32px; font-size: var(--t-body); }
+  .startCard { padding: 32px 20px 72px; rotate: -1deg; }
+
+  .footer { gap: 40px; padding-top: 40px; }
+  .footCols { grid-template-columns: 1fr 1fr; row-gap: 32px; }
 }

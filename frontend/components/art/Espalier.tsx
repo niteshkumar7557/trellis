@@ -2,10 +2,11 @@
 // Drawn in code like a plate from an old gardening book. Each tier is a level of
 // the map: foundations at the bottom, the goal at the top.
 //
-// Three seasons are drawn as separate layers so a parent can crossfade them:
-//   [data-layer="bare"]   the trained wood alone
-//   [data-layer="leaf"]   leaves on the spurs
-//   [data-layer="fruit"]  fruit where topics are done
+// Four seasons are drawn as separate layers so a parent can crossfade them:
+//   [data-layer="bare"]     the trained wood alone, tied to its wires
+//   [data-layer="leaf"]     leaves on the spurs
+//   [data-layer="blossom"]  a flower on every spur
+//   [data-layer="fruit"]    fruit where topics are done
 
 import { useMemo } from "react";
 
@@ -18,7 +19,7 @@ export interface EspalierProps {
   /** Show the posts and wires of the trellis itself. */
   trellis?: boolean;
   /** Which seasons to draw. */
-  layers?: ("bare" | "leaf" | "fruit")[];
+  layers?: ("bare" | "leaf" | "blossom" | "fruit")[];
   className?: string;
   title?: string;
 }
@@ -92,6 +93,11 @@ export function Espalier({
           {art.spurs.map((s, i) => (
             <path key={i} data-grow="spur" d={spurPath(s)} strokeWidth="1.4" />
           ))}
+          {/* The ties that hold each arm to its wire: what makes it a trained tree, not a wild one. */}
+          {trellis &&
+            art.ties.map((t, i) => (
+              <path key={i} data-grow="tie" d={`M${t.x - 3} ${t.y - 4}l6 8M${t.x + 3} ${t.y - 4}l-6 8`} strokeWidth="1" stroke="var(--plate-post)" />
+            ))}
         </g>
       )}
 
@@ -102,6 +108,20 @@ export function Espalier({
               <path data-leaf d="M0 0C5 -5 13 -5 18 0C13 5 5 5 0 0Z" fill="var(--plate-leaf)" stroke="var(--plate-ink)" strokeWidth="0.8" />
               <path d="M2 0H15" stroke="var(--plate-ink)" strokeWidth="0.6" opacity="0.7" />
               <path data-leaf d="M2 2C6 7 12 10 16 9C13 5 7 2 2 2Z" fill="var(--plate-leaf)" stroke="var(--plate-ink)" strokeWidth="0.8" />
+            </g>
+          ))}
+        </g>
+      )}
+
+      {layers.includes("blossom") && (
+        <g data-layer="blossom">
+          {art.spurs.map((s, i) => (
+            <g key={i} transform={`translate(${tipX(s)} ${tipY(s) + s.dir * 3}) rotate(${s.order * 37})`}>
+              {/* Five petals: one drawn, turned four more times. */}
+              {[0, 72, 144, 216, 288].map((turn) => (
+                <path key={turn} transform={`rotate(${turn})`} d="M0 0C-3 -3 -3 -7.5 0 -8.5C3 -7.5 3 -3 0 0Z" fill="var(--plate-paper)" stroke="var(--plate-ink)" strokeWidth="0.7" />
+              ))}
+              <circle r="1.5" fill="var(--plate-fruit)" />
             </g>
           ))}
         </g>
@@ -168,6 +188,7 @@ function draw(tiers: number[], seed: number) {
   const trunk = `M${left[0]}L${left.slice(1).join("L")}Q${CX} ${topY - 10} ${right[0]}L${right.slice(1).join("L")}Z`;
 
   const arms: { d: string; w: number }[] = [];
+  const ties: { x: number; y: number }[] = [];
   const spurs: Spur[] = [];
   let order = 0;
   tierY.forEach((y, ti) => {
@@ -183,6 +204,8 @@ function draw(tiers: number[], seed: number) {
         d: `M${sx} ${sy}C${sx} ${y + 4} ${bendX - side * 10} ${y} ${bendX} ${y}S${CX + side * reach * 0.7} ${y + sag} ${endX} ${y - 3 + wob(3)}`,
         w,
       });
+      // Two ties per arm: where it meets the wire, and near its end.
+      ties.push({ x: bendX + side * 6, y }, { x: CX + side * reach * 0.86, y: y + sag * 0.4 });
       const count = tiers[ti];
       for (let k = 0; k < count; k++) {
         const t = (k + 0.6) / (count + 0.2);
@@ -206,5 +229,5 @@ function draw(tiers: number[], seed: number) {
     return `M${x} ${GROUND + 8}l${6 + r() * 6} ${-3 - r() * 3}`;
   });
 
-  return { trunk, arms, spurs, tierY, hatch };
+  return { trunk, arms, spurs, ties, tierY, hatch };
 }

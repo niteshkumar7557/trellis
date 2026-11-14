@@ -50,8 +50,11 @@ dependencies. `next.config.ts` sets `devIndicators: false`.
   work on a white sheet with a hairline edge. Colour goes on data only (topic statuses); the
   primary button is near-black; no gradients, no resting shadows (floating things such as
   the search pop-up and the topic sheet may use `--shadow-float`).
-- **The landing page** is "a horticultural plate book" with its own scoped `--l-*` tokens.
-  Its pictures are procedural SVG espaliers (`components/art/Espalier.tsx`).
+- **The landing page** is built on one idea, "the page is the map": the first screen is
+  the real React Native map, drawn with the app map's own styles, and each section shows
+  one thing Trellis does with it. It has its own scoped `--l-*` tokens, six type sizes, and
+  a second typeface for headings (Fraunces). See §3a.
+- **The brand** (mark, lockup, icons, share image) lives in `components/brand/`. See §3b.
 - **No raster images, ever.** Every picture is SVG drawn in code (the owner's rule).
 - **Motion is GSAP**, imported from `@/lib/gsap`, with `useGSAP` and a scope. Respect
   `prefersReducedMotion()`. On app screens motion is feedback only. CSS keyframes are fine
@@ -59,6 +62,79 @@ dependencies. `next.config.ts` sets `devIndicators: false`.
 - **Lint rules that bite:** React's lint forbids `setState` inside effects (lift state, or
   derive it) and reading refs during render. Don't wrap ref-reading functions in
   `contextSafe`; use `useCallback`.
+
+### 3a. The landing page (redesigned 14 Nov 2026)
+
+**Rule: nothing on it is typed in by hand.** `components/landing/sample.ts` runs the
+shared code (`deriveStatuses`, `requiredFor`, `suspectsFor`, `buildPrompt`) on the sample
+student, and every section draws from that. Why: a landing page with invented screenshots
+drifts from the product the first time the product changes; this one changes with it.
+
+| Section | File | What it shows |
+|---|---|---|
+| Hero | `HeroMap.tsx` | The 19 big topics as the app draws them: it uses the classes of `map/map.module.css` directly (`.closed`, `.edge`, `.arrowHead`), on the app's layout (size `plate` in `map/layout.ts`). **Live:** switch the goal to see what it lets you skip; pick a topic to read "Don't skip / Can skip" and why (`importanceOf`). |
+| Stuck | `StuckTrace.tsx` | The "may be why" rule played by the scroll: pinned for about one screen, one GSAP timeline on `scrub`. |
+| Prompt | `PromptSlip.tsx` | The real prompt for the stuck topic. Pointing at a source lights its part. Copy and the two links work. |
+| Subjects, Won't do, Start, Footer | `Landing.tsx` | The two graphs at their real sizes (`MiniMap`), the promises beside the espalier, the one action. |
+
+Things that are easy to break:
+
+- **The finished picture is the default.** Each animation hides things and brings them
+  back (`gsap.from`), so with no script, on a phone, or with reduced motion, the whole
+  content is there. Keep it that way: never put a "hidden" starting state in the CSS.
+- **Below 1100px the hero map is a miniature** (names hidden by CSS, boxes filled with the
+  status colour). **Below 900px the stuck scene is not pinned** and its drawing is replaced
+  by a ranked list (`.traceList`), because the drawing's text would be 6px tall.
+- **The hero map is always the app's dark map** (class `.night`, the dark tokens copied
+  from `globals.css`; keep them in step), because the hero's wall is charcoal in both
+  themes and a light sheet glared against it. The trace, the prompt slip and the espalier
+  follow the visitor's theme through the app's tokens.
+- **The hero map shares the app map's CSS classes.** Changing `.closed`, `.edge` or
+  `.arrowHead` in `map.module.css` changes the landing page too. That is on purpose.
+- **Type (owner's call, 14 Nov 2026):** headings are **Fraunces** (a soft serif, loaded in
+  `landing/fonts.ts` so only this page downloads it); paragraphs, buttons, the logo and
+  every piece of the app shown on the page stay IBM Plex Sans. Sizes are the six `--t-*`
+  steps at the top of `landing.module.css`; use one of them, don't add a seventh. The rest
+  of the product is still Plex Sans only.
+- **Trade-off:** the map is not the app's `MapCanvas` (no pan, zoom or open frames). It is
+  a simpler drawing of the same layout and styles, so the landing page doesn't load the
+  canvas code. The map is laid out in pixels and scaled to its width by one CSS variable
+  (`--s`, set by a `ResizeObserver` in `HeroMap.tsx`).
+- The design inspector fails this page on "few pictures" and "no footage". That is the
+  SVG-only rule at work and is expected.
+
+### 3b. Brand assets (added 14 Nov 2026)
+
+Everything is drawn in code from one path, `MARK_PATH` in `components/brand/brand.ts`.
+
+| What | File | Notes |
+|---|---|---|
+| The mark | `brand/Mark.tsx` | Takes the theme's green by default; `color` and `weight` exist for the images below. |
+| The lockup (mark + name) | `brand/Logo.tsx` | Used by the sidebar, sign-in, setup, landing and 404. Inline styles, so the share image can use it too. |
+| Browser-tab icon | `app/icon.svg` | Paper mark on a green tile, heavier stroke so it reads at 16px. A static file: it repeats the path by hand. |
+| Apple touch icon | `app/apple-icon.tsx` | 180px PNG. |
+| Home-screen icons | `app/pwa-icon/[kind]/route.tsx` | `/pwa-icon/192`, `/512`, `/maskable`. |
+| Web manifest | `app/manifest.ts` | Name, colours, the icons above. |
+| Share image | `app/opengraph-image.tsx` | 1200×630: lockup, the headline, the real map in miniature. |
+| 404 page | `app/not-found.tsx` | The framed sheet with a bare espalier. |
+| The espalier | `art/Espalier.tsx` | Four seasons as layers: bare, leaf, blossom, fruit. |
+
+**Why there are PNGs when the rule is "no raster images":** no image file is kept in the
+repo. Each PNG is drawn as SVG in code and rendered by Next during `next build`
+(`ImageResponse`), then served as a static file. The PNG step can't be avoided: iOS
+ignores SVG touch icons, Android needs 192 and 512px PNGs to offer "Install", and
+WhatsApp, LinkedIn and X show no preview for an SVG share image.
+
+**Where this falls short of production practice:**
+
+- There is no `favicon.ico`. Every current browser reads `icon.svg`; only very old ones
+  and a few feed readers still ask for `.ico`.
+- The share image is the same for every page. Per-page images would need one
+  `opengraph-image.tsx` per route.
+- `ImageResponse` reads IBM Plex Sans from the `@fontsource/ibm-plex-sans` package at build
+  time (it can't use the woff2 that `next/font` serves). That is one extra dependency.
+- Link previews need absolute addresses. They come from `SITE_URL` in `brand.ts`
+  (`NEXT_PUBLIC_SITE_URL`, default `https://trellis.niteshkumar.xyz`).
 
 ## 4. Screens and routes
 
@@ -73,6 +149,7 @@ dependencies. `next.config.ts` sets `devIndicators: false`.
 | `/map` | The map (home) | `app/(app)/map/page.tsx` |
 | `/check-ins` | Every update and note; edit or delete | `app/(app)/check-ins/page.tsx` |
 | `/settings` | Account, theme, AI usage (signed in), export, delete everything, restore sample | `app/(app)/settings/page.tsx` |
+| any unknown address | 404, "This branch isn't on the map" | `app/not-found.tsx` |
 
 The app screens share `components/app/Shell.tsx`: sidebar (pages, the student's subjects
 with progress, the student) and top bar (search trigger, theme button). The sidebar lists
@@ -121,7 +198,7 @@ is started, it shows just that form.
 
 ```
 frontend/
-  app/                     routes (above); globals.css holds every token
+  app/                     routes (above); globals.css holds every token; icon.svg, apple-icon, manifest, opengraph-image (§3b)
   components/
     app/Shell.tsx          sidebar (with the AI usage meter) + top bar;   Search.tsx  ⌘K full-page search (§9)
     ui/Dropdown.tsx        our own dropdown (ARIA listbox); used instead of every <select>
@@ -135,8 +212,10 @@ frontend/
       RouteList.tsx        the list view (and the phone view), grouped by big topic
       MiniMap.tsx          the small whole-map drawing on /start
       TopicOptions.tsx     <optgroup> topic picker (check-ins edit form)
-    landing/               the landing page;  art/Espalier.tsx  procedural SVG
-    ui/                    Icon, Mark (logo), Status (StatusMark, StatusPill), ui.module.css
+    landing/               the landing page (§3a): Landing, HeroMap, StuckTrace, PromptSlip, sample.ts
+    brand/                 brand.ts (the mark's path, brand colours), Mark, Logo, images.tsx (§3b)
+    art/Espalier.tsx       the procedural espalier drawing, four seasons
+    ui/                    Icon, Status (StatusMark, StatusPill), ui.module.css
   lib/
     store.tsx              the client store (§10)
     usage.ts               the words for the AI allowance: which window, reset times, basic mode (§11)

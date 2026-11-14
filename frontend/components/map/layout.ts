@@ -76,9 +76,15 @@ export interface Layout {
 const cache = new Map<string, Layout>();
 
 const SIZES = {
-  full: { nodesep: 28, ranksep: 56, margin: 40 },
+  full: { nodesep: 28, ranksep: 56, margin: 40, w: BIG_W, h: BIG_H },
   /** For the miniature: closed big topics only, packed tight so the shape reads at a glance. */
-  mini: { nodesep: 8, ranksep: 26, margin: 4 },
+  mini: { nodesep: 8, ranksep: 26, margin: 4, w: 30, h: 12 },
+  /**
+   * For the landing page's hero: closed big topics drawn exactly as on the app's map, a
+   * little smaller and packed closer, so the widest row (seven topics in React Native)
+   * still fits a 1440px screen at close to full size.
+   */
+  plate: { nodesep: 12, ranksep: 30, margin: 12, w: 206, h: BIG_H },
 };
 
 /** Where each subtopic sits inside its frame, relative to the frame's top-left. */
@@ -125,7 +131,8 @@ function arrangeFrame(bigId: string) {
 }
 
 export function layoutFor(subjectId: SubjectId, open: Set<string>, size: keyof typeof SIZES = "full"): Layout {
-  const openIds = size === "mini" ? [] : [...open].filter((id) => topicById.get(id)?.subjectId === subjectId).sort();
+  // Only the full map opens big topics into frames; the two small sizes draw every one closed.
+  const openIds = size !== "full" ? [] : [...open].filter((id) => topicById.get(id)?.subjectId === subjectId).sort();
   const key = `${subjectId}:${size}:${openIds.join(",")}`;
   const hit = cache.get(key);
   if (hit) return hit;
@@ -141,8 +148,7 @@ export function layoutFor(subjectId: SubjectId, open: Set<string>, size: keyof t
   g.setDefaultEdgeLabel(() => ({}));
   for (const t of bigs) {
     const f = frames.get(t.id);
-    if (size === "mini") g.setNode(t.id, { width: 30, height: 12 });
-    else g.setNode(t.id, f ? { width: f.w, height: f.h } : { width: BIG_W, height: BIG_H });
+    g.setNode(t.id, f ? { width: f.w, height: f.h } : { width: z.w, height: z.h });
   }
   const bigEdges = edges.filter((e) => bigIds.has(e.from) && bigIds.has(e.to));
   // Only hard prerequisites decide the levels; soft ones are drawn over the result.

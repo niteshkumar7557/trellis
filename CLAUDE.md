@@ -69,8 +69,15 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   `src/ai/limits.ts`). Students see a percentage in the sidebar and in Settings
   (`GET /api/usage`); the owner sees dollars with `npm run ai:spend`. The numbers and
   reasons are in `docs/backend-design.md` §5 "Cost limits".
-- **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5 and M7 went into `main`
-  as one squashed commit each, on the owner's request; §0 still says merge commits. Ask
+- **Landing page and brand assets (14 Nov 2026): on `main`** (squashed from
+  `frontend/brand-landing`). The landing page leads with the real React Native map in the
+  app's own map style, live, and every section runs the shared code on the sample student
+  (`components/landing/sample.ts`). Its headings are Fraunces. The brand is in
+  `components/brand/`; the tab icon, touch icon, manifest, share image and 404 page are
+  new. A signed-in visitor gets "Open your map" there, and `/login` and `/signup` send
+  them on. See `docs/frontend.md` §3a and §3b.
+- **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7 and the landing page went
+  into `main` as one squashed commit each, on the owner's request; §0 still says merge commits. Ask
   for the next one.
 - **Plan (re-planned 13 Nov 2026):** M3 on 13 Nov; M4, M6 and MS on 14 Nov; M5 and M7 on
   15 Nov. Testing with real users 18 to 21 Nov.
@@ -143,8 +150,12 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 - **Colours come from tokens** in `frontend/app/globals.css` (light + dark); nothing is
   hard-coded. App screens use the "framed sheet" style: colour on data only, a near-black
   primary button, no gradients, no resting shadows. The landing page has its own tokens.
+  The few places CSS variables can't reach (the tab icon, the build-time PNGs) take their
+  hex from `components/brand/brand.ts`.
 - **GSAP** from `@/lib/gsap`, with `useGSAP` and a scope; respect reduced motion.
-- **IBM Plex Sans** only; the theme is set before paint by `themeScript`.
+- **IBM Plex Sans** only, with one exception the owner asked for on 14 Nov 2026: the
+  landing page's headings are Fraunces (`components/landing/fonts.ts`). The theme is set
+  before paint by `themeScript`.
 - **Checks:** `npx tsc --noEmit`, `npx eslint .` and `npm run lint:shared` stay clean (frontend). Design inspector:
   `node ~/.claude/skills/design-taste-frontend/scripts/inspect.mjs <url> [--app]`. The
   landing page always "fails" the picture checks; that's expected.

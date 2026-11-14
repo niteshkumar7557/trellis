@@ -1,8 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img" aria-label="Kero">
-  <rect width="48" height="48" rx="12" fill="#f7f6f3" />
-  <g transform="rotate(-25 24 24)">
-    <circle cx="24" cy="24" r="15" fill="#ba806e" />
-    <path d="M24 9a15 15 0 0 1 0 30V9Z" fill="#a86e5f" opacity="0.55" />
-    <circle cx="18.5" cy="18.5" r="4.6" fill="#cd9684" opacity="0.6" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Trellis">
+  <!-- The browser-tab icon: the espalier mark in paper on a leaf-green tile.
+       A filled tile, not the bare green mark, because a tab can be light or dark and thin
+       green strokes vanish on a dark one. The stroke is heavier than on screen (2.5, not 2)
+       so the three tiers stay apart at 16px.
+       The path and both colours are copied from components/brand/brand.ts; keep them the same. -->
+  <rect width="32" height="32" rx="7" fill="#2b6a3f" />
+  <path
+    transform="translate(4 3.5)"
+    d="M12 22V3M12 7.5c-2.6 0-5.2-.2-8-1.5M12 7.5c2.6 0 5.2-.2 8-1.5M12 12.5c-2.8 0-5.6-.3-8.5-1.8M12 12.5c2.8 0 5.6-.3 8.5-1.8M12 17.5c-3 0-6-.4-9-2M12 17.5c3 0 6-.4 9-2"
+    fill="none"
+    stroke="#eef0e9"
+    stroke-width="2.5"
+    stroke-linecap="round"
+  />
 </svg>

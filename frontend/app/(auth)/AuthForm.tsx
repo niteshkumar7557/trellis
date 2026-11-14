@@ -11,7 +11,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import ui from "@/components/ui/ui.module.css";
 import { ApiError, api, setAccessToken } from "@/lib/api";
@@ -33,11 +33,20 @@ const GOOGLE_ERRORS: Record<string, string> = {
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
-  const { act } = useStore();
+  const { act, mode: account, student } = useStore();
   const [busy, setBusy] = useState(false);
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(GOOGLE_ERRORS[params.get("error") ?? ""] ?? null);
   const signup = mode === "signup";
+
+  // Already signed in (they came here from a bookmark, the back button, or a link on the
+  // front page): a login form would be a dead end, so send them on. `replace`, not `push`,
+  // so Back doesn't return to this page and bounce them again.
+  // Not while a form is being submitted: submit() below signs in and then picks the
+  // destination itself (/start for a new account), and the two must not race.
+  useEffect(() => {
+    if (account === "live" && !busy) router.replace(student.goals.length ? "/map" : "/start");
+  }, [account, busy, student, router]);
 
   const submit = async (form: HTMLFormElement) => {
     const data = Object.fromEntries(new FormData(form)) as Record<string, string>;

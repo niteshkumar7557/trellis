@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Espalier } from "@/components/art/Espalier";
-import { Mark } from "@/components/ui/Mark";
+import { Logo } from "@/components/brand/Logo";
 import styles from "./auth.module.css";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -9,8 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <main className={styles.sheet}>
         <div className={styles.formSide}>
           <Link href="/" className={styles.brand}>
-            <Mark size={22} />
-            Trellis
+            <Logo size={22} />
           </Link>
           <div className={styles.form}>{children}</div>
           <p className={styles.fine}>Your record is private: no other student, teacher or group can see it.</p>

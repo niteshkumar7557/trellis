@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import { StoreProvider } from "@/lib/store";
+import { BRAND, SITE_URL } from "@/components/brand/brand";
 import { ThemeProvider, themeScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -11,10 +12,22 @@ const plex = IBM_Plex_Sans({
   display: "swap",
 });
 
+// Titles: the front page uses `default`; a page that sets its own title gets "… · Trellis".
+// metadataBase makes the share image's address absolute, which link previews require.
 export const metadata: Metadata = {
-  title: "Trellis — the map of what you're learning",
-  description:
-    "Trellis shows the map of a subject, what you can skip, what to study next, and the earlier topic that is really why you're stuck. It never teaches; it writes the prompt for your own AI.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: "Trellis: the map of what you're learning", template: "%s · Trellis" },
+  description: BRAND.description,
+  applicationName: BRAND.name,
+  openGraph: {
+    type: "website",
+    siteName: BRAND.name,
+    title: "Trellis: the map of what you're learning",
+    description: BRAND.description,
+    url: "/",
+  },
+  // The large card; X falls back to the Open Graph picture (app/opengraph-image.tsx).
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

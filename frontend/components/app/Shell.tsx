@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { Mark } from "@/components/ui/Mark";
+import { Logo } from "@/components/brand/Logo";
 import ui from "@/components/ui/ui.module.css";
 import { goalById, subjects } from "@shared/data";
 import { summarise } from "@shared/graph";
@@ -34,8 +34,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className={styles.frame} data-menu={menuOpen ? "open" : "closed"}>
       <aside className={styles.sidebar} aria-label="Trellis">
         <Link href="/map" className={styles.brand}>
-          <Mark size={20} />
-          <span>Trellis</span>
+          <Logo size={20} />
         </Link>
         <SidebarBody />
       </aside>

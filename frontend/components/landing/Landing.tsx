@@ -1,14 +1,34 @@
 "use client";
 
+// The landing page. Its idea: the page is the map. The first screen is the real React
+// Native graph on a sheet of paper, drawn as a trellis, and every section after it shows
+// one thing Trellis does with that map, using the sample student's real record.
+//
+//   Hero        the map itself, live (HeroMap.tsx)
+//   Stuck       the "may be why" rule, played as you scroll (StuckTrace.tsx)
+//   Prompt      the assembled prompt, and where each part came from (PromptSlip.tsx)
+//   Subjects    the two graphs that exist, at their real sizes
+//   Won't do    the promises, beside an espalier that turns through its seasons
+//   Start       the one action
+//
+// Everything the sections show is computed in ./sample.ts from shared/. This file holds
+// the page's frame, its small sections and the motion they share.
+
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Espalier } from "@/components/art/Espalier";
-import { Mark } from "@/components/ui/Mark";
+import { Logo } from "@/components/brand/Logo";
+import { BRAND } from "@/components/brand/brand";
+import { MiniMap } from "@/components/map/MiniMap";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
+import { useStore } from "@/lib/store";
+import { bigTopicsOf, SOURCE, subjects } from "@shared/data";
+import { display } from "./fonts";
+import { HeroMap } from "./HeroMap";
+import { PromptSlip } from "./PromptSlip";
+import { sizeOf } from "./sample";
+import { StuckTrace } from "./StuckTrace";
 import styles from "./landing.module.css";
-
-// The landing page is dressed as a gardener's plate book: a trellis trains a fruit
-// tree branch by branch, the way Trellis trains a subject topic by topic.
 
 export function Landing() {
   const root = useRef<HTMLDivElement>(null);
@@ -18,36 +38,10 @@ export function Landing() {
       const mm = gsap.matchMedia();
 
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        // The plate draws itself: trunk, then the trained arms, then the spurs.
-        const plate = root.current!.querySelector("[data-hero-plate]")!;
-        const grow = gsap.timeline({ defaults: { ease: "power2.inOut" } });
-        grow
-          .from(plate.querySelectorAll("[data-layer='bare'] [data-grow='trunk']"), { scaleY: 0, transformOrigin: "50% 100%", duration: 0.9 })
-          .from(plate.querySelectorAll("[data-layer='bare'] [data-grow='arm']"), { drawSVG: "0%", duration: 0.9, stagger: 0.04 }, "-=0.35")
-          .from(plate.querySelectorAll("[data-layer='bare'] [data-grow='spur']"), { drawSVG: "0%", duration: 0.4, stagger: 0.01 }, "-=0.5")
-          .from(plate.querySelectorAll("[data-part='trellis'] path"), { opacity: 0, duration: 0.6 }, 0.2);
+        // The first screen's words arrive with the map, heading first.
+        gsap.from("[data-hero] [data-rise]", { y: 20, opacity: 0, duration: 0.7, ease: "power3.out", stagger: 0.08 });
 
-        // Signature: the seasons turn slowly — bare wood, leaf, fruit — and back.
-        const seasons = gsap.utils.toArray<SVGGElement>(plate.querySelectorAll("[data-season]"));
-        gsap.set(seasons.slice(1), { opacity: 0 });
-        const turn = gsap.timeline({ repeat: -1, delay: 2.6 });
-        seasons.forEach((_, i) => {
-          const next = seasons[(i + 1) % seasons.length];
-          turn.to(next, { opacity: 1, duration: 1.6, ease: "sine.inOut" }, "+=5.5");
-          turn.to(seasons[i], { opacity: 0, duration: 1.6, ease: "sine.inOut" }, "<");
-        });
-        const onVis = () => (document.hidden ? turn.pause() : turn.resume());
-        document.addEventListener("visibilitychange", onVis);
-
-        // The plate drifts a little as the hero scrolls away.
-        gsap.to(plate, {
-          yPercent: -8,
-          scale: 0.96,
-          ease: "none",
-          scrollTrigger: { trigger: "[data-hero]", start: "top top", end: "bottom top", scrub: true },
-        });
-
-        // Every section's parts rise in once, heading first.
+        // Each section's parts rise in once, in reading order, as the section arrives.
         gsap.utils.toArray<HTMLElement>("[data-section]").forEach((section) => {
           const parts = section.querySelectorAll("[data-rise]");
           if (!parts.length) return;
@@ -61,40 +55,43 @@ export function Landing() {
           });
         });
 
-        // The how-it-works cards step up one after another.
-        gsap.from("[data-step-card]", {
-          y: 40,
-          opacity: 0,
-          duration: 0.8,
-          ease: "power3.out",
-          stagger: 0.12,
-          scrollTrigger: { trigger: "[data-steps]", start: "top 70%", once: true },
+        // The one moving picture: the espalier turns through its seasons, slowly, for ever.
+        const seasons = gsap.utils.toArray<HTMLElement>("[data-season]");
+        gsap.set(seasons.slice(1), { opacity: 0 });
+        const turn = gsap.timeline({ repeat: -1, delay: 2 });
+        seasons.forEach((season, i) => {
+          const following = seasons[(i + 1) % seasons.length];
+          turn.to(following, { opacity: 1, duration: 1.6, ease: "sine.inOut" }, "+=3.5");
+          turn.to(season, { opacity: 0, duration: 1.6, ease: "sine.inOut" }, "<");
         });
-
-        return () => document.removeEventListener("visibilitychange", onVis);
+        // A hidden tab should not keep animating.
+        const onVisibility = () => (document.hidden ? turn.pause() : turn.resume());
+        document.addEventListener("visibilitychange", onVisibility);
+        return () => document.removeEventListener("visibilitychange", onVisibility);
       });
 
+      // With less motion asked for, the plate simply shows the tree in fruit.
       mm.add("(prefers-reduced-motion: reduce)", () => {
-        const plate = root.current!.querySelector("[data-hero-plate]")!;
-        const seasons = plate.querySelectorAll("[data-season]");
+        const seasons = gsap.utils.toArray<HTMLElement>("[data-season]");
         gsap.set(seasons, { opacity: 0 });
         gsap.set(seasons[seasons.length - 1], { opacity: 1 });
       });
 
+      // The web font changes text heights after first paint; measure the triggers again.
       ScrollTrigger.refresh();
     },
     { scope: root },
   );
 
   return (
-    <div ref={root} className={styles.page}>
-      <Hero />
+    <div ref={root} className={`${styles.page} ${display.variable}`}>
       <main>
-        <Showcase />
-        <HowItWorks />
-        <TopicPlate />
+        <Hero />
+        <StuckTrace />
+        <PromptSlip />
+        <Subjects />
         <WontDo />
-        <Cta />
+        <Start />
       </main>
       <Footer />
     </div>
@@ -104,350 +101,178 @@ export function Landing() {
 // ------------------------------------------------------------ hero
 
 function Hero() {
+  const { mode } = useStore();
   return (
     <section className={styles.hero} data-hero aria-labelledby="hero-title">
       <header className={styles.nav}>
-        <Link href="/" className={styles.navBrand}>
-          <Mark size={20} />
-          Trellis
+        <Link href="/" className={styles.navBrand} aria-label="Trellis, home">
+          <Logo size={22} color={BRAND.leafOnDark} />
         </Link>
         <nav className={styles.navLinks} aria-label="Site">
-          <a href="#how">How it works</a>
-          <Link href="/login">Log in</Link>
+          <a href="#stuck-title">How it works</a>
+          <a href="#subjects-title">Subjects</a>
+          {/* Someone already signed in gets one way back to their map, not a login form
+              they don't need. While the store is still finding out who is here, the
+              space is kept but nothing shows, so the links don't swap in front of them. */}
+          <span className={styles.navAccount} data-loading={mode === "loading" || undefined}>
+            {mode === "live" ? (
+              <Link href="/map" className={styles.button} data-tone="paper">
+                Open your map
+              </Link>
+            ) : (
+              <>
+                <Link href="/login">Log in</Link>
+                <Link href="/signup" className={styles.button} data-tone="paper">
+                  Start your map
+                </Link>
+              </>
+            )}
+          </span>
         </nav>
       </header>
 
-      <figure className={styles.plate} data-hero-plate>
-        <div className={styles.plateArt}>
-          <div className={styles.season} data-season="bare">
-            <Espalier layers={["bare"]} seed={7} title="The espalier in winter: bare trained wood" />
-          </div>
-          <div className={styles.season} data-season="leaf">
-            <Espalier layers={["bare", "leaf"]} seed={7} title="The espalier in leaf" />
-          </div>
-          <div className={styles.season} data-season="fruit">
-            <Espalier layers={["bare", "leaf", "fruit"]} seed={7} ripeness={0.62} title="The espalier in fruit" />
-          </div>
-        </div>
-        <figcaption>A pear trained along wires, one tier at a time.</figcaption>
-      </figure>
-
-      <h1 id="hero-title" className={styles.heroTitle}>
-        The map of what you&apos;re learning.
-      </h1>
-      <p className={styles.heroSub}>
-        It starts with the big topics and opens the smaller ones as you reach them. It shows what to study next, what you
-        can skip, and the earlier topic that is really why you&apos;re stuck. Then it writes the prompt for your own AI.
-      </p>
-      <div className={styles.heroRow}>
-        <span>React Native · Redis</span>
-        <Link href="/signup" className={styles.heroAction}>
-          Start your map
-        </Link>
-        <span>Free · private · no streaks</span>
-      </div>
-    </section>
-  );
-}
-
-// ------------------------------------------------------------ showcase: one control, blown up
-
-const STATES = {
-  got: {
-    word: "well",
-    label: "Got it",
-    line: "The topic turns green on your map, and the next one lights up. Nothing else to fill in.",
-  },
-  partly: {
-    word: "halfway",
-    label: "Partly",
-    line: "It stays on your route, and what you wrote is kept, so the next prompt starts where you stopped.",
-  },
-  stuck: {
-    word: "nowhere",
-    label: "Stuck",
-    line: "Trellis looks up to two steps back for the topic that is really in the way, and writes you a prompt for that instead.",
-  },
-} as const;
-type Said = keyof typeof STATES;
-
-function Showcase() {
-  const [said, setSaid] = useState<Said>("stuck");
-  const word = useRef<HTMLSpanElement>(null);
-
-  const choose = (s: Said) => {
-    setSaid(s);
-    if (word.current && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      gsap.fromTo(word.current, { yPercent: 40, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.45, ease: "power3.out" });
-    }
-  };
-
-  return (
-    <section className={styles.showcase} data-said={said} data-section aria-labelledby="showcase-title">
-      <div className={styles.showcaseText}>
-        <h2 id="showcase-title" className={styles.h2} data-rise>
-          It went{" "}
-          <span ref={word} className={styles.word}>
-            {STATES[said].word}
-          </span>
-          .
-        </h2>
-        <p className={styles.showcaseLine} data-rise aria-live="polite">
-          {STATES[said].line}
-        </p>
-      </div>
-
-      <div className={styles.control} data-ui>
-        <div className={styles.controlHead}>
-          <span className={styles.controlTopic}>FlatList</span>
-          <span className={styles.controlStamp}>Tonight, 22:05</span>
-        </div>
-        <div className={styles.controlSeg} role="radiogroup" aria-label="How did it go?">
-          {(Object.keys(STATES) as Said[]).map((s) => (
-            <button
-              key={s}
-              type="button"
-              role="radio"
-              aria-checked={said === s}
-              className={styles.controlBtn}
-              onClick={() => choose(s)}
-            >
-              <span className={styles.controlDot} data-s={s} aria-hidden="true" />
-              {STATES[s].label}
-            </button>
-          ))}
-        </div>
-        <p className={styles.controlQuote}>“my flatlist doesn&apos;t update when I add an item”</p>
-      </div>
-    </section>
-  );
-}
-
-// ------------------------------------------------------------ how it works: one card, four fields
-
-function StepCard({ step }: { step: 0 | 1 | 2 | 3 }) {
-  const pill = [
-    { s: "new", t: "New" },
-    { s: "stuck", t: "Stuck" },
-    { s: "stuck", t: "Stuck" },
-    { s: "done", t: "Done" },
-  ][step];
-  return (
-    <div className={styles.stepCard} data-ui data-step-card>
-      <span className={styles.stepPill} data-s={pill.s}>
-        {pill.t}
-      </span>
-      <p className={styles.stepName}>FlatList</p>
-      {step === 0 && (
-        <>
-          <p className={styles.stepMeta}>Needs ScrollView, Props, State</p>
-          <p className={styles.stepMeta}>About an hour</p>
-        </>
-      )}
-      {step === 1 && (
-        <>
-          <p className={styles.stepQuote}>“my flatlist doesn&apos;t update when I add an item”</p>
-          <p className={styles.stepMeta}>Tuesday, 22:05</p>
-        </>
-      )}
-      {step === 2 && (
-        <>
-          <p className={styles.stepQuote}>
-            May be underneath: <strong>State</strong>. You said React basics was shaky.
+      <div className={styles.heroHead}>
+        <h1 id="hero-title" className={styles.heroTitle} data-rise>
+          The map of what you&apos;re learning.
+        </h1>
+        <div className={styles.heroSide}>
+          <p className={styles.heroSub} data-rise>
+            Trellis shows what to study next, what you can skip, and the earlier topic that is really why you&apos;re
+            stuck. It never teaches. It writes the prompt for your own AI.
           </p>
-          <span className={styles.stepButton}>Copy the prompt</span>
-        </>
-      )}
-      {step === 3 && (
-        <>
-          <p className={styles.stepQuote}>What made it click: “a new array, not the old one pushed into”</p>
-          <p className={styles.stepMeta}>Friday, 21:40</p>
-        </>
-      )}
-    </div>
-  );
-}
+          <p className={styles.heroFacts} data-rise>
+            Free and private. No streaks, no reminders.
+          </p>
+        </div>
+      </div>
 
-function HowItWorks() {
-  const steps = [
-    "First it’s a name on your map.",
-    "Then you say you got nowhere.",
-    "Then Trellis looks two steps back.",
-    "Then it clicks, and it’s remembered.",
-  ];
-  return (
-    <section id="how" className={styles.howWrap} data-section aria-labelledby="how-title">
-      <div className={styles.howHead}>
-        <h2 id="how-title" className={styles.h2} data-rise>
-          Stuck, then unstuck
-        </h2>
-        <p className={styles.howIntro} data-rise>
-          One topic over four evenings. Trellis never explains lists; it finds what was really in the way.
-        </p>
-      </div>
-      <div className={styles.how} data-steps>
-        {steps.map((clause, i) => (
-          <div key={clause} className={styles.field} data-field={i}>
-            <p className={styles.clause}>{clause}</p>
-            <StepCard step={i as 0 | 1 | 2 | 3} />
-          </div>
-        ))}
-      </div>
+      <HeroMap />
+
+      <p className={styles.heroCaption}>
+        This is React Native, as one sample student has it today. Pick a topic, or change the goal.
+      </p>
     </section>
   );
 }
 
-// ------------------------------------------------------------ one topic, opened, with notes in the margins
+// ------------------------------------------------------------ subjects: the two graphs, at their real sizes
 
-const NOTES = [
-  { side: "left", name: "What it covers", text: "One line on what the topic is about. Never an explanation; that is your AI's job." },
-  { side: "right", name: "What's underneath", text: "When you're stuck, the weakest topic it stands on, and what worked for you last time." },
-  { side: "left", name: "Your prompt", text: "Written from your map and your own words, so your AI starts where you are." },
-  { side: "right", name: "Your own AI", text: "Copy it, or open it straight in ChatGPT or Claude. The learning happens there." },
-  { side: "left", name: "How it went", text: "One tap when you're back. Stuck is the most useful thing you can say." },
-  { side: "right", name: "Your own words", text: "What confused you and what made it click, kept with the topic for next time." },
-] as const;
-
-function TopicPlate() {
-  const [active, setActive] = useState<number | null>(null);
-  const rows = [
-    <div key="0" className={styles.pHead}>
-      <p className={styles.pTitle}>FlatList</p>
-      <p className={styles.pPills}>
-        <span className={styles.stepPill} data-s="stuck">
-          Stuck
-        </span>
-        <span>React Native · Lists · ~60 min</span>
-      </p>
-      <p className={styles.pSummary}>The list that only renders what&apos;s on screen, fed by data, renderItem and keyExtractor.</p>
-    </div>,
-    <div key="1" className={styles.pUnder}>
-      <p className={styles.pLabel}>May be underneath</p>
-      <p className={styles.pRow}>
-        <span className={styles.ring} data-s="shaky" /> State <span>Said shaky</span>
-      </p>
-      <p className={styles.pMemory}>Going back one step worked before: Components → Props.</p>
-    </div>,
-    <div key="2">
-      <p className={styles.pLabel}>Your prompt</p>
-      <p className={styles.pPrompt}>
-        I&apos;m learning React Native (Lists) and I&apos;m stuck on FlatList — specifically, I push the new item into the
-        array and nothing re-renders. I&apos;m comfortable with ScrollView and Props. I think my real gap is State. Start
-        there, briefly…
-      </p>
-    </div>,
-    <div key="3" className={styles.pButtons}>
-      <span className={styles.pPrimary}>Copy</span>
-      <span>ChatGPT ↗</span>
-      <span>Claude ↗</span>
-    </div>,
-    <div key="4">
-      <p className={styles.pLabel}>How did it go?</p>
-      <p className={styles.pSeg}>
-        <span>Got it</span>
-        <span>Partly</span>
-        <span>Stuck</span>
-      </p>
-    </div>,
-    <div key="5">
-      <p className={styles.pLabel}>Your notes</p>
-      <p className={styles.pNote}>
-        30 Oct · “my flatlist doesn&apos;t update when I add an item”
-      </p>
-    </div>,
-  ];
-
+function Subjects() {
   return (
-    <section className={styles.topic} data-section aria-labelledby="topic-title">
-      <h2 id="topic-title" className={`${styles.h2} ${styles.topicTitle}`} data-rise>
-        Open any topic
-      </h2>
-      <div className={styles.topicGrid} data-ui-wrap>
-        {rows.map((part, i) => {
-          const note = NOTES[i];
-          const noteEl = (
-            <button
-              type="button"
-              className={styles.note}
-              data-side={note.side}
-              aria-pressed={active === i}
-              onMouseEnter={() => setActive(i)}
-              onMouseLeave={() => setActive(null)}
-              onFocus={() => setActive(i)}
-              onBlur={() => setActive(null)}
-              data-rise
-            >
-              <span className={styles.noteName}>{note.name}</span>
-              <span className={styles.noteText}>{note.text}</span>
-            </button>
-          );
+    <section className={styles.subjects} data-section aria-labelledby="subjects-title">
+      <div className={styles.subjectsHead}>
+        <h2 id="subjects-title" className={styles.h2} data-rise>
+          Two subjects, drawn in full
+        </h2>
+        <p className={styles.lead} data-rise>
+          A map is only worth following if every link on it was checked by a person. So there are two for now. Ask for
+          another when you sign up and the request is kept.
+        </p>
+      </div>
+      <div className={styles.subjectGrid}>
+        {subjects.map((s) => {
+          const size = sizeOf(s.id);
+          // Every big topic counts as "on the goal" here, so the whole shape is drawn in ink.
+          const all = new Set(bigTopicsOf(s.id).map((t) => t.id));
           return (
-            <div key={i} className={styles.topicRow} data-active={active === i || undefined}>
-              <div className={styles.noteCell} data-side="left">
-                {note.side === "left" && noteEl}
-              </div>
-              <div className={styles.panelPart} data-ui data-first={i === 0 || undefined} data-last={i === rows.length - 1 || undefined}>
-                {part}
-              </div>
-              <div className={styles.noteCell} data-side="right">
-                {note.side === "right" && noteEl}
-              </div>
-            </div>
+            <Link key={s.id} href="/signup" className={styles.subject} data-rise>
+              <MiniMap subjectId={s.id} required={all} width={520} height={250} className={styles.subjectMap} />
+              <span className={styles.subjectName}>{s.name}</span>
+              <span className={`${styles.subjectSize} num`}>
+                {size.big} big topics, {size.small} smaller ones, about {size.hours} hours of study
+              </span>
+            </Link>
           );
         })}
       </div>
+      <p className={styles.subjectsNote} data-rise>
+        Topic names and grouping follow{" "}
+        <a href={SOURCE.url} target="_blank" rel="noreferrer">
+          {SOURCE.name}
+        </a>
+        . The links between topics, and which ones you can skip, are ours.
+      </p>
     </section>
   );
 }
 
-// ------------------------------------------------------------ what it won't do: a poster
+// ------------------------------------------------------------ what it won't do
 
 const WONT = [
-  { word: "teach", fact: "your own AI does that" },
-  { word: "nag", fact: "no reminders, no streaks" },
-  { word: "judge", fact: "stuck is information" },
-  { word: "tell", fact: "nobody else sees your record" },
-  { word: "forget", fact: "what helped you comes back" },
+  { word: "teach", fact: "Your own AI does that. Trellis hands it the right question." },
+  { word: "nag", fact: "No reminders and no streaks. It waits until you come back." },
+  { word: "judge", fact: "Stuck is information, and the most useful thing you can say." },
+  { word: "tell", fact: "No other student, teacher or group can see your record." },
+  { word: "forget", fact: "What made a topic click comes back in your next prompt." },
 ];
 
 function WontDo() {
   return (
     <section className={styles.wont} data-section aria-labelledby="wont-title">
-      <div className={styles.wontHead}>
-        <h2 id="wont-title" className={styles.h2} data-rise>
-          What it won&apos;t do
-        </h2>
-        <p className={styles.wontFor} data-rise>
-          Made for subjects where one idea stands on another: building apps, running databases, maths, physics. Not for
-          memorising, a craft you practise, or an exam next week.
-        </p>
-      </div>
+      <h2 id="wont-title" className={styles.h2} data-rise>
+        What it won&apos;t do
+      </h2>
       <ul className={styles.wontList}>
         {WONT.map((w) => (
           <li key={w.word} data-rise>
             <span className={styles.wontWord}>{w.word}</span>
-            <span className={`${styles.wontFact} num`}>{w.fact}</span>
+            <span className={styles.wontFact}>{w.fact}</span>
           </li>
         ))}
       </ul>
+      <p className={styles.wontFor} data-rise>
+        Made for subjects where one idea stands on another: building apps, running databases, maths, physics. Not for
+        memorising, a craft you practise, or an exam next week.
+      </p>
+
+      <figure className={styles.plate} data-rise>
+        <div className={styles.plateArt}>
+          <div className={styles.season} data-season="bare">
+            <Espalier layers={["bare"]} seed={7} title="An espalier in winter: bare trained wood" />
+          </div>
+          <div className={styles.season} data-season="leaf">
+            <Espalier layers={["bare", "leaf"]} seed={7} title="The espalier in leaf" />
+          </div>
+          <div className={styles.season} data-season="blossom">
+            <Espalier layers={["bare", "leaf", "blossom"]} seed={7} title="The espalier in blossom" />
+          </div>
+          <div className={styles.season} data-season="fruit">
+            <Espalier layers={["bare", "leaf", "fruit"]} seed={7} ripeness={0.62} title="The espalier in fruit" />
+          </div>
+        </div>
+        <figcaption>
+          A trellis doesn&apos;t grow the tree. It shows each branch where to go, one tier at a time.
+        </figcaption>
+      </figure>
     </section>
   );
 }
 
-// ------------------------------------------------------------ call to action: one word is the button
+// ------------------------------------------------------------ start: a card lying on the page
 
-function Cta() {
+function Start() {
+  const signedIn = useStore().mode === "live";
   return (
-    <section className={styles.ctaWrap} aria-labelledby="cta-word">
-      <Link href="/signup" className={styles.cta}>
-        <span className={styles.ctaLine}>Pick React Native or Redis. Sorting the big topics takes a minute.</span>
-        <svg className={styles.ctaArrow} viewBox="0 0 48 48" aria-hidden="true">
-          <path d="M12 36 36 12M16 12h20v20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="square" />
-        </svg>
-        <span id="cta-word" className={styles.ctaWord}>
-          start
-        </span>
-      </Link>
+    <section className={styles.start} data-section aria-labelledby="start-title">
+      <p className={styles.startAside} data-rise>
+        {signedIn
+          ? "You're signed in. Your map is where you left it."
+          : "Signing up takes a minute. Sorting the big topics into know, shaky and new takes one more, and then your map is drawn."}
+      </p>
+      <div className={styles.startCard} data-rise>
+        <h2 id="start-title" className={styles.startTitle}>
+          {signedIn ? "Back to your map" : "Start your map"}
+        </h2>
+        <p>{signedIn ? "Pick up at the topic it marked next." : "Pick React Native or Redis, and say what you want to build."}</p>
+        <Link href={signedIn ? "/map" : "/signup"} className={styles.startAction}>
+          {signedIn ? "Open your map" : "Create a free account"}
+        </Link>
+        {!signedIn && (
+          <Link href="/map" className={styles.startSecond}>
+            Or look around the sample student&apos;s map first
+          </Link>
+        )}
+      </div>
     </section>
   );
 }
@@ -455,6 +280,7 @@ function Cta() {
 // ------------------------------------------------------------ footer
 
 function Footer() {
+  const signedIn = useStore().mode === "live";
   return (
     <footer className={styles.footer}>
       <div className={styles.footCols}>
@@ -465,15 +291,25 @@ function Footer() {
         </div>
         <div>
           <p className={styles.footHead}>Product</p>
-          <a href="#how">How it works</a>
-          <Link href="/login">Log in</Link>
-          <Link href="/signup">Start your map</Link>
+          <a href="#stuck-title">How it works</a>
+          {signedIn ? (
+            <Link href="/map">Your map</Link>
+          ) : (
+            <>
+              <Link href="/map">The sample map</Link>
+              <Link href="/login">Log in</Link>
+              <Link href="/signup">Start your map</Link>
+            </>
+          )}
         </div>
         <div>
           <p className={styles.footHead}>Subjects</p>
-          <p>React Native</p>
-          <p>Redis</p>
-          <p>Topics adapted from roadmap.sh</p>
+          {subjects.map((s) => (
+            <p key={s.id}>{s.name}</p>
+          ))}
+          <a href={SOURCE.url} target="_blank" rel="noreferrer">
+            Topics adapted from {SOURCE.name}
+          </a>
         </div>
         <div>
           <p className={styles.footHead}>Promises</p>
@@ -481,12 +317,6 @@ function Footer() {
           <p>Delete everything, any time</p>
           <p>No streaks, no guilt</p>
         </div>
-      </div>
-
-      <div className={styles.footPlates} aria-hidden="true">
-        <Espalier className={styles.footPlate} layers={["bare"]} seed={3} tiers={[3, 3, 2, 2]} />
-        <Espalier className={styles.footPlate} layers={["bare", "leaf"]} seed={5} tiers={[3, 3, 3, 2]} />
-        <Espalier className={styles.footPlate} layers={["bare", "leaf", "fruit"]} seed={9} tiers={[4, 3, 3, 2]} ripeness={0.7} />
       </div>
 
       <div className={styles.footBottom}>

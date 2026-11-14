@@ -97,7 +97,8 @@ npm run dev
 frontend/
   app/                 routes: landing, (auth), start, (app)/map | check-ins | settings
   components/map/      the map: layout, canvas, topic panel, helper chat, list view
-  components/landing/  landing page
+  components/landing/  landing page: the real map, live, on the sample student's record
+  components/brand/    the mark, the lockup, and the icons and share image drawn from them
   components/art/      SVG drawings (the espalier)
   lib/store.tsx        client state: the one place to swap in API calls
 shared/                domain code the frontend and backend both run (imported as @shared/*)

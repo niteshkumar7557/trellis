@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { Mark } from "@/components/ui/Mark";
+import { Mark } from "@/components/brand/Mark";
 import { StatusMark } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
 import { topicById } from "@shared/data";

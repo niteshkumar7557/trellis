@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mark } from "@/components/ui/Mark";
+import { Logo } from "@/components/brand/Logo";
 import styles from "./start.module.css";
 
 export default function StartLayout({ children }: { children: React.ReactNode }) {
@@ -7,8 +7,7 @@ export default function StartLayout({ children }: { children: React.ReactNode })
     <div className={styles.frame}>
       <header className={styles.bar}>
         <Link href="/" className={styles.brand}>
-          <Mark size={20} />
-          Trellis
+          <Logo size={20} />
         </Link>
         <span className={styles.barTitle}>Set up your map</span>
         <Link href="/map" className={styles.skip}>
