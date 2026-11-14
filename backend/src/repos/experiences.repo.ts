@@ -1,5 +1,5 @@
 // What the student said about how topics went (experiences, migration 0016). Like
-// check-ins, they are created only by saving a helper proposal (M4.3).
+// check-ins, they are created only by saving a helper proposal (insertExperiences).
 
 import type { Experience, ExperienceKind } from "@shared/types";
 import type { PoolClient } from "pg";
@@ -54,4 +54,32 @@ export async function updateExperience(
 export async function deleteExperience(userId: number, id: string): Promise<boolean> {
   const { rowCount } = await pool.query("DELETE FROM experiences WHERE user_id = $1 AND id = $2", [userId, id]);
   return rowCount === 1;
+}
+
+/** Saving a proposal: its experiences, in order (clock_timestamp(), as in insertCheckIns). */
+export async function insertExperiences(
+  db: Pick<PoolClient, "query">,
+  userId: number,
+  proposalId: string,
+  rows: { topicId: string; kind: ExperienceKind; text: string; line: string }[],
+): Promise<void> {
+  for (const r of rows) {
+    await db.query(
+      `INSERT INTO experiences (user_id, topic_id, kind, text, line, proposal_id, at)
+       VALUES ($1, $2, $3, $4, $5, $6, clock_timestamp())`,
+      [userId, r.topicId, r.kind, r.text, r.line, proposalId],
+    );
+  }
+}
+
+export async function listExperiencesOfProposal(
+  userId: number,
+  proposalId: string,
+  db: Pick<PoolClient, "query"> = pool,
+): Promise<Experience[]> {
+  const { rows } = await db.query<ExperienceRow>(`${SELECT} WHERE e.user_id = $1 AND e.proposal_id = $2 ORDER BY e.at, e.id`, [
+    userId,
+    proposalId,
+  ]);
+  return rows.map(toExperience);
 }

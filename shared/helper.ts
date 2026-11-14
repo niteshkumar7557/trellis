@@ -1,12 +1,12 @@
 // The helper: the chat in the map's side panel (design.md §7).
 //
-// This file stands in for the AI. The real version sends the message to DeepSeek with the
-// student's state and a few tools (propose an update, save an experience, get a prompt,
-// what's next, can I skip, why am I stuck); everything it decides is worked out by
-// shared/graph.ts, and the model only words it. The rules here are the same:
+// The rules, whoever reads the message:
 //   - it never saves anything itself: updates come back as a proposal the student confirms
 //   - it asks one question about how it went, then proposes
 //   - it never explains a topic; it hands back a prompt
+// Reading a message (which topic, how it went) is separate from replying to it; see
+// "the Reading" below. The backend reads typed messages with GLM 5 when it can (M5) and
+// with readByRules() otherwise; the replies always come from replyFor().
 
 import { bigOf, kids, subjectById, topicById } from "./data";
 import {
@@ -56,98 +56,211 @@ const QUESTION: Record<"stuck" | "partly" | "got" | "unstuck", { text: string; k
   unstuck: { text: "What made it click?", kind: "clicked" },
 };
 
-// ---------------------------------------------------------------- reading a message
+// ---------------------------------------------------------------- the Reading
+//
+// Answering a message is two steps, split so either reader can do the first one:
+//
+//   1. READ it into a Reading: which path, which topics, how it went, what they said.
+//      readByRules() does it with keywords. The backend's model reader (M5) fills the
+//      same shape from a GLM 5 call, and falls back to readByRules() when that fails.
+//   2. REPLY with replyFor(reading, ctx). Everything that decides what the student is
+//      told (next topic, skip or not, suspects) happens here, from shared/graph.ts.
+//
+// Because every reader ends at replyFor(), the helper can't behave differently "because
+// the AI was down": only the reading can differ, never the rules. respond() is the two
+// steps together, for the frontend's demo mode.
+
+export type ReadingPath = "report" | "answer" | "next" | "skip" | "why_stuck" | "explain" | "app_help" | "other";
+
+/** What a message says, whoever read it. replyFor() decides everything from this. */
+export interface Reading {
+  /**
+   * report: says how a topic went ("finished State").    answer: replies to the question
+   * the helper just asked.    next / skip / why_stuck: asks about the map.    explain:
+   * wants a topic explained (gets a prompt).    app_help: asks how Trellis works.
+   * other: anything else, possibly naming a topic.
+   */
+  path: ReadingPath;
+  /** Subtopics of this subject the message is about. Empty when it names none. */
+  topicIds: string[];
+  /** A big topic named without a subtopic ("finished lists"): the reply asks which one. */
+  bigId: string | null;
+  outcome: Outcome | null;
+  /** What they said about how it went. Attached to the one topic, if there is one. */
+  experiences: { kind: ExperienceKind; text: string; line: string }[];
+  /** For app_help: which entry of the guide answers it. */
+  help: HelpTopic | null;
+  /** The student's words, kept as the check-in's text. */
+  said: string;
+}
 
 const EXPLAIN = /^(please )?(explain|teach me|tell me about|what('?s| is| are)|how (does|do|to|can)|why (does|do|is))\b|\bexplain\b/i;
 const NEXT = /(what('?s| is)? next|now what|what (should|do|can) i (do|study|learn|start)|where (do|should) i (start|go)|what to (do|study)|next (step|topic))/i;
 const SKIP = /\b(skip|skippable|ignore|leave out|need to (learn|know|do))\b/i;
 const WHY_STUCK = /(why (am i|i'?m) stuck|what'?s (wrong|holding me back|in the way)|why can'?t i (get|understand))/i;
 
-export function respond(input: Input, ctx: HelperContext): Reply {
-  if (input.kind === "pick") return proposeOrAsk(input.outcome, input.topicIds, "", ctx);
+const reading = (path: ReadingPath, said: string, over: Partial<Reading> = {}): Reading => ({
+  path,
+  topicIds: [],
+  bigId: null,
+  outcome: null,
+  experiences: [],
+  help: null,
+  said,
+  ...over,
+});
 
-  const text = input.text.trim();
+/** The keyword reader: the fallback when no model is available, and the demo's only reader. */
+export function readByRules(rawText: string, ctx: HelperContext): Reading {
+  const text = rawText.trim();
   const pending = pendingQuestion(ctx);
   const found = findTopic(text, ctx.subjectId);
   const outcome = readOutcome(text);
   const isQuestion = /\?\s*$/.test(text) || NEXT.test(text) || SKIP.test(text) || WHY_STUCK.test(text) || EXPLAIN.test(text);
+  const named = found.topicId ? [found.topicId] : [];
 
   // The answer to the question just asked, unless the student moved on to something new.
   if (pending && !isQuestion && !(found.topicId && outcome && found.topicId !== pending.pending.updates[0]?.topicId)) {
-    return answer(text, pending);
+    return reading("answer", text, { experiences: experiencesInAnswer(text, pending.kind) });
   }
 
   if (EXPLAIN.test(text) && !NEXT.test(text)) {
-    const id = found.topicId ?? (found.bigId ? null : contextTopic(ctx));
-    const faq = help(text);
-    if (faq && !found.topicId) return faq;
-    if (id) {
-      return {
-        text: `I don't explain topics myself: your own AI is better at that. Here's a prompt for ${topicById.get(id)!.name}, built from where you are.`,
-        cards: [{ type: "prompt", topicId: id }],
-      };
-    }
-    return { text: "Which topic? Tell me its name and I'll give you a prompt for your own AI." };
+    const faq = helpTopicIn(text);
+    if (faq && !found.topicId) return reading("app_help", text, { help: faq });
+    return reading("explain", text, { topicIds: named, bigId: found.bigId });
   }
 
-  const faq = help(text);
-  if (faq) return faq;
+  const faq = helpTopicIn(text);
+  if (faq) return reading("app_help", text, { help: faq });
 
-  if (WHY_STUCK.test(text)) return whyStuck(ctx);
-
-  if (SKIP.test(text)) {
-    const id = found.topicId ?? found.bigId;
-    if (!id) return { text: "Which topic are you thinking of skipping?" };
-    return canSkip(id, ctx);
-  }
+  if (WHY_STUCK.test(text)) return reading("why_stuck", text);
+  if (SKIP.test(text)) return reading("skip", text, { topicIds: named, bigId: found.bigId });
 
   if (outcome) {
-    if (found.bigId && !found.named) return chooseInside(found.bigId, outcome, ctx);
-    const id = found.topicId ?? contextTopic(ctx);
-    if (!id) return chooseAny(outcome, ctx);
-    return proposeOrAsk(outcome, [id], text, ctx);
+    // A big topic's name without a subtopic's ("finished lists") means "some of these":
+    // drop any subtopic matched only by a keyword, so the reply asks which one.
+    const vague = found.bigId !== null && !found.named;
+    const why = reasonIn(text);
+    return reading("report", text, {
+      topicIds: vague ? [] : named,
+      bigId: found.bigId,
+      outcome,
+      experiences: why ? [{ kind: readKind(why, QUESTION[outcome].kind), text: why, line: tidy(why) }] : [],
+    });
   }
 
-  if (NEXT.test(text)) return whatNext(ctx);
+  if (NEXT.test(text)) return reading("next", text);
+  return reading("other", text, { topicIds: named });
+}
 
-  if (found.topicId) {
-    return {
-      text: `Did you study ${topicById.get(found.topicId)!.name}? Tell me how it went, or I can give you a prompt for it.`,
-      cards: [
-        {
-          type: "choose",
-          outcome: "got",
-          options: [
-            { label: "Got it", topicIds: [found.topicId], outcome: "got" },
-            { label: "Partly", topicIds: [found.topicId], outcome: "partly" },
-            { label: "Stuck", topicIds: [found.topicId], outcome: "stuck" },
+/** What an answer to "what's confusing?" / "what felt easy?" says. Empty if they declined. */
+function experiencesInAnswer(text: string, asked: ExperienceKind): Reading["experiences"] {
+  if (declines(text)) return [];
+  // "What felt easy, and was anything hard?" often gets both: "X was easy, but Y…".
+  const parts = asked === "easy" ? text.split(/,?\s+but\s+/i) : [text];
+  if (parts.length === 2 && parts.every((x) => x.trim().split(/\s+/).length >= 2)) {
+    return [
+      { kind: "easy", text: parts[0].trim(), line: tidy(parts[0]) },
+      { kind: "hard", text: parts[1].trim(), line: tidy(parts[1]) },
+    ];
+  }
+  return [{ kind: readKind(text, asked), text, line: tidy(text) }];
+}
+
+/** Turns a Reading into the reply. The same function whichever reader read the message. */
+export function replyFor(r: Reading, ctx: HelperContext): Reply {
+  switch (r.path) {
+    case "answer": {
+      const pending = pendingQuestion(ctx);
+      // The model can say "answer" when nothing was asked; treat it as a plain message.
+      if (!pending) return replyFor({ ...r, path: "other" }, ctx);
+      return answer(r.experiences, pending);
+    }
+    case "explain": {
+      const id = r.topicIds[0] ?? (r.bigId ? null : contextTopic(ctx));
+      if (id) {
+        return {
+          text: `I don't explain topics myself: your own AI is better at that. Here's a prompt for ${topicById.get(id)!.name}, built from where you are.`,
+          cards: [{ type: "prompt", topicId: id }],
+        };
+      }
+      return { text: "Which topic? Tell me its name and I'll give you a prompt for your own AI." };
+    }
+    case "app_help":
+      return { text: r.help ? GUIDE[r.help].say : CAPABILITIES };
+    case "why_stuck":
+      return whyStuck(ctx);
+    case "skip": {
+      const id = r.topicIds[0] ?? r.bigId;
+      if (!id) return { text: "Which topic are you thinking of skipping?" };
+      return canSkip(id, ctx);
+    }
+    case "report": {
+      // A model may report without saying how it went; without an outcome there is
+      // nothing to propose, so answer it like any other message.
+      if (!r.outcome) return replyFor({ ...r, path: "other" }, ctx);
+      if (r.topicIds.length === 0 && r.bigId) return chooseInside(r.bigId, r.outcome, ctx);
+      const ids = r.topicIds.length ? r.topicIds : [contextTopic(ctx)].filter((id): id is string => id !== null);
+      if (!ids.length) return chooseAny(r.outcome, ctx);
+      return proposeOrAsk(r.outcome, ids, r.experiences, r.said, ctx);
+    }
+    case "next":
+      return whatNext(ctx);
+    case "other": {
+      const id = r.topicIds[0];
+      if (id) {
+        return {
+          text: `Did you study ${topicById.get(id)!.name}? Tell me how it went, or I can give you a prompt for it.`,
+          cards: [
+            {
+              type: "choose",
+              outcome: "got",
+              options: [
+                { label: "Got it", topicIds: [id], outcome: "got" },
+                { label: "Partly", topicIds: [id], outcome: "partly" },
+                { label: "Stuck", topicIds: [id], outcome: "stuck" },
+              ],
+            },
+            { type: "prompt", topicId: id },
           ],
-        },
-        { type: "prompt", topicId: found.topicId },
-      ],
-    };
+        };
+      }
+      return { text: CAPABILITIES, cards: [{ type: "suggest", options: suggestions(ctx) }] };
+    }
   }
+}
 
-  return {
-    text: "I can update a topic on your map, give you a prompt for your own AI, tell you what's next, or say whether you can skip something.",
-    cards: [{ type: "suggest", options: suggestions(ctx) }],
-  };
+const CAPABILITIES =
+  "I can update a topic on your map, give you a prompt for your own AI, tell you what's next, or say whether you can skip something.";
+
+/**
+ * Reads and replies in one go: the rule-based helper. The frontend's demo mode uses this.
+ * A tap needs no reading: our own code knows what was tapped.
+ */
+export function respond(input: Input, ctx: HelperContext): Reply {
+  if (input.kind === "pick") return replyFor(readTap(input.outcome, input.topicIds), ctx);
+  return replyFor(readByRules(input.text, ctx), ctx);
+}
+
+/** A tap on Got it / Partly / Stuck, as a Reading. No words, so no experiences. */
+export function readTap(outcome: Outcome, topicIds: string[]): Reading {
+  return reading("report", "", { topicIds, outcome });
 }
 
 // ---------------------------------------------------------------- proposing
 
 /** Ask the one question first; skip it when the message already says why, or for several topics. */
-function proposeOrAsk(outcome: Outcome, topicIds: string[], said: string, ctx: HelperContext): Reply {
+function proposeOrAsk(outcome: Outcome, topicIds: string[], said: Reading["experiences"], words: string, ctx: HelperContext): Reply {
   const ids = topicIds.filter((id) => topicById.get(id)?.parentId);
-  const pending: Proposal = { updates: ids.map((topicId) => ({ topicId, outcome })), experiences: [], said };
+  const pending: Proposal = { updates: ids.map((topicId) => ({ topicId, outcome })), experiences: [], said: words };
   const name = ids.length === 1 ? topicById.get(ids[0])!.name : `${ids.length} topics`;
 
   if (ids.length !== 1) return confirm(pending, `I'll mark ${name} as ${OUTCOME_WORD[outcome]}.`);
 
   const q = questionFor(outcome, ids[0], ctx);
-  const why = said ? reasonIn(said) : null;
-  if (why) {
-    pending.experiences.push({ topicId: ids[0], kind: readKind(why, q.kind), text: why, line: tidy(why) });
+  if (said.length) {
+    // Back from stuck to done: whatever they said is what made it click.
+    for (const e of said) pending.experiences.push({ topicId: ids[0], ...e, kind: q.kind === "clicked" ? "clicked" : e.kind });
     return confirm(pending, "Here's what I'll save. Change anything that's wrong.");
   }
 
@@ -161,20 +274,23 @@ function questionFor(outcome: Outcome, topicId: string, ctx: HelperContext) {
   return QUESTION[outcome];
 }
 
-function answer(text: string, asked: NonNullable<ChatMessage["asks"]>): Reply {
+function answer(experiences: Reading["experiences"], asked: NonNullable<ChatMessage["asks"]>): Reply {
   const proposal: Proposal = { ...asked.pending, experiences: [...asked.pending.experiences] };
   const topicId = proposal.updates[0]?.topicId;
-  if (!declines(text) && topicId) {
-    // "What felt easy, and was anything hard?" often gets both: "X was easy, but Y…".
-    const parts = asked.kind === "easy" ? text.split(/,?\s+but\s+/i) : [text];
-    if (parts.length === 2 && parts.every((x) => x.trim().split(/\s+/).length >= 2)) {
-      proposal.experiences.push({ topicId, kind: "easy", text: parts[0].trim(), line: tidy(parts[0]) });
-      proposal.experiences.push({ topicId, kind: "hard", text: parts[1].trim(), line: tidy(parts[1]) });
-    } else {
-      proposal.experiences.push({ topicId, kind: readKind(text, asked.kind), text, line: tidy(text) });
-    }
-  }
-  return confirm(proposal, declines(text) ? "No problem. Here's what I'll save." : "Here's what I'll save. Change anything that's wrong.");
+  if (topicId) for (const e of experiences) proposal.experiences.push({ topicId, ...e });
+  // No experiences means they declined to say ("no", "skip"): that's fine.
+  return confirm(proposal, experiences.length ? "Here's what I'll save. Change anything that's wrong." : "No problem. Here's what I'll save.");
+}
+
+/** How each outcome reads on a button and in a check-in made by a tap. */
+export const OUTCOME_LABEL = { got: "Got it", partly: "Partly", stuck: "Stuck" } as const;
+
+/**
+ * The text a saved check-in keeps: the student's own words, or for a tap (no words) a
+ * label such as "Stuck: FlatList". Shared so the demo store and the API save the same.
+ */
+export function checkInText(proposal: Proposal, update: Proposal["updates"][number]): string {
+  return proposal.said || `${OUTCOME_LABEL[update.outcome]}: ${topicById.get(update.topicId)?.name ?? ""}`;
 }
 
 function confirm(proposal: Proposal, text: string): Reply {
@@ -294,20 +410,24 @@ function whyStuck(ctx: HelperContext): Reply {
 // ---------------------------------------------------------------- how Trellis works
 // The real helper gets this as a short guide in its instructions, so it never invents features.
 
-const GUIDE: { when: RegExp; say: string }[] = [
-  { when: /(faded|pale|grey|gray|see.?through)/i, say: "Faded topics aren't needed for your goal. They're not unimportant, just skippable for what you chose." },
-  { when: /(dashed|dotted)/i, say: "A dashed border means the topic is optional inside its big topic." },
-  { when: /(big topic|closed|locked|hidden|opens?|reveal|look inside)/i, say: "Your map starts with big topics. Each one opens into its smaller topics when you reach it: when the next topic is inside, when you tell me about one of them, or when you press Look inside now." },
-  { when: /(change|switch).*(goal)|goal.*(change|switch)/i, say: "Use the goal menu next to the subject name at the top of the map. Your progress stays; only what counts as skippable changes." },
-  { when: /(prompt).*(work|made|built|come from)|how.*prompt/i, say: "Each prompt is put together from three things: the topics you know around it, what you've told me about how things went, and fixed instructions for your AI. No AI writes it." },
-  { when: /(delete|erase|remove).*(data|everything|account)|export/i, say: "Settings has Export and Delete everything. Single check-ins and notes can be changed or deleted on the Check-ins page." },
-  { when: /(dark|light) (mode|theme)|theme/i, say: "The theme follows your system. You can pick light or dark in Settings, or with the button at the top right." },
-  { when: /(what can you do|help me|how do i use|what do you do)/i, say: "Tell me what you studied and how it went, and I'll update your map once you confirm. I can also tell you what's next, whether you can skip something, why you might be stuck, and give you a prompt for any topic." },
-];
+// Keyed, so a Reading can name the entry (the model picks one of these keys in M5).
+// Checked in this order: the first match wins.
+const GUIDE = {
+  faded: { when: /(faded|pale|grey|gray|see.?through)/i, say: "Faded topics aren't needed for your goal. They're not unimportant, just skippable for what you chose." },
+  dashed: { when: /(dashed|dotted)/i, say: "A dashed border means the topic is optional inside its big topic." },
+  big_topics: { when: /(big topic|closed|locked|hidden|opens?|reveal|look inside)/i, say: "Your map starts with big topics. Each one opens into its smaller topics when you reach it: when the next topic is inside, when you tell me about one of them, or when you press Look inside now." },
+  goal: { when: /(change|switch).*(goal)|goal.*(change|switch)/i, say: "Use the goal menu next to the subject name at the top of the map. Your progress stays; only what counts as skippable changes." },
+  prompts: { when: /(prompt).*(work|made|built|come from)|how.*prompt/i, say: "Each prompt is put together from three things: the topics you know around it, what you've told me about how things went, and fixed instructions for your AI. No AI writes it." },
+  data: { when: /(delete|erase|remove).*(data|everything|account)|export/i, say: "Settings has Export and Delete everything. Single check-ins and notes can be changed or deleted on the Check-ins page." },
+  theme: { when: /(dark|light) (mode|theme)|theme/i, say: "The theme follows your system. You can pick light or dark in Settings, or with the button at the top right." },
+  what_you_do: { when: /(what can you do|help me|how do i use|what do you do)/i, say: "Tell me what you studied and how it went, and I'll update your map once you confirm. I can also tell you what's next, whether you can skip something, why you might be stuck, and give you a prompt for any topic." },
+} satisfies Record<string, { when: RegExp; say: string }>;
 
-function help(text: string): Reply | null {
-  const hit = GUIDE.find((g) => g.when.test(text));
-  return hit ? { text: hit.say } : null;
+export type HelpTopic = keyof typeof GUIDE;
+export const HELP_TOPICS = Object.keys(GUIDE) as HelpTopic[];
+
+function helpTopicIn(text: string): HelpTopic | null {
+  return HELP_TOPICS.find((k) => GUIDE[k].when.test(text)) ?? null;
 }
 
 // ---------------------------------------------------------------- context

@@ -14,6 +14,7 @@ import checkInRoutes from "./routes/check-ins.routes.js";
 import claimRoutes from "./routes/claims.routes.js";
 import experienceRoutes from "./routes/experiences.routes.js";
 import goalRoutes from "./routes/goals.routes.js";
+import helperRoutes from "./routes/helper.routes.js";
 import instructionRoutes from "./routes/instructions.routes.js";
 import meRoutes from "./routes/me.routes.js";
 import openedRoutes from "./routes/opened.routes.js";
@@ -54,6 +55,7 @@ app.use("/api/subject-requests", subjectRequestRoutes);
 app.use("/api/check-ins", checkInRoutes);
 app.use("/api/experiences", experienceRoutes);
 app.use("/api/prompt-takes", promptTakeRoutes);
+app.use("/api/helper", helperRoutes);
 app.use("/api", stateRoutes); // /api/state and /api/export
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/topics", topicRoutes);

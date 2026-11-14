@@ -30,4 +30,19 @@ describe("makeLimiter", () => {
     });
     for (let i = 0; i < 3; i++) expect((await request(app).get("/try")).status).toBe(204);
   });
+
+  it("can count per student instead of per address", async () => {
+    const app = express();
+    app.use((req, _res, next) => {
+      req.userId = Number(req.headers["x-user"]);
+      next();
+    });
+    app.get("/try", makeLimiter(1, 60_000, true, (req) => `user:${req.userId}`), (_req, res) => {
+      res.sendStatus(204);
+    });
+    app.use(errorHandler);
+    expect((await request(app).get("/try").set("x-user", "1")).status).toBe(204);
+    expect((await request(app).get("/try").set("x-user", "1")).status).toBe(429);
+    expect((await request(app).get("/try").set("x-user", "2")).status).toBe(204); // same address, other student
+  });
 });

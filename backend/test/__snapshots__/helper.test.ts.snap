@@ -1,0 +1,982 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`respond(): the rule-based helper > Components and Props 1`] = `
+{
+  "cards": [
+    {
+      "options": [
+        {
+          "label": "Got it",
+          "outcome": "got",
+          "topicIds": [
+            "rn-components",
+          ],
+        },
+        {
+          "label": "Partly",
+          "outcome": "partly",
+          "topicIds": [
+            "rn-components",
+          ],
+        },
+        {
+          "label": "Stuck",
+          "outcome": "stuck",
+          "topicIds": [
+            "rn-components",
+          ],
+        },
+      ],
+      "outcome": "got",
+      "type": "choose",
+    },
+    {
+      "topicId": "rn-components",
+      "type": "prompt",
+    },
+  ],
+  "text": "Did you study Components? Tell me how it went, or I can give you a prompt for it.",
+}
+`;
+
+exports[`respond(): the rule-based helper > I finished State 1`] = `
+{
+  "asks": {
+    "kind": "easy",
+    "pending": {
+      "experiences": [],
+      "said": "I finished State",
+      "updates": [
+        {
+          "outcome": "got",
+          "topicId": "rn-state",
+        },
+      ],
+    },
+  },
+  "text": "Nice, State done. What felt easy, and was anything hard?",
+}
+`;
+
+exports[`respond(): the rule-based helper > I'm stuck 1`] = `
+{
+  "asks": {
+    "kind": "hard",
+    "pending": {
+      "experiences": [],
+      "said": "I'm stuck",
+      "updates": [
+        {
+          "outcome": "stuck",
+          "topicId": "rn-state",
+        },
+      ],
+    },
+  },
+  "text": "Sounds like you're stuck on State. What's confusing about it?",
+}
+`;
+
+exports[`respond(): the rule-based helper > I'm stuck on FlatList 1`] = `
+{
+  "asks": {
+    "kind": "hard",
+    "pending": {
+      "experiences": [],
+      "said": "I'm stuck on FlatList",
+      "updates": [
+        {
+          "outcome": "stuck",
+          "topicId": "rn-flatlist",
+        },
+      ],
+    },
+  },
+  "text": "Sounds like you're stuck on FlatList. What's confusing about it?",
+}
+`;
+
+exports[`respond(): the rule-based helper > State 1`] = `
+{
+  "cards": [
+    {
+      "options": [
+        {
+          "label": "Got it",
+          "outcome": "got",
+          "topicIds": [
+            "rn-state",
+          ],
+        },
+        {
+          "label": "Partly",
+          "outcome": "partly",
+          "topicIds": [
+            "rn-state",
+          ],
+        },
+        {
+          "label": "Stuck",
+          "outcome": "stuck",
+          "topicIds": [
+            "rn-state",
+          ],
+        },
+      ],
+      "outcome": "got",
+      "type": "choose",
+    },
+    {
+      "topicId": "rn-state",
+      "type": "prompt",
+    },
+  ],
+  "text": "Did you study State? Tell me how it went, or I can give you a prompt for it.",
+}
+`;
+
+exports[`respond(): the rule-based helper > answering the helper's question > I finished State 1`] = `
+{
+  "asks": {
+    "kind": "easy",
+    "pending": {
+      "experiences": [],
+      "said": "I finished State",
+      "updates": [
+        {
+          "outcome": "got",
+          "topicId": "rn-state",
+        },
+      ],
+    },
+  },
+  "text": "Nice, State done. What felt easy, and was anything hard?",
+}
+`;
+
+exports[`respond(): the rule-based helper > answering the helper's question > it was all easy 1`] = `
+{
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [
+          {
+            "kind": "easy",
+            "line": "It was all easy.",
+            "text": "it was all easy",
+            "topicId": "rn-state",
+          },
+        ],
+        "said": "",
+        "updates": [
+          {
+            "outcome": "got",
+            "topicId": "rn-state",
+          },
+        ],
+      },
+      "state": "open",
+      "type": "confirm",
+    },
+  ],
+  "text": "Here's what I'll save. Change anything that's wrong.",
+}
+`;
+
+exports[`respond(): the rule-based helper > answering the helper's question > no 1`] = `
+{
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [],
+        "said": "",
+        "updates": [
+          {
+            "outcome": "stuck",
+            "topicId": "rn-flatlist",
+          },
+        ],
+      },
+      "state": "open",
+      "type": "confirm",
+    },
+  ],
+  "text": "No problem. Here's what I'll save.",
+}
+`;
+
+exports[`respond(): the rule-based helper > answering the helper's question > once I drew it out it clicked 1`] = `
+{
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [
+          {
+            "kind": "clicked",
+            "line": "Once I drew it out it clicked.",
+            "text": "once I drew it out it clicked",
+            "topicId": "rn-flatlist",
+          },
+        ],
+        "said": "",
+        "updates": [
+          {
+            "outcome": "got",
+            "topicId": "rn-flatlist",
+          },
+        ],
+      },
+      "state": "open",
+      "type": "confirm",
+    },
+  ],
+  "text": "Here's what I'll save. Change anything that's wrong.",
+}
+`;
+
+exports[`respond(): the rule-based helper > answering the helper's question > the keys prop confused me 1`] = `
+{
+  "asks": {
+    "kind": "hard",
+    "pending": {
+      "experiences": [],
+      "said": "the keys prop confused me",
+      "updates": [
+        {
+          "outcome": "stuck",
+          "topicId": "rn-props",
+        },
+      ],
+    },
+  },
+  "text": "Sounds like you're stuck on Props. What's confusing about it?",
+}
+`;
+
+exports[`respond(): the rule-based helper > answering the helper's question > the setup was easy, but styling took ages 1`] = `
+{
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [
+          {
+            "kind": "easy",
+            "line": "The setup was easy.",
+            "text": "the setup was easy",
+            "topicId": "rn-state",
+          },
+          {
+            "kind": "hard",
+            "line": "Styling took ages.",
+            "text": "styling took ages",
+            "topicId": "rn-state",
+          },
+        ],
+        "said": "",
+        "updates": [
+          {
+            "outcome": "got",
+            "topicId": "rn-state",
+          },
+        ],
+      },
+      "state": "open",
+      "type": "confirm",
+    },
+  ],
+  "text": "Here's what I'll save. Change anything that's wrong.",
+}
+`;
+
+exports[`respond(): the rule-based helper > answering the helper's question > what's next? 1`] = `
+{
+  "cards": [
+    {
+      "topicId": "rn-state",
+      "type": "prompt",
+    },
+  ],
+  "text": "Next up: State, in React basics. You said it was shaky, and everything it needs is in place.",
+}
+`;
+
+exports[`respond(): the rule-based helper > asdf qwerty 1`] = `
+{
+  "cards": [
+    {
+      "options": [
+        "What should I do next?",
+        "I finished State",
+        "I'm stuck on State",
+        "Can I skip Why use React Native??",
+      ],
+      "type": "suggest",
+    },
+  ],
+  "text": "I can update a topic on your map, give you a prompt for your own AI, tell you what's next, or say whether you can skip something.",
+}
+`;
+
+exports[`respond(): the rule-based helper > can I skip animations? 1`] = `
+{
+  "text": "Animations: You can skip this for now. It's optional, and nothing on your goal needs it.",
+}
+`;
+
+exports[`respond(): the rule-based helper > can I skip it 1`] = `
+{
+  "text": "Which topic are you thinking of skipping?",
+}
+`;
+
+exports[`respond(): the rule-based helper > done with components 1`] = `
+{
+  "asks": {
+    "kind": "easy",
+    "pending": {
+      "experiences": [],
+      "said": "done with components",
+      "updates": [
+        {
+          "outcome": "got",
+          "topicId": "rn-components",
+        },
+      ],
+    },
+  },
+  "text": "Nice, Components done. What felt easy, and was anything hard?",
+}
+`;
+
+exports[`respond(): the rule-based helper > explain 1`] = `
+{
+  "cards": [
+    {
+      "topicId": "rn-state",
+      "type": "prompt",
+    },
+  ],
+  "text": "I don't explain topics myself: your own AI is better at that. Here's a prompt for State, built from where you are.",
+}
+`;
+
+exports[`respond(): the rule-based helper > explain it 1`] = `
+{
+  "cards": [
+    {
+      "topicId": "rn-state",
+      "type": "prompt",
+    },
+  ],
+  "text": "I don't explain topics myself: your own AI is better at that. Here's a prompt for State, built from where you are.",
+}
+`;
+
+exports[`respond(): the rule-based helper > explain props 1`] = `
+{
+  "cards": [
+    {
+      "topicId": "rn-props",
+      "type": "prompt",
+    },
+  ],
+  "text": "I don't explain topics myself: your own AI is better at that. Here's a prompt for Props, built from where you are.",
+}
+`;
+
+exports[`respond(): the rule-based helper > finished it 1`] = `
+{
+  "asks": {
+    "kind": "easy",
+    "pending": {
+      "experiences": [],
+      "said": "finished it",
+      "updates": [
+        {
+          "outcome": "got",
+          "topicId": "rn-state",
+        },
+      ],
+    },
+  },
+  "text": "Nice, State done. What felt easy, and was anything hard?",
+}
+`;
+
+exports[`respond(): the rule-based helper > finished lists 1`] = `
+{
+  "cards": [
+    {
+      "options": [
+        {
+          "label": "FlatList",
+          "topicIds": [
+            "rn-flatlist",
+          ],
+        },
+        {
+          "label": "RefreshControl",
+          "topicIds": [
+            "rn-refresh",
+          ],
+        },
+        {
+          "label": "SectionList",
+          "topicIds": [
+            "rn-sectionlist",
+          ],
+        },
+      ],
+      "outcome": "got",
+      "type": "choose",
+    },
+  ],
+  "text": "Lists has 4 topics inside. Which did you mean?",
+}
+`;
+
+exports[`respond(): the rule-based helper > flatlist kind of makes sense 1`] = `
+{
+  "asks": {
+    "kind": "hard",
+    "pending": {
+      "experiences": [],
+      "said": "flatlist kind of makes sense",
+      "updates": [
+        {
+          "outcome": "partly",
+          "topicId": "rn-flatlist",
+        },
+      ],
+    },
+  },
+  "text": "Sounds like FlatList is partway there. What's still unclear?",
+}
+`;
+
+exports[`respond(): the rule-based helper > got flatlist, but the keys confused me a lot 1`] = `
+{
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [
+          {
+            "kind": "hard",
+            "line": "But the keys confused me a lot.",
+            "text": "but the keys confused me a lot",
+            "topicId": "rn-flatlist",
+          },
+        ],
+        "said": "got flatlist, but the keys confused me a lot",
+        "updates": [
+          {
+            "outcome": "stuck",
+            "topicId": "rn-flatlist",
+          },
+        ],
+      },
+      "state": "open",
+      "type": "confirm",
+    },
+  ],
+  "text": "Here's what I'll save. Change anything that's wrong.",
+}
+`;
+
+exports[`respond(): the rule-based helper > hello 1`] = `
+{
+  "cards": [
+    {
+      "options": [
+        "What should I do next?",
+        "I finished State",
+        "I'm stuck on State",
+        "Can I skip Why use React Native??",
+      ],
+      "type": "suggest",
+    },
+  ],
+  "text": "I can update a topic on your map, give you a prompt for your own AI, tell you what's next, or say whether you can skip something.",
+}
+`;
+
+exports[`respond(): the rule-based helper > how are prompts made? 1`] = `
+{
+  "text": "Each prompt is put together from three things: the topics you know around it, what you've told me about how things went, and fixed instructions for your AI. No AI writes it.",
+}
+`;
+
+exports[`respond(): the rule-based helper > how do I change my goal 1`] = `
+{
+  "text": "Use the goal menu next to the subject name at the top of the map. Your progress stays; only what counts as skippable changes.",
+}
+`;
+
+exports[`respond(): the rule-based helper > how do I delete my data 1`] = `
+{
+  "text": "Settings has Export and Delete everything. Single check-ins and notes can be changed or deleted on the Check-ins page.",
+}
+`;
+
+exports[`respond(): the rule-based helper > in the Redis thread: I finished strings 1`] = `
+{
+  "cards": [
+    {
+      "options": [
+        {
+          "label": "Reading and writing strings",
+          "topicIds": [
+            "rd-str-setget",
+          ],
+        },
+        {
+          "label": "Counters: INCR and DECR",
+          "topicIds": [
+            "rd-counters",
+          ],
+        },
+        {
+          "label": "APPEND and STRLEN",
+          "topicIds": [
+            "rd-append",
+          ],
+        },
+        {
+          "label": "More string commands",
+          "topicIds": [
+            "rd-str-more",
+          ],
+        },
+        {
+          "label": "String use cases",
+          "topicIds": [
+            "rd-str-uses",
+          ],
+        },
+        {
+          "label": "All core topics in Strings",
+          "topicIds": [
+            "rd-str-setget",
+            "rd-counters",
+            "rd-str-uses",
+          ],
+        },
+      ],
+      "outcome": "got",
+      "type": "choose",
+    },
+  ],
+  "text": "Strings has 5 topics inside. Which did you mean?",
+}
+`;
+
+exports[`respond(): the rule-based helper > in the Redis thread: stuck on lists 1`] = `
+{
+  "cards": [
+    {
+      "options": [
+        {
+          "label": "Pushing and popping",
+          "topicIds": [
+            "rd-list-pushpop",
+          ],
+        },
+        {
+          "label": "Reading lists",
+          "topicIds": [
+            "rd-list-read",
+          ],
+        },
+        {
+          "label": "Moving items: LMOVE",
+          "topicIds": [
+            "rd-lmove",
+          ],
+        },
+        {
+          "label": "More list commands",
+          "topicIds": [
+            "rd-list-more",
+          ],
+        },
+        {
+          "label": "List use cases",
+          "topicIds": [
+            "rd-list-uses",
+          ],
+        },
+        {
+          "label": "All core topics in Lists",
+          "topicIds": [
+            "rd-list-pushpop",
+            "rd-list-read",
+            "rd-list-uses",
+          ],
+        },
+      ],
+      "outcome": "stuck",
+      "type": "choose",
+    },
+  ],
+  "text": "Lists has 5 topics inside. Which did you mean?",
+}
+`;
+
+exports[`respond(): the rule-based helper > in the Redis thread: what's next 1`] = `
+{
+  "text": "Pick a goal for this subject first, and I'll tell you where to start.",
+}
+`;
+
+exports[`respond(): the rule-based helper > taps > got ["rn-intro"] 1`] = `
+{
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [],
+        "said": "",
+        "updates": [],
+      },
+      "state": "open",
+      "type": "confirm",
+    },
+  ],
+  "text": "I'll mark 0 topics as done.",
+}
+`;
+
+exports[`respond(): the rule-based helper > taps > got ["rn-state"] 1`] = `
+{
+  "asks": {
+    "kind": "easy",
+    "pending": {
+      "experiences": [],
+      "said": "",
+      "updates": [
+        {
+          "outcome": "got",
+          "topicId": "rn-state",
+        },
+      ],
+    },
+  },
+  "text": "Nice, State done. What felt easy, and was anything hard?",
+}
+`;
+
+exports[`respond(): the rule-based helper > taps > partly ["rn-state","rn-flatlist"] 1`] = `
+{
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [],
+        "said": "",
+        "updates": [
+          {
+            "outcome": "partly",
+            "topicId": "rn-state",
+          },
+          {
+            "outcome": "partly",
+            "topicId": "rn-flatlist",
+          },
+        ],
+      },
+      "state": "open",
+      "type": "confirm",
+    },
+  ],
+  "text": "I'll mark 2 topics as partly done.",
+}
+`;
+
+exports[`respond(): the rule-based helper > taps > stuck ["rn-flatlist"] 1`] = `
+{
+  "asks": {
+    "kind": "hard",
+    "pending": {
+      "experiences": [],
+      "said": "",
+      "updates": [
+        {
+          "outcome": "stuck",
+          "topicId": "rn-flatlist",
+        },
+      ],
+    },
+  },
+  "text": "Sounds like you're stuck on FlatList. What's confusing about it?",
+}
+`;
+
+exports[`respond(): the rule-based helper > what can you do 1`] = `
+{
+  "text": "Tell me what you studied and how it went, and I'll update your map once you confirm. I can also tell you what's next, whether you can skip something, why you might be stuck, and give you a prompt for any topic.",
+}
+`;
+
+exports[`respond(): the rule-based helper > what is a FlatList? 1`] = `
+{
+  "cards": [
+    {
+      "topicId": "rn-flatlist",
+      "type": "prompt",
+    },
+  ],
+  "text": "I don't explain topics myself: your own AI is better at that. Here's a prompt for FlatList, built from where you are.",
+}
+`;
+
+exports[`respond(): the rule-based helper > what should I do next? 1`] = `
+{
+  "cards": [
+    {
+      "topicId": "rn-state",
+      "type": "prompt",
+    },
+  ],
+  "text": "Next up: State, in React basics. You said it was shaky, and everything it needs is in place.",
+}
+`;
+
+exports[`respond(): the rule-based helper > what's next 1`] = `
+{
+  "cards": [
+    {
+      "topicId": "rn-state",
+      "type": "prompt",
+    },
+  ],
+  "text": "Next up: State, in React basics. You said it was shaky, and everything it needs is in place.",
+}
+`;
+
+exports[`respond(): the rule-based helper > why am I stuck? 1`] = `
+{
+  "cards": [
+    {
+      "topicId": "rn-state",
+      "type": "prompt",
+    },
+  ],
+  "text": "You're stuck on FlatList. It may be State underneath: FlatList needs it, and you said React basics was shaky.",
+}
+`;
+
+exports[`respond(): the rule-based helper > why are some topics faded? 1`] = `
+{
+  "text": "Faded topics aren't needed for your goal. They're not unimportant, just skippable for what you chose.",
+}
+`;
+
+exports[`respond(): the rule-based helper > with FlatList open in the panel: I finished State 1`] = `
+{
+  "asks": {
+    "kind": "easy",
+    "pending": {
+      "experiences": [],
+      "said": "I finished State",
+      "updates": [
+        {
+          "outcome": "got",
+          "topicId": "rn-state",
+        },
+      ],
+    },
+  },
+  "text": "Nice, State done. What felt easy, and was anything hard?",
+}
+`;
+
+exports[`respond(): the rule-based helper > with FlatList open in the panel: I'm stuck 1`] = `
+{
+  "asks": {
+    "kind": "hard",
+    "pending": {
+      "experiences": [],
+      "said": "I'm stuck",
+      "updates": [
+        {
+          "outcome": "stuck",
+          "topicId": "rn-flatlist",
+        },
+      ],
+    },
+  },
+  "text": "Sounds like you're stuck on FlatList. What's confusing about it?",
+}
+`;
+
+exports[`respond(): the rule-based helper > with FlatList open in the panel: I'm stuck on FlatList 1`] = `
+{
+  "asks": {
+    "kind": "hard",
+    "pending": {
+      "experiences": [],
+      "said": "I'm stuck on FlatList",
+      "updates": [
+        {
+          "outcome": "stuck",
+          "topicId": "rn-flatlist",
+        },
+      ],
+    },
+  },
+  "text": "Sounds like you're stuck on FlatList. What's confusing about it?",
+}
+`;
+
+exports[`respond(): the rule-based helper > with FlatList open in the panel: done with components 1`] = `
+{
+  "asks": {
+    "kind": "easy",
+    "pending": {
+      "experiences": [],
+      "said": "done with components",
+      "updates": [
+        {
+          "outcome": "got",
+          "topicId": "rn-components",
+        },
+      ],
+    },
+  },
+  "text": "Nice, Components done. What felt easy, and was anything hard?",
+}
+`;
+
+exports[`respond(): the rule-based helper > with FlatList open in the panel: finished it 1`] = `
+{
+  "asks": {
+    "kind": "clicked",
+    "pending": {
+      "experiences": [],
+      "said": "finished it",
+      "updates": [
+        {
+          "outcome": "got",
+          "topicId": "rn-flatlist",
+        },
+      ],
+    },
+  },
+  "text": "Nice, FlatList done. What made it click?",
+}
+`;
+
+exports[`respond(): the rule-based helper > with FlatList open in the panel: finished lists 1`] = `
+{
+  "cards": [
+    {
+      "options": [
+        {
+          "label": "FlatList",
+          "topicIds": [
+            "rn-flatlist",
+          ],
+        },
+        {
+          "label": "RefreshControl",
+          "topicIds": [
+            "rn-refresh",
+          ],
+        },
+        {
+          "label": "SectionList",
+          "topicIds": [
+            "rn-sectionlist",
+          ],
+        },
+      ],
+      "outcome": "got",
+      "type": "choose",
+    },
+  ],
+  "text": "Lists has 4 topics inside. Which did you mean?",
+}
+`;
+
+exports[`respond(): the rule-based helper > with FlatList open in the panel: flatlist kind of makes sense 1`] = `
+{
+  "asks": {
+    "kind": "hard",
+    "pending": {
+      "experiences": [],
+      "said": "flatlist kind of makes sense",
+      "updates": [
+        {
+          "outcome": "partly",
+          "topicId": "rn-flatlist",
+        },
+      ],
+    },
+  },
+  "text": "Sounds like FlatList is partway there. What's still unclear?",
+}
+`;
+
+exports[`respond(): the rule-based helper > with FlatList open in the panel: got flatlist, but the keys confused me a lot 1`] = `
+{
+  "cards": [
+    {
+      "proposal": {
+        "experiences": [
+          {
+            "kind": "hard",
+            "line": "But the keys confused me a lot.",
+            "text": "but the keys confused me a lot",
+            "topicId": "rn-flatlist",
+          },
+        ],
+        "said": "got flatlist, but the keys confused me a lot",
+        "updates": [
+          {
+            "outcome": "stuck",
+            "topicId": "rn-flatlist",
+          },
+        ],
+      },
+      "state": "open",
+      "type": "confirm",
+    },
+  ],
+  "text": "Here's what I'll save. Change anything that's wrong.",
+}
+`;
+
+exports[`respond(): the rule-based helper > with no goal: I finished State 1`] = `
+{
+  "asks": {
+    "kind": "easy",
+    "pending": {
+      "experiences": [],
+      "said": "I finished State",
+      "updates": [
+        {
+          "outcome": "got",
+          "topicId": "rn-state",
+        },
+      ],
+    },
+  },
+  "text": "Nice, State done. What felt easy, and was anything hard?",
+}
+`;
+
+exports[`respond(): the rule-based helper > with no goal: can I skip animations? 1`] = `
+{
+  "text": "Pick a goal first: what you can skip depends on it.",
+}
+`;
+
+exports[`respond(): the rule-based helper > with no goal: what should I do next? 1`] = `
+{
+  "text": "Pick a goal for this subject first, and I'll tell you where to start.",
+}
+`;
+
+exports[`respond(): the rule-based helper > with no goal: why am I stuck? 1`] = `
+{
+  "text": "Nothing on your route is marked stuck. Tell me if something is, and I'll look underneath it.",
+}
+`;

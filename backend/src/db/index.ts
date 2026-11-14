@@ -35,3 +35,23 @@ export async function readSnapshot<T>(work: (db: PoolClient) => Promise<T>): Pro
     client.release();
   }
 }
+
+/**
+ * Runs several writes as one: all of them happen, or none. Used where a half-done change
+ * would leave the record wrong, e.g. a helper reply without its proposal, or a saved
+ * proposal without its check-ins.
+ */
+export async function inTransaction<T>(work: (db: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await work(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

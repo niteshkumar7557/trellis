@@ -10,6 +10,7 @@
 // X-Forwarded-For header, which is why src/app.ts sets "trust proxy" in production.
 // Without it, every visitor would look like Caddy and share one limit.
 
+import type { Request } from "express";
 import rateLimit from "express-rate-limit";
 import config from "../config/index.js";
 import { HttpError } from "../utils/http-error.js";
@@ -17,13 +18,20 @@ import { HttpError } from "../utils/http-error.js";
 const MINUTE = 60 * 1000;
 
 /**
- * A limiter for `limit` requests per `windowMs`, per IP address.
- * `enabled` defaults to the config (off under Vitest); the limiter's own test turns it on.
+ * A limiter for `limit` requests per `windowMs`, per IP address unless `key` says
+ * otherwise. `enabled` defaults to the config (off under Vitest); the limiter's own test
+ * turns it on.
  */
-export function makeLimiter(limit: number, windowMs: number, enabled = config.rate_limits) {
+export function makeLimiter(
+  limit: number,
+  windowMs: number,
+  enabled = config.rate_limits,
+  key?: (req: Request) => string,
+) {
   return rateLimit({
     windowMs,
     limit,
+    ...(key ? { keyGenerator: key } : {}),
     // Sends the standard RateLimit headers, so a client can see how long to wait.
     standardHeaders: "draft-8",
     legacyHeaders: false,
@@ -44,6 +52,13 @@ export const resetLimiter = makeLimiter(10, 15 * MINUTE);
 
 /** Deleting the account checks the password again, so it is a guess like a login. */
 export const deleteAccountLimiter = makeLimiter(10, 15 * MINUTE);
+
+/**
+ * Helper messages, per STUDENT (not per address: a class on one Wi-Fi shares an address).
+ * Must come after requireAuth, which sets req.userId. 30 a minute is far above anyone
+ * typing; it stops a script, or a stuck client, sending in a loop.
+ */
+export const helperLimiter = makeLimiter(30, MINUTE, config.rate_limits, (req) => `user:${req.userId}`);
 
 /** refresh: every open tab calls it on load and every 15 minutes, so it needs more room. */
 export const refreshLimiter = makeLimiter(60, 15 * MINUTE);

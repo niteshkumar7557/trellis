@@ -1,5 +1,5 @@
-// Status changes on subtopics (check_ins, migration 0015). There is no "create" here on
-// purpose: check-ins are created only by saving a helper proposal (M4.3), so every one
+// Status changes on subtopics (check_ins, migration 0015). Check-ins are created only by
+// saving a helper proposal (insertCheckIns, called from the save in M4.3), so every one
 // has gone through the confirm card (backend-design.md §4).
 //
 // Every statement has `user_id = $1`: an id that belongs to someone else finds no row,
@@ -70,4 +70,37 @@ export async function updateCheckIn(userId: number, id: string, changes: CheckIn
 export async function deleteCheckIn(userId: number, id: string): Promise<boolean> {
   const { rowCount } = await pool.query("DELETE FROM check_ins WHERE user_id = $1 AND id = $2", [userId, id]);
   return rowCount === 1;
+}
+
+/**
+ * Saving a proposal: one check-in per update, each pointing back at the proposal.
+ * clock_timestamp() rather than the default NOW(): inside the save's transaction NOW() is
+ * one fixed time, so the rows would tie and come back in random order.
+ */
+export async function insertCheckIns(
+  db: Pick<PoolClient, "query">,
+  userId: number,
+  proposalId: string,
+  rows: { topicId: string; outcome: Outcome; text: string }[],
+): Promise<void> {
+  for (const r of rows) {
+    await db.query(
+      `INSERT INTO check_ins (user_id, topic_id, outcome, text, proposal_id, at)
+       VALUES ($1, $2, $3, $4, $5, clock_timestamp())`,
+      [userId, r.topicId, r.outcome, r.text, proposalId],
+    );
+  }
+}
+
+/** The check-ins one proposal created (the save's answer). */
+export async function listCheckInsOfProposal(
+  userId: number,
+  proposalId: string,
+  db: Pick<PoolClient, "query"> = pool,
+): Promise<CheckIn[]> {
+  const { rows } = await db.query<CheckInRow>(`${SELECT} WHERE c.user_id = $1 AND c.proposal_id = $2 ORDER BY c.at, c.id`, [
+    userId,
+    proposalId,
+  ]);
+  return rows.map(toCheckIn);
 }

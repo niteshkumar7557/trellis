@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNo
 import { goalById, topicById } from "@shared/data";
 import { sampleCheckIns, sampleClaims, sampleExperiences, sampleMessages, student } from "@shared/data/student";
 import { deriveStatuses } from "@shared/graph";
+import { checkInText } from "@shared/helper";
 import type { ChatMessage, CheckIn, Claim, Experience, Goal, Proposal, Status, SubjectId } from "@shared/types";
 
 interface State {
@@ -100,7 +101,7 @@ function reducer(state: State, action: Action): State {
       const checkIns: CheckIn[] = action.proposal.updates.map((u) => ({
         id: newId("c"),
         at: action.at,
-        text: action.proposal.said || `${OUTCOME_LABEL[u.outcome]}: ${topicById.get(u.topicId)?.name ?? ""}`,
+        text: checkInText(action.proposal, u),
         topicId: u.topicId,
         outcome: u.outcome,
         messageId: action.messageId,
@@ -149,7 +150,6 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-const OUTCOME_LABEL = { got: "Got it", partly: "Partly", stuck: "Stuck" } as const;
 
 function withCard(
   messages: ChatMessage[],

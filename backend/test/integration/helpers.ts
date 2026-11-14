@@ -34,8 +34,10 @@ export const deleteUsers = (domain: string) => pool.query("DELETE FROM users WHE
 
 /**
  * A check-in as if the helper had saved it: a helper message, a saved proposal pointing
- * at it, and the check-in pointing at the proposal. Until M4.3 there is no route that
- * does this, so the tests write the rows themselves.
+ * at it, and the check-in pointing at the proposal. The real path is a conversation and
+ * POST /api/helper/proposals/:id/save (tested in proposals.test.ts); writing the rows
+ * directly keeps the check-in, experience and state tests independent of the helper's
+ * wording.
  */
 export async function insertSavedCheckIn(userId: number, topicId: string, outcome: string, text: string, at?: string) {
   const msg = await pool.query(

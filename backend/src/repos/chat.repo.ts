@@ -1,5 +1,5 @@
-// Reading the helper's conversations (chat_messages, migration 0012). Writing them comes
-// with the helper in M4.
+// The helper's conversations (chat_messages, migration 0012) and the proposals their
+// confirm cards show (proposals, migration 0014).
 //
 // A confirm card is stored as just { type: "confirm", proposalId }. What it proposes and
 // whether it was saved live in `proposals`, which is the one place they change (Save,
@@ -7,6 +7,8 @@
 // frontend gets the full `Card` shape from shared/types.ts and never sees two copies
 // that could disagree.
 
+import { randomUUID } from "node:crypto";
+import type { Reply } from "@shared/helper";
 import type { Card, ChatMessage, Proposal, SubjectId } from "@shared/types";
 import type { PoolClient } from "pg";
 import pool from "../db/index.js";
@@ -81,9 +83,16 @@ async function toMessages(rows: MessageRow[], userId: number, db: Db): Promise<C
   });
 }
 
+const COLUMNS = "id, subject_id, role, text, cards, asks, at";
+
 /**
  * The latest `limit` messages of one subject, oldest first (the order a thread is read),
  * and whether older ones exist. `limit` null means all of them (the export).
+ *
+ * `before` pages backwards: only messages older than that message. It is a cursor (a
+ * position in the list), not an offset: with "skip 50", a new message arriving between
+ * two page loads would shift everything by one and show a message twice. Messages are
+ * ordered by (at, id), so two messages with the same time still have a fixed order.
  *
  * It fetches one row more than asked: if that extra row exists, there is more history.
  * That answers "is there more?" without a second COUNT query.
@@ -93,16 +102,101 @@ export async function listMessages(
   subjectId: SubjectId,
   limit: number | null,
   db: Db = pool,
+  before: string | null = null,
 ): Promise<{ messages: ChatMessage[]; more: boolean }> {
   const { rows } = await db.query<MessageRow>(
-    `SELECT id, subject_id, role, text, cards, asks, at
+    `SELECT ${COLUMNS}
      FROM chat_messages
      WHERE user_id = $1 AND subject_id = $2
+       AND ($4::uuid IS NULL
+            OR (at, id) < (SELECT at, id FROM chat_messages WHERE id = $4 AND user_id = $1))
      ORDER BY at DESC, id DESC
      LIMIT $3`,
-    [userId, subjectId, limit === null ? null : limit + 1],
+    [userId, subjectId, limit === null ? null : limit + 1, before],
   );
   const more = limit !== null && rows.length > limit;
   const page = (more ? rows.slice(0, limit) : rows).reverse();
   return { messages: await toMessages(page, userId, db), more };
+}
+
+/** Is this one of the student's messages in this subject? (A paging cursor must be.) */
+export async function messageExists(userId: number, subjectId: SubjectId, id: string): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    "SELECT 1 FROM chat_messages WHERE id = $1 AND user_id = $2 AND subject_id = $3",
+    [id, userId, subjectId],
+  );
+  return rowCount === 1;
+}
+
+/** These messages in the API's shape (confirm cards filled in), oldest first. */
+export async function findMessages(userId: number, ids: string[], db: Db = pool): Promise<ChatMessage[]> {
+  const { rows } = await db.query<MessageRow>(
+    `SELECT ${COLUMNS} FROM chat_messages WHERE user_id = $1 AND id = ANY($2::uuid[]) ORDER BY at, id`,
+    [userId, ids],
+  );
+  return toMessages(rows, userId, db);
+}
+
+/**
+ * Stores one message and returns its id. A helper message with a confirm card also gets
+ * its proposal row, and any older open proposal in this subject is cancelled first, so a
+ * stale card can never be saved later (the unique index proposals_one_open is the
+ * backstop if this code ever forgets). Call it inside a transaction: the message, the
+ * proposal and the cancel succeed or fail together.
+ *
+ * `at` is clock_timestamp(), not NOW(). Inside a transaction NOW() is the same for every
+ * statement, so the student's message and the reply would share a time and their order
+ * would depend on random ids. clock_timestamp() moves on between statements.
+ */
+export async function insertMessage(
+  db: Db,
+  userId: number,
+  subjectId: SubjectId,
+  message: { role: "student"; text: string; readBy: "tap" | "model" | "rules" } | ({ role: "helper" } & Reply),
+): Promise<string> {
+  const messageId = randomUUID();
+  let proposal: { id: string; payload: Proposal } | null = null;
+  let cards: StoredCard[] | null = null;
+
+  if (message.role === "helper" && message.cards?.length) {
+    cards = message.cards.map((c): StoredCard => {
+      if (c.type !== "confirm") return c;
+      // The id is made here, not by Postgres, because the message must name it before the
+      // proposal row exists (the proposal points back at the message).
+      proposal = { id: randomUUID(), payload: c.proposal };
+      return { type: "confirm", proposalId: proposal.id };
+    });
+  }
+
+  if (proposal) {
+    await db.query(
+      `UPDATE proposals SET state = 'cancelled', decided_at = NOW()
+       WHERE user_id = $1 AND subject_id = $2 AND state = 'open'`,
+      [userId, subjectId],
+    );
+  }
+
+  await db.query(
+    `INSERT INTO chat_messages (id, user_id, subject_id, role, text, cards, asks, read_by, at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, clock_timestamp())`,
+    [
+      messageId,
+      userId,
+      subjectId,
+      message.role,
+      message.text,
+      cards ? JSON.stringify(cards) : null,
+      message.role === "helper" && message.asks ? JSON.stringify(message.asks) : null,
+      message.role === "student" ? message.readBy : null,
+    ],
+  );
+
+  if (proposal) {
+    const p: { id: string; payload: Proposal } = proposal;
+    await db.query(
+      "INSERT INTO proposals (id, user_id, subject_id, message_id, payload) VALUES ($1, $2, $3, $4, $5)",
+      [p.id, userId, subjectId, messageId, JSON.stringify(p.payload)],
+    );
+  }
+  return messageId;
 }

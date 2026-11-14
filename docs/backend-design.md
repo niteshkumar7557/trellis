@@ -7,8 +7,8 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (13 Nov 2026):** M0, M1 and M2 are done and on `main`. M3 is built and tested on
-`backend/m3`, waiting for review. Next is M4 (§10, §11). The frontend still runs on sample data with no API calls.
+**Status (14 Nov 2026):** M0 to M3 are done and on `main`. M4 is built and tested on
+`backend/m4`, waiting for review. Next is M6, then MS (§10, §11). The frontend still runs on sample data with no API calls.
 **The deadline is 21 Nov 2026**: the build is planned for 13 to 15 Nov (re-planned on
 13 Nov from 13 to 17 Nov), then testing with real users.
 
@@ -623,8 +623,8 @@ paged.
 | Method | Path | Body → Returns |
 |---|---|---|
 | GET | `/api/helper/:subjectId/messages?before=<messageId>&limit=50` | → `{ messages, more }`, older history |
-| POST | `/api/helper/:subjectId/messages` | `{text, selected?}` **or** `{pick: {outcome, topicIds, label}}` → `{ messages: [studentMessage, helperReply] }` |
-| POST | `/api/helper/proposals/:id/save` | `{proposal}` (possibly edited) → `{ checkIns, experiences, message, followUp }` |
+| POST | `/api/helper/:subjectId/messages` | `{text, selected?}` **or** `{pick: {outcome, topicIds, label}}` (exactly one shape; both are strict) → `201 { messages: [studentMessage, helperReply] }`. 30 a minute per student |
+| POST | `/api/helper/proposals/:id/save` | `{proposal}` (possibly edited) → `{ checkIns, experiences, message, followUp }`. An unchanged note keeps the line the helper made; an edited one is rebuilt with `tidy()`; a cleared one is dropped |
 | POST | `/api/helper/proposals/:id/cancel` | → `{ message }` |
 | POST | `/api/helper/proposals/:id/undo` | → `{ message }`. Deletes what that save created |
 
@@ -637,7 +637,14 @@ Rules the server enforces:
 - **A new proposal cancels the older open one** in the same subject, in the same
   transaction that inserts it. The unique index (§3) is the backstop.
 - **Save, cancel and undo each work once**, through the guarded update in §3. A second
-  attempt answers `409 proposal_not_open` and changes nothing.
+  attempt answers `409 proposal_not_open` and changes nothing. Save locks the row first
+  (`SELECT … FOR UPDATE` in `proposals.repo.ts lockOpenProposal`), so two saves sent at
+  the same moment make one set of check-ins (tested). Another student's proposal answers
+  404, not 409.
+- **Message times use `clock_timestamp()`**, not `NOW()`: inside one transaction `NOW()`
+  never moves, so a reply would tie with its message. The same goes for a save's rows.
+- **A tap's check-in text** is `"<label>: <topic>"` ("Stuck: FlatList"), from
+  `checkInText()` in `shared/helper.ts`, which the demo store uses too.
 - **An edited proposal is checked again on save:** every topic id must be a subtopic of
   that subject, and every text within its length limit. The client's copy is never
   trusted because it was shown by our own UI.
@@ -673,17 +680,29 @@ interface Reading {
   bigId: string | null;                            // a big topic named instead ("finished lists")
   outcome: "got" | "partly" | "stuck" | null;
   experiences: { kind: "easy" | "hard" | "clicked"; text: string; line: string }[];
+  help: HelpTopic | null;                          // app_help: which guide entry answers it
+  said: string;                                    // the student's words, kept as the check-in text
 }
 ```
 
-Today `shared/helper.ts respond()` reads and replies in one function. M4.1 splits it:
+**Built in M4.1.** `shared/helper.ts respond()` used to read and reply in one function.
+It is now:
 
-- `readByRules(text, ctx): Reading`: the existing keyword logic, unchanged.
-- `replyFor(reading, ctx): Reply`: the existing reply logic, unchanged.
+- `readByRules(text, ctx): Reading`: the keyword logic, unchanged.
+- `readTap(outcome, topicIds): Reading`: a tap, which needs no reading.
+- `replyFor(reading, ctx): Reply`: the reply logic, unchanged. It also copes with readings
+  only a model would produce ("answer" when nothing was asked, "report" with no outcome),
+  by answering them as a plain message.
 - `respond(input, ctx)` stays, as `replyFor(readByRules(…))`, so the frontend's demo mode
-  and every existing test keep working.
+  keeps working.
 
-The backend then calls `replyFor(readByModel(…) ?? readByRules(…))`.
+`help` and `said` were added to the planned shape: the guide entries are now keyed
+(`HELP_TOPICS`), so the model can name one instead of the reply needing the raw text; and
+`said` carries the words into the proposal. **No behaviour changed:** 52 replies were
+pinned as a snapshot before the split (`backend/test/helper.test.ts`) and all still match.
+
+The backend calls `replyFor(readByRules(…))` today (M4.2); M5 makes it
+`replyFor(readByModel(…) ?? readByRules(…))`.
 
 **Why this shape:** the model and the rules become interchangeable at exactly one place.
 Whichever read the message, the same code decides the reply, so the helper cannot behave
@@ -971,7 +990,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M2.6 The API starts without Neo4j; the graph routes answer 503; `/api/health` reports both;
   topic ids are checked against `shared/data`.
 
-**M3: Check-ins, experiences, prompts taken** (13 Nov)
+**M3: Check-ins, experiences, prompts taken** ✅ (merged into `main`, 13 Nov 2026)
 - M3.1 Migrations 0012, 0014 and 0015 plus `GET/PATCH/DELETE /api/check-ins`.
 - M3.2 Migration 0016 plus `PATCH/DELETE /api/experiences`.
 - M3.3 Migration 0017 plus `POST /api/prompt-takes`.
@@ -1034,14 +1053,17 @@ Update this table at the start of each planning session from `git log` and merge
 | M2.4 Migration 0009, `POST /api/claims` | done | `main`, 13 Nov 2026 |
 | M2.5 Migrations 0010, 0011, `POST /api/opened`, `POST /api/subject-requests` | done | `main`, 13 Nov 2026 |
 | M2.6 The API runs without Neo4j; `/api/health` | done | `main`, 13 Nov 2026 |
-| M3.1 Migrations 0012, 0014, 0015, `GET/PATCH/DELETE /api/check-ins` | built, in review | `backend/m3` |
-| M3.2 Migration 0016, `PATCH/DELETE /api/experiences` | built, in review | `backend/m3` |
-| M3.3 Migration 0017, `POST /api/prompt-takes` | built, in review | `backend/m3` |
-| M3.4 `GET /api/state`, `GET /api/export`, `DELETE /api/me` | built, in review | `backend/m3` |
-| M4 to M7, MS | not started | — |
+| M3.1 Migrations 0012, 0014, 0015, `GET/PATCH/DELETE /api/check-ins` | done | `main`, 13 Nov 2026 |
+| M3.2 Migration 0016, `PATCH/DELETE /api/experiences` | done | `main`, 13 Nov 2026 |
+| M3.3 Migration 0017, `POST /api/prompt-takes` | done | `main`, 13 Nov 2026 |
+| M3.4 `GET /api/state`, `GET /api/export`, `DELETE /api/me` | done | `main`, 13 Nov 2026 |
+| M4.1 Split `respond()` into `readByRules` and `replyFor` | built, in review | `backend/m4` |
+| M4.2 `GET/POST /api/helper/:subjectId/messages` on the rules | built, in review | `backend/m4` |
+| M4.3 Save, cancel, undo | built, in review | `backend/m4` |
+| M6, MS, M5, M7 | not started | — |
 
-**Expected test counts after M3:** 110 passed in `npm test`, 60 in `npm run test:integration`,
-none skipped (checked 13 Nov 2026). After M2 they were 94 and 45.
+**Expected test counts after M4:** 178 passed in `npm test`, 77 in `npm run test:integration`,
+none skipped (checked 14 Nov 2026). After M3 they were 110 and 60.
 
 **How M3 is tested without the helper:** nothing can create a check-in or an experience
 through the API until M4.3 (only saving a proposal does). The integration tests write

@@ -359,7 +359,7 @@ where it is built. Until then, sections 1 to 12 describe the code as it stands.
 | `PromptTake` (new) | `id, topicId, via: "copy" \| "chatgpt" \| "claude", at`. **In `shared/types.ts` since M3.3** |
 | `Student` | gains `hasPassword` (Google-only accounts have none). **Done in M2.1** |
 | `ChatMessage` | student messages gain `readBy?: "tap" \| "model" \| "rules"`, for debugging only; not shown |
-| `Reading` (new, in `shared/helper.ts`) | what a message says, whoever read it (backend-design.md §5) |
+| `Reading` (new, in `shared/helper.ts`) | what a message says, whoever read it (backend-design.md §5). **Built in M4.1**, with `readByRules`, `readTap`, `replyFor`; `respond` is unchanged for the demo |
 
 ### Suggestions that were considered and left for later
 
