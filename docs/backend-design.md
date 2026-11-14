@@ -439,15 +439,24 @@ CREATE TABLE ai_calls (
   cost_usd      NUMERIC(10,6),              -- worked out from the token counts and the configured prices
   latency_ms    INT NOT NULL,
   ok            BOOLEAN NOT NULL,
-  error         TEXT,                       -- a short code: 'timeout', 'throttled', 'bad_output', …
+  error         TEXT,                       -- a short code: 'timeout', 'throttled', 'bad_output', …; 'pending' until settled
   at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX ON ai_calls (at);
+
+-- 0019_ai_limits.sql: a call is written BEFORE it is made (§5 "Cost limits").
+ALTER TABLE ai_calls ADD COLUMN reserved_usd NUMERIC(10,6);   -- the most this call can cost
+CREATE INDEX ai_calls_user_at ON ai_calls (user_id, at);      -- one account's day and week
 ```
 
 `ai_calls` never stores the message text. It holds numbers only. **Built in M5.1.**
 `user_id` is `SET NULL` on delete, not `CASCADE`: a deleted student's calls were still paid
 for, and today's budget must still count them. A `warmup` row (§5) has no student.
+
+**This table is the money count** (since ML, 14 Nov 2026). Every limit in §5 is a `SUM`
+over it, and what one row counts for is `COALESCE(cost_usd, reserved_usd, 0)`: the real
+cost once the call has returned, the reservation while it is running (or if the server
+died mid-call), and 0 for rows from before 0019 that never had a cost.
 
 `gen_random_uuid()` is built into Postgres 13+ (the project uses Postgres 18).
 
@@ -619,7 +628,7 @@ token**, never from the body or the URL.
 
 | Method | Path | Body → Returns |
 |---|---|---|
-| GET | `/api/state` | → `{ student, goalIds, claims, checkIns, experiences, opened, promptTakes, messages, moreMessages }`: everything the store holds, in one call. `messages` is the latest 50 per subject, all subjects in one list, oldest first; `moreMessages` is `{subjectId: boolean}`; `promptTakes` the latest 20. Read in one `REPEATABLE READ` snapshot (`readSnapshot` in `src/db/index.ts`), so a save landing mid-request can't give a half-updated answer |
+| GET | `/api/state` | → `{ student, goalIds, claims, checkIns, experiences, opened, promptTakes, messages, moreMessages, usage }`: everything the store holds, in one call. `usage` is the AI allowance (see `/api/usage`). `messages` is the latest 50 per subject, all subjects in one list, oldest first; `moreMessages` is `{subjectId: boolean}`; `promptTakes` the latest 20. Read in one `REPEATABLE READ` snapshot (`readSnapshot` in `src/db/index.ts`), so a save landing mid-request can't give a half-updated answer |
 | PUT | `/api/goals/:subjectId` | `{goalId}` → `{subjectId, goalId, since}`. Setting the same goal again keeps `since` |
 | POST | `/api/claims` | `{claims: [{topicId, claim}]}` → `201 Claim[]` (the sort; later claims win per topic, so a repeated topic in one request keeps only its last claim) |
 | POST | `/api/opened` | `{topicId}` → `204`. Big topics only; opening one twice is fine |
@@ -630,6 +639,7 @@ token**, never from the body or the URL.
 | DELETE | `/api/check-ins/:id` | → `204` |
 | PATCH | `/api/experiences/:id` | `{text, kind?}` → `Experience`. The server rebuilds `line` with the rule-based `tidy()`; no model call, and a `line` sent by the client is ignored |
 | DELETE | `/api/experiences/:id` | → `204` |
+| GET | `/api/usage` | → `AiUsage`: `{ on, day: {usedPct, resetsAt}, week: {usedPct, resetsAt}, basic }`. The account's AI allowance as whole percentages and reset times. **Never dollars or message counts** (§5 "Cost limits"). `basic` is `"day"`, `"week"`, `"site"` or `null`: why typed messages are read by the rules right now. Never cached |
 
 There is **no** "create check-in" endpoint. Updates are created only by saving a helper
 proposal, so the topic panel's buttons also go through the helper (design.md §7).
@@ -644,7 +654,7 @@ paged.
 | Method | Path | Body → Returns |
 |---|---|---|
 | GET | `/api/helper/:subjectId/messages?before=<messageId>&limit=50` | → `{ messages, more }`, older history |
-| POST | `/api/helper/:subjectId/messages` | `{text, selected?}` **or** `{pick: {outcome, topicIds, label}}` (exactly one shape; both are strict) → `201 { messages: [studentMessage, helperReply] }`. 30 a minute per student |
+| POST | `/api/helper/:subjectId/messages` | `{text, selected?}` **or** `{pick: {outcome, topicIds, label}}` (exactly one shape; both are strict) → `201 { messages: [studentMessage, helperReply], usage }`. `usage` is the allowance after this message, so the meter moves with the reply. 30 a minute per student |
 | POST | `/api/helper/proposals/:id/save` | `{proposal}` (possibly edited) → `{ checkIns, experiences, message, followUp }`. An unchanged note keeps the line the helper made; an edited one is rebuilt with `tidy()`; a cleared one is dropped |
 | POST | `/api/helper/proposals/:id/cancel` | → `{ message }` |
 | POST | `/api/helper/proposals/:id/undo` | → `{ message }`. Deletes what that save created |
@@ -681,14 +691,15 @@ POST /api/helper/:subject/messages
   3. load the student's record → derive statuses, next, required, revealed  (shared/graph.ts)
   4. READ the message into a small typed object, the Reading:
         a tap ({pick})            → no reading needed; our code knows what was tapped
-        typed text, AI available  → one GLM 5 call
+        typed text, AI available  → one GLM 5 call, reserved in ai_calls first
         the call fails, times out, returns something invalid,
-        or today's AI budget is spent → the rule-based reader (shared/parse.ts)
+        or a spending limit is reached (this account's day or week,
+        the site's day)           → the rule-based reader (shared/parse.ts)
   5. shared/helper.ts turns the Reading into the reply: the one question (with `asks`),
      a confirm card, a prompt card, a choice of topics, or an answer about the map
   6. one transaction: cancel any older open proposal, insert the new one if there is a
      confirm card, insert the helper message
-  7. return both messages
+  7. return both messages, and the account's AI usage as percentages
 ```
 
 ### The Reading: one seam for the model and the rules
@@ -774,11 +785,15 @@ Reading, check the Reply.
 - **Never throws.** `callForJson()` in `bedrock.ts` turns every failure (timeout,
   throttled, refused, no credentials, unusable reply) into `null` plus an `ai_calls` row
   with a short code. A failing model must never fail a student's message.
+- **Reserve, call, settle.** The `ai_calls` row is written *before* Bedrock is called and
+  updated after ("Cost limits" below). A limit reached, or a reservation that can't be
+  written, also ends as `null`, with no call made.
 - **Credentials:** the AWS SDK's default chain. On the server that is the EC2 instance
   role; on a laptop it is the `trellis` profile. There are no AWS keys in any env file.
-- **Code:** `src/ai/bedrock.ts` (the client, the timeout, the `ai_calls` row) and
-  `src/ai/reader.ts` (the instructions, the schema, the checks, the budget gate, the
-  warm-up). The empty `src/ai/models/jev.ts` and `deepseek.ts` and the `@openrouter/sdk`
+- **Code:** `src/ai/bedrock.ts` (the client, the timeout, reserve and settle),
+  `src/ai/limits.ts` (the money rules: which limit stops a call, what a call reserves and
+  counts as, the percentages a student sees) and `src/ai/reader.ts` (the instructions,
+  the schema, the checks, the warm-up). The empty `src/ai/models/jev.ts` and `deepseek.ts` and the `@openrouter/sdk`
   package were removed in M5.1.
 - **A bad model reply is never the student's bad request.** The reader checks with
   `safeParse`, so nothing is thrown. And since M5.2 `validateBody` turns its own zod
@@ -832,20 +847,131 @@ path for all typed text is consistent and easier to debug. The rules stay as the
 
 ### Cost limits
 
+*Rebuilt on 14 Nov 2026 (ML), before the site was shared with classmates.*
+
+Three limits in dollars, and one in messages:
+
 | Limit | Default (env) | What happens at the limit |
 |---|---|---|
-| Typed messages per student per day | 100 (`HELPER_DAILY_MESSAGES`) | `429 daily_limit`, with a message the frontend shows as it is; taps still work |
-| AI spend for the whole site per day | $0.50 (`AI_DAILY_BUDGET_USD`) | The rules read every message until midnight UTC |
+| AI spend, **one account, per day** | $0.06 (`AI_USER_DAILY_USD`) | The rules read that account's typed messages ("basic mode") until midnight UTC |
+| AI spend, **one account, per week** | $0.25 (`AI_USER_WEEKLY_USD`) | The same, until Monday midnight UTC |
+| AI spend, **the whole site, per day** | $0.50 (`AI_DAILY_BUDGET_USD`) | The rules read everyone's messages until midnight UTC |
+| Typed messages, one account, per day | 100 (`HELPER_DAILY_MESSAGES`) | `429 daily_limit`; taps still work. Not a money limit: it stops a script filling `chat_messages` |
 
-Both are counted from the database (`chat_messages`, `ai_calls`) since **midnight UTC**
-(5:30 in the morning in India), so a restart does not reset them. UTC so they line up with
-the AWS bill. Built in M5.2 (the budget, checked before every call in `modelAvailable()`)
-and M5.3 (the message limit, in `helper.controller.ts`). Typed messages count whether the
-model or the rules read them; taps never count. Neither check takes a lock, so two
-messages at the same instant can overshoot by one; a lock would cost more than that.
+An account's limits are for the account (its email), across all its subjects. Taps never
+call the model and never count.
 
-At about $0.0019 a message (measured in Sydney), $0.50 is about 260 model-read messages a
-day and at most $15 a month.
+**What it costs.** One AI-read message is about **$0.002** (measured: 1,700 to 2,100
+tokens in, 40 to 120 out). So:
+
+| | Messages | Worst case for the owner |
+|---|---|---|
+| One account, a day | about 30 | $0.06 |
+| One account, a week | about 125 | $0.25, so at most **$1.08 a month** |
+| The whole site, a day | about 250 | $0.50, so at most **$15 a month**, whatever the accounts do |
+
+**Which limit protects the money.** The site's daily budget does. Sign-up doesn't verify
+email addresses yet, so one person can make several accounts, each with a full allowance.
+The account limits are there so that one account can't use everyone's share.
+
+**At a limit nothing is refused.** The rule-based reader reads the message, which costs
+nothing, and the student is told (`usage.basic`). The alternative, blocking typing, would
+stop a student in the middle of a session to save money that basic mode already saves.
+
+#### Reserve, call, settle
+
+The limits are only as good as the count behind them, so a model call has three steps
+(`callForJson()` in `src/ai/bedrock.ts`):
+
+1. **Reserve** (`reserveAiCall` in `ai-calls.repo.ts`). In one transaction, under one
+   Postgres advisory lock: add up what the account has spent today and this week and what
+   the site has spent today; if a limit is reached, stop here with no row and no call;
+   otherwise insert the `ai_calls` row with `reserved_usd`, the most this call can cost,
+   and `error = 'pending'`.
+2. **Call** Bedrock, outside the lock.
+3. **Settle** (`settleAiCall`): write the tokens, the latency and `cost_usd`.
+
+What each failure does to the count (`chargeFor` in `src/ai/limits.ts`):
+
+| What happened | Counted as |
+|---|---|
+| Bedrock reported tokens (usable reply or not) | Their real price |
+| Bedrock refused the request (throttled, denied, unavailable, no credentials) | $0: no model ran |
+| A timeout, or a dropped connection | The **whole reservation**: nobody knows what was billed |
+| The server died mid-call, or the settle failed | The reservation, until its day and week pass |
+| The reservation could not be written (database trouble) | No call is made at all |
+
+Every failure errs towards counting too much. That costs a student a few percent of a
+day; counting too little costs money.
+
+**The reservation** is `maxTokens` of output (600, which Bedrock enforces) plus one input
+token per 3 bytes of the instructions and the message (`worstCaseUsd`). The measured rate
+is about one token per 3.7 characters, so it runs some 25% high: about $0.0043 against a
+real $0.002. It is an estimate, not a guarantee.
+
+**Why a lock.** Without it, ten messages sent at the same moment each add up the same old
+spend, each see room, and all ten are sent. With it they queue for a few milliseconds and
+the second sees the first one's reservation
+(`test/integration/ai-calls.test.ts`: 20 at once, exactly 14 fit; without the lock all 20
+pass). One lock for the whole site, not one per account, because the site's budget is
+shared: two different accounts can race for its last cent too.
+
+**How far a limit can be passed.** A call is allowed while *anything* is left
+(`spent < limit`), so that the meter reaches exactly 100% when the AI stops. So a limit
+can be passed by one call, under half a cent, and never by more.
+
+**Alternatives that were turned down:**
+
+- *Check, then call, then write the row* (how M5 did it): simple, but it has the race
+  above, and a timed-out call was written with no cost at all.
+- *A running total per account in its own row:* quicker to read, but a second copy of the
+  truth that can drift from `ai_calls`. At this size the `SUM` is one index range.
+- *Rolling windows ("the last 24 hours"):* fairer at the edges, but there is no one reset
+  time to show the student. Fixed windows: the day is the UTC day, the week starts on
+  Monday (Postgres's ISO week).
+- *Counting messages instead of dollars:* easier to explain, but it stops matching the
+  bill the day a price, a model or a message size changes.
+
+**Why UTC:** the windows line up with the AWS bill. In India the day turns over at 5:30 in
+the morning, and the week on Monday at 5:30.
+
+#### What a student sees
+
+Percentages and reset times, never dollars or message counts. `usageOf()` in
+`src/ai/limits.ts` builds the one shape (`AiUsage` in `shared/types.ts`) that
+`GET /api/usage`, `GET /api/state` and every helper reply carry. A percentage is rounded,
+with two corrections so it never contradicts what happens: anything spent shows at least
+1%, and 100% appears only when the limit is really reached.
+
+#### What the owner sees
+
+`npm run ai:spend` (production: `docker compose exec api node dist/db/ai-spend.js`) prints
+the spend for today, this week and the last 30 days against the limits, and the accounts
+that used most this week, **by id only**. It is a money report, not a way to read anyone's
+record (design.md §11): no names, no emails, and the table holds no message text.
+
+To change a limit: set the variable in Parameter Store (`/trellis/prod/AI_USER_DAILY_USD`
+and so on), run a release, and the new value applies to the current window at once,
+because nothing but `ai_calls` is stored.
+
+#### Where this falls short of production
+
+- **The count is ours, not AWS's.** It is token counts times configured prices. If a price
+  changes and `READER_PRICE_*` doesn't, the count is wrong. Compare `npm run ai:spend`
+  with Billing once a week (`docs/aws.md` §3). A production system would also set a hard
+  quota on the provider's side.
+- **No email verification**, so an account limit can be multiplied by making accounts.
+  The site budget is the backstop; verified email (SES) is the fix.
+- **Deleting an account resets its allowance** (the owner's call, 14 Nov 2026). The rows
+  keep counting for the site but lose their `user_id`, as the privacy promise requires,
+  so a new account with the same email starts at zero. Keeping a scrambled copy of the
+  email for a week would close this; it was turned down to keep "delete removes
+  everything" exactly true.
+- **One server.** The advisory lock works because there is one Postgres. That stays true
+  with several API servers, but the per-minute limiter (in memory) would not.
+- **No plans or top-ups.** Every account has the same allowance; a way to raise one
+  account's limit is left for later (`limits()` in `src/ai/limits.ts` is the one place
+  it would go).
 
 **Why this matters more than usual:** on the AWS free plan, spent credits close the
 account (`docs/aws.md` §3). A cost limit here is what keeps the site up.
@@ -951,7 +1077,10 @@ start and **throws on a missing or bad value**.
 | `AI_PROVIDER` | `bedrock` or `off` | `off` in development and tests: the rules read everything, and no AWS is needed |
 | `BEDROCK_REGION`, `READER_MODEL` | `ap-southeast-2`, `zai.glm-5` | |
 | `READER_PRICE_IN_PER_M`, `READER_PRICE_OUT_PER_M` | `1.03`, `3.30` | Dollars per million tokens, for `cost_usd` (Sydney's prices; change them with the region) |
-| `AI_TIMEOUT_MS`, `AI_DAILY_BUDGET_USD`, `HELPER_DAILY_MESSAGES` | `6000`, `0.50`, `100` | |
+| `AI_TIMEOUT_MS` | `6000` | |
+| `AI_DAILY_BUDGET_USD` | `0.50` | The whole site's AI spend per day: the limit that caps the bill (§5 "Cost limits") |
+| `AI_USER_DAILY_USD`, `AI_USER_WEEKLY_USD` | `0.06`, `0.25` | One account's AI spend per day and per week. Zero means "no AI calls"; a negative number stops the server at boot |
+| `HELPER_DAILY_MESSAGES` | `100` | Typed messages per account per day, whoever reads them |
 
 Removed: `OPENROUTER_API_KEY`, `ROUTER_MODEL`, `ROUTER_MIN_CONFIDENCE`, `CLIENT_URL`.
 
@@ -1138,6 +1267,12 @@ Each line is one task, built in order, each with its tests. The dates are the pl
   student's bad request.
 - M5.3 The daily message limit and the daily AI budget; tests with Bedrock mocked.
 
+**ML: AI limits per account** ✅ (built 14 Nov 2026 on `feature/ai-limits`, before sharing the site)
+- ML.1 Migration 0019, `src/ai/limits.ts`, reserve and settle in `ai-calls.repo.ts` and
+  `bedrock.ts`: an account's daily and weekly allowance, checked under a lock.
+- ML.2 `GET /api/usage`; `usage` on `/api/state` and on helper replies; `npm run ai:spend`.
+- ML.3 The frontend: the sidebar's meter, both limits in Settings, the basic-mode notice.
+
 **M7: Deploy** (the steps are in `docs/aws.md` §9; everything in Sydney, behind CloudFront)
 - M7.1 ✅ The production compose file (`deploy/`): Caddy, Postgres, Neo4j with memory
   caps, the API, Next, one-shot `migrate` and `seed-graph` services, the deploy scripts.
@@ -1192,8 +1327,13 @@ Update this table at the start of each planning session from `git log` and merge
 | M7.2 The AWS resources (`docs/aws.md` §9), CloudFront; first release; Neo4j's limits fixed | done; **live at https://trellis.niteshkumar.xyz** | `main`, 14 Nov 2026 (squashed) |
 | M7.3 Nightly backup, restore test, smoke test | done (Google sign-in to be tried by the owner in a browser) | `main`, 14 Nov 2026 (squashed) |
 
-**Expected test counts after M7.1:** 250 passed in `npm test`, 86 in
-`npm run test:integration`, none skipped (checked 14 Nov 2026). After M5: 246 and 86. After MS
+| ML.1 Migration 0019, the money rules, reserve and settle under a lock | done | `feature/ai-limits`, 14 Nov 2026 (not merged or deployed yet) |
+| ML.2 `GET /api/usage`, `usage` on state and helper replies, `npm run ai:spend` | done | `feature/ai-limits`, 14 Nov 2026 |
+| ML.3 The sidebar meter, Settings "AI usage", the chat's basic-mode notice | done; checked in a browser against the real API with Bedrock unreachable | `feature/ai-limits`, 14 Nov 2026 |
+
+**Expected test counts after ML:** 279 passed in `npm test`, 112 in
+`npm run test:integration`, none skipped (checked 14 Nov 2026). After M7.1: 250 and 86.
+After M5: 246 and 86. After MS
 they were 211 and 81. After M6 they were 193 and 81; after M4, 178 and 77. M6 was also checked by
 hand in a browser against the real API (sign-up to delete, a reset link, the helper's
 question, Save, reload); the frontend has no automated tests of its own yet.

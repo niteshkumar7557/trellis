@@ -62,6 +62,13 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   behind CloudFront; squashed into `main` and pushed, 14 Nov 2026). Release with `./deploy/release.sh`.
   The `trellis` AWS profile exists (account `631603562964`); still run the `docs/aws.md`
   §2 check every time.
+- **AI limits per account (ML, 14 Nov 2026): built on the branch `feature/ai-limits`,
+  not merged or deployed yet.** Each account has $0.06 a day and $0.25 a week of AI
+  (`AI_USER_DAILY_USD`, `AI_USER_WEEKLY_USD`), inside the site's $0.50 a day. Every model
+  call is reserved in `ai_calls` under a lock before Bedrock is called (migration 0019,
+  `src/ai/limits.ts`). Students see a percentage in the sidebar and in Settings
+  (`GET /api/usage`); the owner sees dollars with `npm run ai:spend`. The numbers and
+  reasons are in `docs/backend-design.md` §5 "Cost limits".
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5 and M7 went into `main`
   as one squashed commit each, on the owner's request; §0 still says merge commits. Ask
   for the next one.
@@ -101,7 +108,14 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
     with two lines the student can paste back.
 - **AI only reads helper messages:** one **GLM 5** call on **Amazon Bedrock** (Sydney, `ap-southeast-2`) per
   typed message; taps call no model; the rule-based reader is the fallback. **No Jev, no
-  DeepSeek, no OpenRouter.** Daily limits per student and for the whole site.
+  DeepSeek, no OpenRouter.**
+- **AI limits (14 Nov 2026):** each account has a daily and a weekly allowance, counted in
+  money and across all its subjects; the whole site has a daily one, which is what caps
+  the bill.
+  - At a limit the helper answers in **basic mode** (the rules); nothing is refused.
+  - Students see **only a percentage** and a reset time, never dollars or message counts.
+  - Deleting an account resets its allowance (nothing links spend to an email after).
+  - **No subscription or top-up** to raise a limit in v1.
 - **Accounts:** Google sign-in plus email and password. A forgotten password is reset by the
   admin with a one-time link. Email (Amazon SES) comes later; the design leaves room.
 - **Storage:** Postgres for accounts and every student record; **Neo4j for the topic graph**
