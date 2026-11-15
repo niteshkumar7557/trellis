@@ -64,11 +64,12 @@ owner can talk to. That is why the first version is free and has no payment or g
 AWS's Sydney region (the only one the free plan allows), with the pages cached at edges in
 India.
 
-**v1 subjects:** **React Native** and **Redis**. React Native was redesigned from official
+**v1 subjects:** **React Native**, **Redis** and **MongoDB**. MongoDB was designed from
+official sources on 15 Nov 2026 (`docs/subjects/mongodb.md`). React Native was redesigned from official
 sources on 15 Nov 2026 (`docs/subjects/react-native.md`); Redis's topic list is still
 adapted from the roadmap at [roadmap.sh](https://roadmap.sh) (topic names and grouping)
 until its redesign. The links between topics, what is core or optional, the summaries and
-the common mistakes are ours, and a person reviews every one. The two subjects are not linked. Asking for any other subject
+the common mistakes are ours, and a person reviews every one. The subjects are not linked to each other. Asking for any other subject
 gets a fixed *"coming soon"*, and Trellis keeps the request so we know which map to make
 next. New subjects are designed from official sources (documentation, exam guides,
 official courses) and reviewed by a person; roadmap.sh is no longer used for them
@@ -425,7 +426,7 @@ itself (`docs/aws.md`; the numbers and how they are counted are in
 
 - Sign up and log in with Google, or with email and password
 - Password reset through the admin (a one-time link)
-- Two subjects (React Native, Redis), each with a few ready-made goals; any other subject
+- Three subjects (React Native, Redis, MongoDB), each with a few ready-made goals; any other subject
   gets a fixed "coming soon", and the request is kept
 - The sort at signup, one card per big topic; a short sort for new big topics after a goal
   change

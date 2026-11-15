@@ -56,4 +56,26 @@ describe("big-topic needs links", () => {
     expect(has("rn-testing", "rn-env")).toBe(false);
     expect(has("rn-testing", "rn-core")).toBe(true);
   });
+
+  it("matches the MongoDB design record (docs/subjects/mongodb.md, \"The plan\")", () => {
+    const has = (from: string, to: string) => bigNeeds.some((e) => e.from === from && e.to === to);
+    // The drivers stand on CRUD basics only (round 2 of the plan review): their errors are
+    // *helped by* "Errors your app must handle", so they come early on the route.
+    expect(has("mg-node", "mg-crud")).toBe(true);
+    expect(has("mg-go", "mg-crud")).toBe(true);
+    expect(has("mg-node", "mg-app")).toBe(false);
+    // Mongoose stands on "MongoDB in an app", not on the Node.js driver, so the Mongoose
+    // goal doesn't require driver CRUD.
+    expect(has("mg-mongoose", "mg-app")).toBe(true);
+    expect(has("mg-mongoose", "mg-node")).toBe(false);
+    // Security waits for the app (the database user is the app's user), not for queries.
+    expect(has("mg-security", "mg-app")).toBe(true);
+    expect(has("mg-security", "mg-query")).toBe(false);
+    // "Embed it instead" is the alternative to a transaction, so Transactions needs Schema design.
+    expect(has("mg-tx", "mg-schema")).toBe(true);
+    // Optional subtopics add no link: geospatial queries need Query filters' operators,
+    // but Indexes already stands on Query filters through Sort, limit and fields.
+    expect(has("mg-indexes", "mg-results")).toBe(true);
+    expect(has("mg-indexes", "mg-query")).toBe(false);
+  });
 });

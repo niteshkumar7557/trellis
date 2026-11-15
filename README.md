@@ -39,7 +39,9 @@ topic. Signed-out visitors get a demo on a sample student. Testing with real use
 6. **When you're stuck,** Trellis says whether the topic is one not to skip, and points to the
    earlier topic that may be the real problem: *"You may be stuck because of State."*
 
-**v1 subjects:** React Native and Redis. React Native was redesigned from official sources
+**v1 subjects:** React Native, Redis and MongoDB. MongoDB was designed from official sources
+on 15 Nov 2026 (MongoDB 9.0, the Node.js and Go drivers, Mongoose;
+[docs/subjects/mongodb.md](docs/subjects/mongodb.md)). React Native was redesigned from official sources
 on 15 Nov 2026 (the React Native and Expo docs and release notes, Meta's course, the State of
 React Native survey and Stack Overflow; [docs/subjects/react-native.md](docs/subjects/react-native.md)).
 Redis's topic list is still adapted from the roadmap at [roadmap.sh](https://roadmap.sh) until
@@ -108,7 +110,7 @@ frontend/
   components/art/      SVG drawings (the espalier)
   lib/store.tsx        client state: the one place to swap in API calls
 shared/                domain code the frontend and backend both run (imported as @shared/*)
-  data/                one reviewed file per subject (React Native, Redis), and a sample student;
+  data/                one reviewed file per subject (React Native, Redis, MongoDB), and a sample student;
                        adding a subject: docs/subject-blueprint.md
   graph.ts             derived logic: statuses, next topic, what's open, skip or not, stuck diagnosis
   helper.ts            the helper chat's brain (stand-in for the AI): ask, propose, reply

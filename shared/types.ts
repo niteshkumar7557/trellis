@@ -2,7 +2,7 @@
 // see docs/frontend.md for the contract.
 
 /** One id per subject file in ./data (docs/subject-blueprint.md, "Wire it in"). */
-export type SubjectId = "react-native" | "redis";
+export type SubjectId = "react-native" | "redis" | "mongodb";
 
 export interface Subject {
   id: SubjectId;

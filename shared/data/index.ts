@@ -4,12 +4,13 @@ import type { RawTopic, Shortcut, SubjectFile } from "./build";
 export type { Shortcut } from "./build";
 import { reactNative } from "./react-native";
 import { redis } from "./redis";
+import { mongodb } from "./mongodb";
 
 /**
  * Every subject, in the order screens list them. Adding a subject is one line here, plus
  * its id in SubjectId (shared/types.ts); docs/subject-blueprint.md has the whole procedure.
  */
-const files: SubjectFile[] = [reactNative, redis];
+const files: SubjectFile[] = [reactNative, redis, mongodb];
 
 export const subjects: Subject[] = files.map((f) => f.subject);
 
