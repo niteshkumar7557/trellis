@@ -24,7 +24,7 @@ const count = async (who: Student, table: string) =>
 
 /** Sends a multi-topic tap (no question asked) and returns the confirm card it made. */
 async function proposeTwo(who: Student, outcome = "got") {
-  const res = await tap(who, outcome, ["rn-what", "rn-why"]);
+  const res = await tap(who, outcome, ["rn-what", "rn-how"]);
   const card = res.body.messages[1].cards[0];
   expect(card.type).toBe("confirm");
   return card as { proposalId: string; proposal: { updates: object[]; experiences: object[]; said: string } };
@@ -50,7 +50,7 @@ describe("save", () => {
     const res = await act(ada, card.proposalId, "save", { proposal: card.proposal });
     expect(res.status).toBe(200);
     expect(res.body.checkIns).toEqual([
-      expect.objectContaining({ topicId: "rn-what", outcome: "stuck", text: "Stuck: What is React Native?", messageId: answer.body.messages[1].id }),
+      expect.objectContaining({ topicId: "rn-what", outcome: "stuck", text: "Stuck: What React Native is", messageId: answer.body.messages[1].id }),
     ]);
     expect(res.body.experiences).toEqual([
       expect.objectContaining({ kind: "hard", text: "the native parts were new to me", line: "The native parts were new to me." }),
@@ -94,7 +94,7 @@ describe("save", () => {
       experiences: [
         { topicId: "rn-what", kind: "easy", text: "kept as is", line: "A model-written line." },
         { topicId: "rn-what", kind: "hard", text: "will be edited", line: "Old line." },
-        { topicId: "rn-why", kind: "easy", text: "will be cleared", line: "Gone." },
+        { topicId: "rn-how", kind: "easy", text: "will be cleared", line: "Gone." },
       ],
     };
     await pool.query("UPDATE proposals SET payload = $2 WHERE id = $1", [card.proposalId, JSON.stringify(original)]);
@@ -104,7 +104,7 @@ describe("save", () => {
       experiences: [
         { topicId: "rn-what", kind: "easy", text: "kept as is", line: "IGNORED" },
         { topicId: "rn-what", kind: "hard", text: "now it says something else", line: "IGNORED" },
-        { topicId: "rn-why", kind: "easy", text: "   " },
+        { topicId: "rn-how", kind: "easy", text: "   " },
       ],
       said: "",
     };

@@ -23,21 +23,19 @@ describe("findPath", () => {
   });
 
   it("returns the shortest chain when there are several", async () => {
-    // Components → Props → FlatList → SectionList (4), not through View and ScrollView (5).
+    // Components → lists in JSX → FlatList → SectionList (4), not through View and ScrollView (5).
     const result = await findPath("rn-components", "rn-sectionlist");
 
-    expect(result?.map((topic) => topic.id)).toEqual(["rn-components", "rn-props", "rn-flatlist", "rn-sectionlist"]);
+    expect(result?.map((topic) => topic.id)).toEqual(["rn-components", "rn-jsx-lists", "rn-flatlist", "rn-sectionlist"]);
   });
 
   it("always picks the same chain when two are equally short", async () => {
+    // Modern JavaScript → FlatList runs through lists in JSX or through objects and arrays in
+    // state: both three long.
     for (let i = 0; i < 10; i++) {
-      const result = await findPath("rn-components", "rn-flatlist");
+      const result = await findPath("rn-js-modern", "rn-flatlist");
 
-      expect(result?.map((topic) => topic.id)).toEqual([
-        "rn-components",
-        "rn-props",
-        "rn-flatlist",
-      ]);
+      expect(result?.map((topic) => topic.id)).toEqual(["rn-js-modern", "rn-jsx-lists", "rn-flatlist"]);
     }
   });
 

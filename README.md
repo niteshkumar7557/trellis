@@ -39,10 +39,12 @@ topic. Signed-out visitors get a demo on a sample student. Testing with real use
 6. **When you're stuck,** Trellis says whether the topic is one not to skip, and points to the
    earlier topic that may be the real problem: *"You may be stuck because of State."*
 
-**v1 subjects:** React Native and Redis. Their topic lists are adapted from the roadmaps at
-[roadmap.sh](https://roadmap.sh); the links, core/optional marks, summaries and mistakes are
-ours. Any other subject gets a "coming soon" for now. New subjects are designed from
-official sources (docs, exam guides, official courses), not roadmap.sh:
+**v1 subjects:** React Native and Redis. React Native was redesigned from official sources
+on 15 Nov 2026 (the React Native and Expo docs and release notes, Meta's course, the State of
+React Native survey and Stack Overflow; [docs/subjects/react-native.md](docs/subjects/react-native.md)).
+Redis's topic list is still adapted from the roadmap at [roadmap.sh](https://roadmap.sh) until
+its redesign; its links, core/optional marks, summaries and mistakes are ours. Any other
+subject gets a "coming soon" for now. New subjects follow
 [docs/subject-blueprint.md](docs/subject-blueprint.md).
 
 ## Docs

@@ -1,5 +1,7 @@
 import type { Difficulty, Edge, Goal, Subject, SubjectId, Topic } from "../types";
-import type { RawTopic, SubjectFile } from "./build";
+import type { RawTopic, Shortcut, SubjectFile } from "./build";
+
+export type { Shortcut } from "./build";
 import { reactNative } from "./react-native";
 import { redis } from "./redis";
 
@@ -84,6 +86,11 @@ function bigNeedsFrom(links: Edge[]): Edge[] {
 /** Every link: big-topic needs (worked out), then what the subject files write. */
 export const edges: Edge[] = [...bigNeedsFrom(written), ...written];
 export const goals: Goal[] = files.flatMap((f) => f.goals);
+
+/** The sort's one-tap answers for a subject (build.ts, Shortcut); most subjects have none. */
+export function shortcutsOf(subjectId: SubjectId): Shortcut[] {
+  return files.find((f) => f.subject.id === subjectId)?.shortcuts ?? [];
+}
 
 const RANK: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
 
@@ -244,6 +251,15 @@ export function goalsOf(subjectId: SubjectId): Goal[] {
   // through their subtopics.)
   for (const t of topics) {
     if (t.parentId) console.assert(edges.some((e) => e.from === t.id || e.to === t.id), `${t.id} has no links`);
+  }
+
+  // A shortcut can only mark topics of its own subject.
+  for (const f of files) {
+    for (const s of f.shortcuts ?? []) {
+      for (const id of s.topics) {
+        console.assert(topicById.get(id)?.subjectId === f.subject.id, `shortcut ${s.id} marks ${id}, which isn't a topic of ${f.subject.id}`);
+      }
+    }
   }
 
   for (const g of goals) {

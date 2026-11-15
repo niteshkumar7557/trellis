@@ -25,8 +25,8 @@ export const sampleClaims: Claim[] = [
   ...claims("2026-10-12", [
     ["rn-intro", "know"], ["rn-prereq", "know"], ["rn-react", "shaky"], ["rn-env", "new"],
     ["rn-workflow", "new"], ["rn-core", "new"], ["rn-lists", "new"], ["rn-styling", "new"],
-    ["rn-platform", "new"], ["rn-network", "new"], ["rn-interactions", "new"], ["rn-storage", "new"],
-    ["rn-publish", "new"],
+    ["rn-platform", "new"], ["rn-network", "new"], ["rn-nav", "new"], ["rn-storage", "new"],
+    ["rn-forms", "new"], ["rn-app-state", "new"], ["rn-publish", "new"],
   ]),
 ];
 

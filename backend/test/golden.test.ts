@@ -3,7 +3,8 @@
 // A golden test (also called a characterisation test) doesn't check a formula. It records
 // what the system answers TODAY for a known input, then fails if a change alters any
 // answer. Here the known input is the sample student in shared/data/student.ts, and the
-// answers are what the map screen shows them: "Next: State", "Stuck: FlatList · may be State".
+// answers are what the map screen shows them: "Next: Conditional rendering, lists", "Stuck:
+// FlatList · may be Objects and arrays in state" (React Native redesigned, 15 Nov 2026).
 //
 // The frontend and the backend both import these same shared/ files, so this one test
 // covers both apps. If it fails, a change in shared/ altered what students are told: find
@@ -21,24 +22,24 @@ import { buildPrompt } from "@shared/prompt";
 const statuses = deriveStatuses(sampleClaims, sampleCheckIns);
 const rnGoalId = student.goals.find((g) => g.subjectId === "react-native")?.goalId;
 
-// We compare ids ("rn-state"), not names ("State"): names can be reworded, ids are fixed.
+// We compare ids ("rn-state-updates"), not names: names can be reworded, ids are fixed.
 describe("golden: the sample student", () => {
   it("1. has the 'first app' goal in React Native", () => {
     expect(rnGoalId).toBe("goal-rn-first-app");
   });
 
-  it("2. is told to study State next", () => {
+  it("2. is told to study conditional rendering and lists next (React was 'shaky' at the sort)", () => {
     const goal = goalById.get(rnGoalId!)!;
-    expect(nextTopic(goal, statuses)?.id).toBe("rn-state");
+    expect(nextTopic(goal, statuses)?.id).toBe("rn-jsx-lists");
   });
 
   it("3. is stuck on FlatList", () => {
     expect(statusOf(statuses, "rn-flatlist")).toBe("stuck");
   });
 
-  it("4. is told State may be why FlatList is stuck", () => {
+  it("4. is told Objects and arrays in state may be why FlatList is stuck (their own words echo its mistake)", () => {
     // Suspects = prerequisites up to two steps below the stuck topic, weakest first.
-    expect(suspectsFor("rn-flatlist", statuses, sampleCheckIns, sampleExperiences)[0]?.topic.id).toBe("rn-state");
+    expect(suspectsFor("rn-flatlist", statuses, sampleCheckIns, sampleExperiences)[0]?.topic.id).toBe("rn-state-updates");
   });
 
   it("5. has no Redis goal, and every Redis topic is still new", () => {
@@ -54,7 +55,7 @@ describe("golden: FlatList's prompt", () => {
 
   it("6. starts with the gap, uses FlatList's own note, and keeps the base rules", () => {
     const prompt = buildPrompt(flatList, statuses, sampleCheckIns, sampleExperiences, instructions);
-    expect(prompt.instructions[0]).toBe("Start with State, briefly, then connect it back to FlatList.");
+    expect(prompt.instructions[0]).toBe("Start with Objects and arrays in state, briefly, then connect it back to FlatList.");
     expect(prompt.experiences[0]).toBe("FlatList was hard: I push the new item into the array and nothing re-renders.");
     expect(prompt.text).toContain("Don't lecture, and don't give me everything at once.");
     // MS.2: every prompt ends by asking for two lines to paste back.
@@ -67,11 +68,8 @@ describe("golden: FlatList's prompt", () => {
     expect(prompt.experiences.some((l) => l.startsWith("FlatList was hard"))).toBe(false);
   });
 
-  it("8. adds what worked underneath: Props clicked, ScrollView easy, never Props' hard note (MS.2)", () => {
+  it("8. adds what worked underneath: ScrollView easy; Props is no longer right underneath (MS.2)", () => {
     const prompt = buildPrompt(flatList, statuses, sampleCheckIns, sampleExperiences, instructions);
-    expect(prompt.experiences.slice(1)).toEqual([
-      "Props clicked when the parent owns the data; the child calls a function the parent passed down.",
-      "ScrollView felt easy: fine for short screens; just wrap the content.",
-    ]);
+    expect(prompt.experiences.slice(1)).toEqual(["ScrollView felt easy: fine for short screens; just wrap the content."]);
   });
 });

@@ -292,11 +292,11 @@ exports[`respond(): the rule-based helper > answering the helper's question > wh
 {
   "cards": [
     {
-      "topicId": "rn-state",
+      "topicId": "rn-jsx-lists",
       "type": "prompt",
     },
   ],
-  "text": "Next up: State, in React basics. You said it was shaky, and everything it needs is in place.",
+  "text": "Next up: Conditional rendering, lists, in React basics. You said it was shaky, and everything it needs is in place.",
 }
 `;
 
@@ -308,7 +308,7 @@ exports[`respond(): the rule-based helper > asdf qwerty 1`] = `
 
 exports[`respond(): the rule-based helper > can I skip animations? 1`] = `
 {
-  "text": "Animations: You can skip this for now. It's optional, and nothing on your goal needs it.",
+  "text": "Reanimated basics: You can skip this. Animation and gestures isn't needed for “Build my first app”.",
 }
 `;
 
@@ -407,7 +407,7 @@ exports[`respond(): the rule-based helper > finished lists 1`] = `
           ],
         },
         {
-          "label": "RefreshControl",
+          "label": "Pull to refresh",
           "topicIds": [
             "rn-refresh",
           ],
@@ -712,11 +712,11 @@ exports[`respond(): the rule-based helper > what should I do next? 1`] = `
 {
   "cards": [
     {
-      "topicId": "rn-state",
+      "topicId": "rn-jsx-lists",
       "type": "prompt",
     },
   ],
-  "text": "Next up: State, in React basics. You said it was shaky, and everything it needs is in place.",
+  "text": "Next up: Conditional rendering, lists, in React basics. You said it was shaky, and everything it needs is in place.",
 }
 `;
 
@@ -724,11 +724,11 @@ exports[`respond(): the rule-based helper > what's next 1`] = `
 {
   "cards": [
     {
-      "topicId": "rn-state",
+      "topicId": "rn-jsx-lists",
       "type": "prompt",
     },
   ],
-  "text": "Next up: State, in React basics. You said it was shaky, and everything it needs is in place.",
+  "text": "Next up: Conditional rendering, lists, in React basics. You said it was shaky, and everything it needs is in place.",
 }
 `;
 
@@ -736,11 +736,11 @@ exports[`respond(): the rule-based helper > why am I stuck? 1`] = `
 {
   "cards": [
     {
-      "topicId": "rn-state",
+      "topicId": "rn-state-updates",
       "type": "prompt",
     },
   ],
-  "text": "You're stuck on FlatList. It may be State underneath: FlatList needs it, and you said React basics was shaky. What you said points there too.",
+  "text": "You're stuck on FlatList. It may be Objects and arrays in state underneath: FlatList needs it, and you said React basics was shaky. What you said points there too.",
 }
 `;
 
@@ -860,7 +860,7 @@ exports[`respond(): the rule-based helper > with FlatList open in the panel: fin
           ],
         },
         {
-          "label": "RefreshControl",
+          "label": "Pull to refresh",
           "topicIds": [
             "rn-refresh",
           ],

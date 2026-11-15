@@ -6,7 +6,7 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMark } from "@/components/ui/Status";
 import ui from "@/components/ui/ui.module.css";
-import { kids, subjectById, topicById } from "@shared/data";
+import { kids, shortcutsOf, subjectById, topicById } from "@shared/data";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import { needsOf, summarise, unsortedAreas } from "@shared/graph";
 import { useStore } from "@/lib/store";
@@ -26,14 +26,28 @@ export default function SortPage({ searchParams }: { searchParams: Promise<{ onl
   const router = useRouter();
   const onlyUnsorted = use(searchParams).only === "unsorted";
   const { goal, statuses, claims, dispatch, act } = useStore();
+  // One-tap answers ("I already know React"), offered before the first card. Not on the
+  // "only unsorted" pass: a student who changed goal has already answered them once.
+  const shortcuts = goal && !onlyUnsorted ? shortcutsOf(goal.subjectId) : [];
+  const [chosen, setChosen] = useState<string[]>([]);
+  const chosenKey = chosen.join(",");
+  const subjectId = goal?.subjectId;
+  // Topics the chosen shortcuts mark known; their big topics leave the deck.
+  const known = useMemo(
+    () => new Set(shortcuts.filter((s) => chosen.includes(s.id)).flatMap((s) => s.topics)),
+    // Keyed on the choice and the subject, not on the arrays (new every render).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [chosenKey, subjectId],
+  );
   const deck = useMemo(() => {
     if (!goal) return [];
     if (onlyUnsorted) return unsortedAreas(goal, claims);
     // One card per big topic on the route. Its subtopics inherit the answer.
-    return summarise(goal, statuses).areas;
-    // The deck is dealt once per goal: answering cards must not reshuffle it.
+    return summarise(goal, statuses).areas.filter((t) => !known.has(t.id));
+    // The deck is dealt once per goal (and again only when a shortcut is toggled, which can
+    // happen before the first answer only): answering cards must not reshuffle it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goal?.id, onlyUnsorted]);
+  }, [goal?.id, onlyUnsorted, known]);
   const [answers, setAnswers] = useState<ClaimKind[]>([]);
   const card = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -63,7 +77,7 @@ export default function SortPage({ searchParams }: { searchParams: Promise<{ onl
         busy.current = false;
       },
     });
-  }, [topic]);
+  }, [topic, setAnswers]);
 
   // Each new card settles in from below.
   useGSAP(
@@ -100,7 +114,12 @@ export default function SortPage({ searchParams }: { searchParams: Promise<{ onl
   const count = (k: ClaimKind) => answers.filter((a) => a === k).length;
 
   const finish = async () => {
-    await act.addClaims(deck.map((t, i) => ({ topicId: t.id, claim: answers[i] })));
+    await act.addClaims([
+      // What a shortcut marks comes first, so the cards' own answers (sent after) win where
+      // both name the same topic.
+      ...[...known].map((topicId) => ({ topicId, claim: "know" as const })),
+      ...deck.map((t, i) => ({ topicId: t.id, claim: answers[i] })),
+    ]);
     dispatch({ type: "select", topicId: null });
     router.push("/map");
   };
@@ -123,6 +142,29 @@ export default function SortPage({ searchParams }: { searchParams: Promise<{ onl
           </span>
         </div>
       </div>
+
+      {!done && index === 0 && shortcuts.length > 0 && (
+        <div className={styles.shortcuts}>
+          {shortcuts.map((s) => {
+            const on = chosen.includes(s.id);
+            return (
+              <button
+                key={s.id}
+                type="button"
+                className={styles.shortcut}
+                aria-pressed={on}
+                onClick={() => setChosen((c) => (on ? c.filter((x) => x !== s.id) : [...c, s.id]))}
+              >
+                <StatusMark status={on ? "know" : "new"} size={12} />
+                <span>
+                  <span className={styles.shortcutLabel}>{s.label}</span>
+                  <span className={styles.shortcutNote}>{s.note}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {!done && topic && (
         <>

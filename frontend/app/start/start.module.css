@@ -381,6 +381,42 @@
   margin-top: -8px;
 }
 
+/* The sort's one-tap answers ("I already know React"), above the first card. */
+.shortcuts {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.shortcut {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--control);
+  border-radius: 10px;
+  background: var(--surface);
+  text-align: left;
+}
+.shortcut > :first-child { margin-top: 4px; flex: none; }
+.shortcut:hover { background: var(--raised); border-color: var(--text); }
+.shortcut[aria-pressed="true"] { border-color: var(--text); }
+
+.shortcutLabel {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.shortcutNote {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 19px;
+}
+
 .result {
   display: grid;
   justify-items: center;

@@ -64,10 +64,11 @@ owner can talk to. That is why the first version is free and has no payment or g
 AWS's Sydney region (the only one the free plan allows), with the pages cached at edges in
 India.
 
-**v1 subjects:** **React Native** and **Redis**. Their topic lists are adapted from the
-roadmaps at [roadmap.sh](https://roadmap.sh) (topic names and grouping). The links between
-topics, what is core or optional, the summaries and the common mistakes are ours, and a
-person reviews every one. The two subjects are not linked. Asking for any other subject
+**v1 subjects:** **React Native** and **Redis**. React Native was redesigned from official
+sources on 15 Nov 2026 (`docs/subjects/react-native.md`); Redis's topic list is still
+adapted from the roadmap at [roadmap.sh](https://roadmap.sh) (topic names and grouping)
+until its redesign. The links between topics, what is core or optional, the summaries and
+the common mistakes are ours, and a person reviews every one. The two subjects are not linked. Asking for any other subject
 gets a fixed *"coming soon"*, and Trellis keeps the request so we know which map to make
 next. New subjects are designed from official sources (documentation, exam guides,
 official courses) and reviewed by a person; roadmap.sh is no longer used for them

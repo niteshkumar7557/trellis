@@ -44,13 +44,16 @@ describe("big-topic needs links", () => {
 
   it("matches what the subtopics say on a few known cases", () => {
     const has = (from: string, to: string) => bigNeeds.some((e) => e.from === from && e.to === to);
-    // View needs Components and Running on a device.
+    // View needs Components and Running on your phone (in Getting set up).
     expect(has("rn-core", "rn-react")).toBe(true);
-    expect(has("rn-core", "rn-workflow")).toBe(true);
-    // Fetch needs State, not a component: Networking stands on React basics directly.
-    expect(has("rn-network", "rn-react")).toBe(true);
-    expect(has("rn-network", "rn-core")).toBe(false);
-    // Detox (optional) needs Running on a device, but an optional subtopic never adds a link.
-    expect(has("rn-testing", "rn-workflow")).toBe(false);
+    expect(has("rn-core", "rn-env")).toBe(true);
+    // Loading states are Views, so Data from a server stands on Core components, and its
+    // need of Getting set up (environment variables) is implied by that longer path.
+    expect(has("rn-network", "rn-core")).toBe(true);
+    expect(has("rn-network", "rn-env")).toBe(false);
+    // Detox and Maestro (optional) need Running on your phone, but an optional subtopic
+    // never adds a link: Testing stands only on Core components.
+    expect(has("rn-testing", "rn-env")).toBe(false);
+    expect(has("rn-testing", "rn-core")).toBe(true);
   });
 });

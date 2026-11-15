@@ -11,7 +11,8 @@ afterAll(closeNeo4j);
 
 describe("the graph repo", () => {
   it("reads the subjects, in file order", async () => {
-    expect(await getSubjects()).toEqual(subjects);
+    // The graph stores no `source` (only the landing page reads it, from the files).
+    expect(await getSubjects()).toEqual(subjects.map(({ source: _source, ...s }) => s));
   });
 
   it("reads every topic of a subject, exactly as the files have it", async () => {

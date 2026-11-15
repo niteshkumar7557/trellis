@@ -102,12 +102,18 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   The blueprint for adding a subject is `docs/subject-blueprint.md` (14 Nov 2026, live in
   `73b62c6`); a subject is now one file plus one line in `shared/data/index.ts` and its id
   in `SubjectId`.
-- **Next, in order (owner, 14 Nov 2026):** (1) redesign **React Native** and (2) **Redis**
-  from scratch with the blueprint, and remove the roadmap.sh credit completely
-  (`Subject.source`, `SOURCE`, `fromRoadmapSh`, and the docs that mention it); the curricula
-  may change entirely, and topic ids may change: production holds only the owner's trial
-  data, so a reset is fine. Update `shared/data/student.ts` and
-  `frontend/components/landing/sample.ts`, which use React Native ids. (3) Then add
+- **React Native redesigned (15 Nov 2026), on branch `feature/subject-react-native`, not
+  merged or released.** Built from official sources with the blueprint: 25 big topics, 159
+  subtopics, three goals, an "I already know React" shortcut on /start/sort ("Build my first app", "Publish to the app stores", "All of React
+  Native"); no roadmap.sh credit. Everything about it (sources, inventory, decisions,
+  review findings) is in `docs/subjects/react-native.md`. The owner asked to finish it in one
+  session, so the plan sign-off, the file-stage review round and the browser look were
+  skipped; that record's Status says what's left. The sample student is now told "may be
+  Objects and arrays in state" for FlatList. A release re-seeds Neo4j; old React Native
+  check-ins on retired ids (listed in the record's Decisions) stop matching a topic.
+- **Next, in order (owner, 14 Nov 2026):** (2) redesign **Redis** from scratch with the
+  blueprint, then remove the roadmap.sh credit completely (`Subject.source`, `SOURCE`,
+  `fromRoadmapSh`, and the docs that mention it); topic ids may change. (3) Then add
   **MongoDB** as a new subject, fresh from scratch with the blueprint (its §12 sketch is a
   method example, not a starting point).
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
@@ -130,14 +136,15 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 ## Decisions already made (don't re-ask; the reasons are in design.md §16)
 
-- **Subjects:** React Native and Redis only. Their topic names and grouping came from
-  roadmap.sh, and they keep that credit; summaries, links and core/optional are ours.
+- **Subjects:** React Native and Redis only. Redis's topic names and grouping came from
+  roadmap.sh, and it keeps that credit until its redesign; React Native was redesigned
+  from official sources (15 Nov 2026) and credits nothing.
   Anything else gets a fixed "Coming soon", and the request is saved.
 - **New subjects (14 Nov 2026):** designed from **official sources split by job** (docs and
   release notes for facts, exam guides and official courses for scope, learner pain for
   core and difficulty), **never roadmap.sh**; always searched, never from memory; every draft
-  reviewed by a panel of agents (student personas, experts, one walker per goal). Quality
-  over session cost. The procedure is `docs/subject-blueprint.md`.
+  reviewed by **three agents per round, two rounds at most** (owner, 15 Nov 2026: the
+  14-agent panel used up a session). The procedure is `docs/subject-blueprint.md`.
 - **The map:** two levels. A big topic opens into its subtopics when the student reaches it
   (next inside, a check-in inside, the likely cause of a stuck topic, or "Look inside now").
   It starts small and only grows.

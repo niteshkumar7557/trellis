@@ -62,7 +62,7 @@ describe("a conversation", () => {
     const tap = await request(app)
       .post("/api/helper/react-native/messages")
       .set(ada.auth)
-      .send({ pick: { outcome: "partly", topicIds: ["rn-what", "rn-why"], label: "Partly" } });
+      .send({ pick: { outcome: "partly", topicIds: ["rn-what", "rn-how"], label: "Partly" } });
     expect(tap.status).toBe(201);
     expect(tap.body.messages[0].text).toBe("Partly");
 

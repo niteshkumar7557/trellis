@@ -1,5 +1,6 @@
 // MS.2: which notes go into a prompt (shared/prompt.ts experiencesFor, design.md §9).
-// FlatList directly needs ScrollView, Props and State.
+// FlatList directly needs ScrollView, "Conditional rendering, lists" and "Objects and
+// arrays in state"; Components is two steps down.
 
 import { describe, expect, it } from "vitest";
 import { topicById } from "@shared/data";
@@ -33,17 +34,17 @@ describe("experiencesFor", () => {
   });
 
   it("adds at most 2 notes from the topics right underneath: clicked first, then easy, newest first", () => {
-    const below = [note("rn-props", "easy", 9), note("rn-state", "clicked", 3), note("rn-scrollview", "clicked", 5), note("rn-props", "easy", 8)];
-    expect(ids(experiencesFor(flatList, below, learning))).toEqual(["rn-scrollview:clicked:05", "rn-state:clicked:03"]);
+    const below = [note("rn-jsx-lists", "easy", 9), note("rn-state-updates", "clicked", 3), note("rn-scrollview", "clicked", 5), note("rn-jsx-lists", "easy", 8)];
+    expect(ids(experiencesFor(flatList, below, learning))).toEqual(["rn-scrollview:clicked:05", "rn-state-updates:clicked:03"]);
   });
 
   it("never brings a hard note from another topic, and nothing from further down", () => {
-    const other = [note("rn-props", "hard", 9), note("rn-components", "clicked", 9)]; // Components is two steps down
+    const other = [note("rn-jsx-lists", "hard", 9), note("rn-components", "clicked", 9)]; // Components is two steps down
     expect(experiencesFor(flatList, other, learning)).toEqual([]);
   });
 
   it("puts the topic's own notes before the ones from underneath", () => {
-    const mixed = [note("rn-state", "clicked", 9), note("rn-flatlist", "hard", 1)];
-    expect(ids(experiencesFor(flatList, mixed, learning))).toEqual(["rn-flatlist:hard:01", "rn-state:clicked:09"]);
+    const mixed = [note("rn-state-updates", "clicked", 9), note("rn-flatlist", "hard", 1)];
+    expect(ids(experiencesFor(flatList, mixed, learning))).toEqual(["rn-flatlist:hard:01", "rn-state-updates:clicked:09"]);
   });
 });

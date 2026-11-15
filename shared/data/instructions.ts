@@ -27,6 +27,6 @@ export const instructions: Instruction[] = [
 
   // ------------------------------------------------------------ single topics (extra lines beyond common mistakes)
   { id: "rn-flatlist-run", scope: "topic", topicId: "rn-flatlist", text: "Have me build a list I can add items to, so I can see when it does and doesn't update." },
-  { id: "rn-state-why", scope: "topic", topicId: "rn-state", text: "Show me why changing state in place doesn't re-render, with a tiny example." },
+  { id: "rn-state-why", scope: "topic", topicId: "rn-state-updates", text: "Show me why changing state in place doesn't re-render, with a tiny example." },
   { id: "rd-expire-overwrite", scope: "topic", topicId: "rd-expire", text: "Show me what happens to a key's TTL when it is written again." },
 ];

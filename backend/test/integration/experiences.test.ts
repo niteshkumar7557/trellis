@@ -48,7 +48,7 @@ describe("experiences", () => {
   });
 
   it("removes one, and never lets another student touch it", async () => {
-    const { experienceId } = await insertSavedExperience(ada.userId, "rn-why", "easy", "simple");
+    const { experienceId } = await insertSavedExperience(ada.userId, "rn-how", "easy", "simple");
     expect((await request(app).patch(`/api/experiences/${experienceId}`).set(bob.auth).send({ text: "x" })).status).toBe(404);
     expect((await request(app).delete(`/api/experiences/${experienceId}`).set(bob.auth)).status).toBe(404);
     expect((await request(app).delete(`/api/experiences/${experienceId}`).set(ada.auth)).status).toBe(204);

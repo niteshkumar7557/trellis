@@ -41,13 +41,13 @@ describe("check-ins", () => {
 
   it("fixes a check-in, keeping the fields not sent and its time", async () => {
     const { checkInId } = await insertSavedCheckIn(ada.userId, "rn-what", "stuck", "lost", "2026-11-03T10:00:00Z");
-    const res = await request(app).patch(`/api/check-ins/${checkInId}`).set(ada.auth).send({ topicId: "rn-why" });
+    const res = await request(app).patch(`/api/check-ins/${checkInId}`).set(ada.auth).send({ topicId: "rn-how" });
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ topicId: "rn-why", outcome: "stuck", text: "lost", at: "2026-11-03T10:00:00.000Z" });
+    expect(res.body).toMatchObject({ topicId: "rn-how", outcome: "stuck", text: "lost", at: "2026-11-03T10:00:00.000Z" });
   });
 
   it("removes a check-in, and a second remove answers 404", async () => {
-    const { checkInId } = await insertSavedCheckIn(ada.userId, "rn-why", "partly", "half");
+    const { checkInId } = await insertSavedCheckIn(ada.userId, "rn-how", "partly", "half");
     expect((await request(app).delete(`/api/check-ins/${checkInId}`).set(ada.auth)).status).toBe(204);
     expect((await request(app).delete(`/api/check-ins/${checkInId}`).set(ada.auth)).status).toBe(404);
   });

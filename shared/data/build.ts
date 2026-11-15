@@ -23,6 +23,28 @@ export interface SubjectFile {
   /** Links between subtopics, and "helps" links between big topics. Never big-topic "needs". */
   edges: Edge[];
   goals: Goal[];
+  /** One-tap answers for the sort (/start/sort); see Shortcut. */
+  shortcuts?: Shortcut[];
+}
+
+/**
+ * A one-tap answer at the sort: "I already know React" marks a whole set of topics known.
+ *
+ * Why: the sort asks one question per big topic, but what a student already knows doesn't
+ * follow big-topic lines. A web React developer knows React basics and also the React-only
+ * boxes in State management, Forms and Performance; making them find and claim each one
+ * was the web-React reviewer's complaint (docs/subjects/react-native.md, round 1). The
+ * claims it makes are ordinary claims (big topics and subtopics), so nothing new is stored.
+ */
+export interface Shortcut {
+  /** Stable id, `<prefix>-knows-<what>`. Not stored anywhere; it keys the toggle. */
+  id: string;
+  /** The toggle's text, in the student's voice: "I already know React". */
+  label: string;
+  /** One line under it saying what it marks. */
+  note: string;
+  /** Topics it marks "know": big topics (their subtopics follow) and single subtopics. */
+  topics: string[];
 }
 
 /** A big topic. Its minutes are the sum of its subtopics, filled in by ./index. */

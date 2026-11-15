@@ -145,7 +145,7 @@ WhatsApp, LinkedIn and X show no preview for an SVG share image.
 | `/reset?token=…` | Set a new password with the admin's one-time link | `app/(auth)/reset/` |
 | `/auth/done` | Where Google sign-in lands; sends on to `/start` or `/map` | `app/auth/done/page.tsx` |
 | `/start` | Pick subject and goal; anything else typed gets a fixed "Coming soon" | `app/start/page.tsx` |
-| `/start/sort` | Sort the **big topics**, one card each (keys 1/2/3, Backspace) | `app/start/sort/page.tsx` |
+| `/start/sort` | Sort the **big topics**, one card each (keys 1/2/3, Backspace). Before the first card, the subject's **shortcuts** ("I already know React", `Shortcut` in `shared/data/build.ts`): on, they take their big topics out of the deck and claim every topic they list "know" (added 15 Nov 2026) | `app/start/sort/page.tsx` |
 | `/map` | The map (home) | `app/(app)/map/page.tsx` |
 | `/check-ins` | Every update and note; edit or delete | `app/(app)/check-ins/page.tsx` |
 | `/settings` | Account, theme, AI usage (signed in), export, delete everything, restore sample | `app/(app)/settings/page.tsx` |
@@ -250,10 +250,11 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
 - Two levels: `B(id, name, summary)` makes a **big topic**; `t(id, parentId, name, minutes,
   optional, summary, mistakes[], keywords[])` makes a **subtopic**. Its difficulty goes in the
   file's difficulty table (`redisDifficulty`, `reactNativeDifficulty`); a missing one fails the data checks. Ids: `rn-…` and `rd-…`.
-- React Native's and Redis's names and grouping follow roadmap.sh (credited on /start and
-  in the landing page's subjects section and footer, for exactly the subjects whose
-  `Subject.source` is on roadmap.sh). New subjects are designed from official sources
-  instead (`docs/subject-blueprint.md`) and credit nothing. Summaries, mistakes, links and
+- Redis's names and grouping follow roadmap.sh (credited on /start and in the landing
+  page's subjects section and footer, for exactly the subjects whose `Subject.source` is on
+  roadmap.sh). React Native was redesigned from official sources on 15 Nov 2026 and, like
+  every new subject (`docs/subject-blueprint.md`), credits nothing. When Redis is
+  redesigned, remove `Subject.source`, `SOURCE` and `fromRoadmapSh` with it. Summaries, mistakes, links and
   core/optional marks are ours; never copy any source's text.
 - Links are `[from, to]` pairs meaning "from needs to" (or "helps"). A subject file writes
   **"needs" links between subtopics only.** The "needs" links between big topics are worked

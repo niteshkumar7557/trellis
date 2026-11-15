@@ -16,8 +16,7 @@ The owner's words, 14 Nov 2026: *the best, most detailed, most carefully thought
 best tested curriculum; nothing missed; it does not matter if one subject takes a whole
 session's limit.* So:
 
-- **Quality over speed and cost.** Never shorten a stage, skip a gate or trim the review
-  panel to save time or tokens. If the session's limit runs out, stop at a gate, write
+- **Quality over speed.** Never shorten a stage or skip a gate to save time. If the session's limit runs out, stop at a gate, write
   where you are in the design record (§9), and the next session continues from there.
 - **Search, don't remember.** Models are trained on older data. Every fact that can change
   (current version, new or deprecated features, exam content, recommended practice, tool
@@ -26,8 +25,11 @@ session's limit.* So:
   8.0 was current; a search showed **9.0, released September 2026**.
 - **Every stage is verified before the next starts**, and a problem found later is fixed
   at the stage it came from (§4, "Re-work").
-- **Agents review every draft** (§5). The owner asked for this; it is a standing request
-  for this work, so the usual "don't spawn agents unless asked" does not hold back here.
+- **Three agents review each draft** (§5). The owner asked for review by agents; it is a
+  standing request for this work, so the usual "don't spawn agents unless asked" does not
+  hold back here. **Keep it to three per round, two rounds per stage at most** (owner, 15
+  Nov 2026): a panel of 14 used up most of a session's limit on one round, and its
+  reports overlapped heavily (§13).
 
 ### How a session starts
 
@@ -243,7 +245,7 @@ that stage on. Never patch only the downstream symptom.
 
 ### Stage 8: review the file
 
-- **Do:** run review round 2 (§5) on the file: the full panel, including one goal walker
+- **Do:** run review round 2 (§5) on the file: the file-stage panel, whose walker walks
   per candidate goal from stage 4 (shipped or not). Triage, re-work, re-run until the
   stopping rule holds.
 - **Produces:** the revised file; the Review log.
@@ -280,20 +282,41 @@ that stage on. Never patch only the downstream symptom.
 
 ### How to run a round
 
-Each reviewer is a **fresh agent** (the Agent tool, `general-purpose`), started **in
-parallel** (all in one message, or in batches of about ten). Agents start with no
-context, so each one's brief must say everything it needs (template below). Reviewers
-**read and search; they never edit files**. Every reviewer must **search the web** for
-anything version-dependent it comments on, and cite what it found.
+**Three reviewers per round** (owner, 15 Nov 2026). Each is a **fresh agent** (the Agent
+tool, `general-purpose`), all three started **in parallel** in one message. Agents start
+with no context, so each one's brief must say everything it needs (template below).
+Reviewers **read and search; they never edit files**. Every reviewer must **search the
+web** for anything version-dependent it comments on, and cite what it found.
 
-**Plan stage (round 1):** every persona, plus the subject expert, the teacher and the
-coverage auditor. **File stage (round 2):** everyone in the roster, plus one goal walker
-per candidate goal.
+Why three, not one per persona: the first run (React Native, 15 Nov 2026) sent 14
+reviewers at the plan. They used most of the session's limit before triage could start,
+and their findings overlapped heavily (four of them found the same `localhost` trap, three
+the same AsyncStorage version, three the same React Compiler default). One agent playing
+several related roles finds nearly as much for a fraction of the cost.
+
+**Plan stage (round 1):**
+
+| | Reviewer | Plays | Looks hardest at |
+|---|---|---|---|
+| R1 | **Students** | P1 beginner, P2 student with a deadline, P9 very little time, P10 non-native English | Hidden assumptions; the first hour; what each shipped goal really requires and its total minutes; core vs optional; plain names |
+| R2 | **Practitioner** | E1 practitioner, P3 builder shipping, P5 job seeker, P7 returning learner, P8 professional going deep | Currency against the maker's release notes; what working people use that is missing; what is obsolete; what a real release needs |
+| R3 | **Teacher and auditor** | E2 teacher, E3 prerequisite auditor, E4 coverage auditor, P4 from a neighbouring tool | Order and cliffs; every "needs" link against §7; the Coverage table against the sources; false friends for the neighbouring group |
+
+**File stage (round 2):** R2 again on the file, plus:
+
+| | Reviewer | Looks hardest at |
+|---|---|---|
+| R4 | **Format auditor** (E5) | §6's rules on every field |
+| R5 | **Goal walker** | Runs `npm run subject -- <id> --goal …` for **every** candidate goal from stage 4 (shipped or not) and walks each route |
+
+Personas from the old roster that the subject needs (P6, a certification candidate, when
+a certification exists) are added to the role list of the nearest reviewer, not given an
+agent of their own.
 
 ### The roster
 
-Adapt the personas to the subject in stage 4; drop only the ones that truly don't apply,
-and say why in Decisions.
+The personas and experts the three reviewers play. Adapt them to the subject in stage 4;
+drop only the ones that truly don't apply, and say why in Decisions.
 
 **Students** (each reads the plan or the route as that student, asking: can I follow
 this? is anything I need missing, too late or too early? is anything forced on me that I
@@ -331,7 +354,9 @@ student a map of topics, what to study next, what they can skip and why they mig
 stuck; it never teaches (the student's own AI does). Big topics hold subtopics; each
 subtopic is core or optional; "needs" links mean "can't really understand A without B".
 
-Your role: [persona or expert, with its line from the roster].
+Your role: [the reviewer (R1 to R5), with every persona or expert it plays and each one's
+line from the roster]. Review as each of them in turn; label each finding with the one
+that raised it.
 [For a goal walker: your goal is "[goal]", meaning [what done looks like]. Run
 `cd /Users/nitesh/Desktop/trellis/backend && npm run subject -- [id] --goal [ids]` and walk
 the route it prints.]
@@ -342,7 +367,7 @@ Read: [docs/subjects/<id>.md, and at the file stage shared/data/<id>.ts and the 
 Your training data is out of date. Search the web for anything that depends on a version,
 a date or current practice, and cite the page.
 
-Report up to 15 findings, most important first, each as:
+Report up to 20 findings, most important first, each as:
 - severity: must (wrong, or a student would be misled or blocked) / should (clearly
   better) / could (a matter of taste)
 - where: a topic id, or a line of the plan
@@ -366,7 +391,7 @@ question for the owner). Rules:
 ### Stopping
 
 Run the panel again after re-working. A stage's review is done when a whole round accepts
-no "must" and no "should" finding. If four rounds don't get there, stop and **Ask** the
+no "must" and no "should" finding. If two rounds don't get there, stop and **Ask** the
 owner, with the open findings.
 
 ## 6. The subject file
@@ -658,6 +683,17 @@ holds. Every subtopic has a link. The widest row inside the frame is two boxes.
 What the subjects so far, and the 14 Nov 2026 map review, taught. Add to this list when
 you learn something; date what you add.
 
+- **A big panel costs more than it finds** (15 Nov 2026). React Native's plan went to 14
+  reviewers; 8 reported before the owner stopped the round to save the session's limit,
+  and most of their findings repeated each other. Three combined reviewers per round now
+  (§5).
+- **Check what `npx expo install` gives, not what is newest** (15 Nov 2026). AsyncStorage
+  3 was out, but Expo SDK 58 installs 2.2: a summary naming the newest API would make the
+  student's AI write code that doesn't run. Read the SDK's own library page
+  (`docs.expo.dev/versions/vNN.0.0/sdk/<library>/`).
+- **Learner pain from Stack Overflow** (15 Nov 2026): the site refuses fetches; the Stack
+  Exchange API (`api.stackexchange.com/2.3/questions?sort=votes&tagged=<tag>`) works, with
+  the owner's permission for the call.
 - **Search first; memory is out of date** (14 Nov 2026). Writing this file, the model
   remembered MongoDB 8.0 as current; 9.0 had shipped six weeks earlier, deprecating LDAP
   and un-deprecating server-side JavaScript.
