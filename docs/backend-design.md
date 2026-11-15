@@ -7,7 +7,8 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (14 Nov 2026):** M0 to M6 and MS are done and on `main` (M5 squashed in on
+**Status (15 Nov 2026):** every task in §10 is done, on `main` and live (production runs
+`bf1c0fc`); nothing is pending (§11). M0 to M6 and MS were done by 14 Nov (M5 squashed in on
 14 Nov). **The helper reads typed messages with GLM 5 on Bedrock in Sydney**, tried
 against the real service (§5 "The first real call"). **M7 (deploy) is done: Trellis is live at https://trellis.niteshkumar.xyz** (14 Nov
 2026), squashed into `main` and pushed. Everything runs in Sydney (the free plan allows
@@ -1332,9 +1333,15 @@ Update this table at the start of each planning session from `git log` and merge
 | Landing page and brand assets (frontend only) | done; live | `main`, 14 Nov 2026 (squashed, `253c556`) |
 | Topic difficulty: `Topic.difficulty`, stored in Neo4j and returned with every topic; no "what felt easy?" after an easy topic | done; live | `main`, 14 Nov 2026 (squashed, `d67de24`) |
 | Helper suggestion chips (`suggestionsFor`), "Nothing to add" read as declining, three map and chat fixes | done; live | `main`, 14 Nov 2026 (squashed, `2e9ebc7`) |
+| Map rendering review: worked-out big-topic links, dagre frames, upright arrows, path switch | done; live | `main`, 14 Nov 2026 (squashed, `8084a53`) |
+| The subject blueprint, `npm run subject`, one line per subject | done; live | `main`, 14 Nov 2026 (squashed, `73b62c6`) |
+| React Native redesigned from official sources | done; live (its skipped review gates closed by the owner, 15 Nov 2026) | `main`, 15 Nov 2026 (squashed, `a4319bd`) |
+| MongoDB, a new subject from official sources | done; live (its unfinished checks closed by the owner, 15 Nov 2026) | `main`, 15 Nov 2026 (squashed, `88f81fa`) |
+| Loading skeleton, map lines in curved lanes, landing fixes | done; live | `main`, 15 Nov 2026 (squashed, `05d37de` and `bf1c0fc`) |
+| Redis redesign and removing the roadmap.sh credit | **closed without being built** (owner, 15 Nov 2026); Redis still credits roadmap.sh | — |
 
-**Expected test counts now:** 300 passed in `npm test` (checked 14 Nov 2026, after
-`2e9ebc7`). `npm run test:integration` was 112 after ML and has not been run since: the
+**Expected test counts now:** 329 passed in `npm test` (checked 15 Nov 2026, after
+`bf1c0fc`). Before that, 300 (14 Nov, after `2e9ebc7`). `npm run test:integration` was 112 after ML and has not been run since: the
 later changes added unit tests only, so expect 112, and check it the next time Docker's
 databases are up. After ML: 279 and 112. After M7.1: 250 and 86.
 After M5: 246 and 86. After MS
