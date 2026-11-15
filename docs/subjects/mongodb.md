@@ -1,6 +1,9 @@
 # MongoDB: design record
 
-Status: **stage 8 in progress, 15 Nov 2026 (session stopped near the owner's limit).**
+Status: **built and live, 15 Nov 2026** (`88f81fa`). **Closed by the owner on 15 Nov 2026**
+("mark all pending things done"): the checks listed under "Still to do" below were not
+run and are not planned. The record below is kept as it was when work stopped.
+Before that: **stage 8 in progress (session stopped near the owner's limit).**
 Done: stages 1 to 7; `shared/data/mongodb.ts` written, wired in, `npm test` passing (329),
 frontend checks clean, `npm run subject -- mongodb` with nothing worth a second look. A
 first look in the browser (stage 9, partial): /start shows MongoDB with its four goals

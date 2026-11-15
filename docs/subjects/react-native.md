@@ -1,7 +1,8 @@
 # React Native: design record
 
-Status: **built, 15 Nov 2026** (`shared/data/react-native.ts`, branch
-`feature/subject-react-native`). Stages 1 to 5 done; round 1 of the plan review reported
+Status: **built and live, 15 Nov 2026** (`a4319bd`, `shared/data/react-native.ts`).
+**Closed by the owner on 15 Nov 2026** ("mark all pending things done"): the "Still to
+do" below was not done and is not planned. Stages 1 to 5 done; round 1 of the plan review reported
 (8 of 14 reviewers) and was triaged into the file. **Shortened at the owner's request
 (15 Nov 2026: "finish this React Native in this session only")**: the owner's plan sign-off
 (stage 6's Ask), review round 2 (stage 8) and the screenshots of stage 9 were not done;

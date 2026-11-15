@@ -44,13 +44,14 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 ## Where things stand (15 Nov 2026)
 
 - **In one line:** every milestone of v1 (M0 to M7, MS, ML) is built, merged and **live at
-  https://trellis.niteshkumar.xyz**. Production runs `a4319bd` (React Native redesigned, released 15 Nov 2026). Next: testing with real users, 18 to 21 Nov.
+  https://trellis.niteshkumar.xyz**. Production runs `bf1c0fc` (released 15 Nov 2026). Three subjects are live: React Native, Redis and MongoDB. **Nothing is pending** (owner, 15 Nov 2026: "mark all pending things done"); the items closed without being built are listed under "Closed on 15 Nov 2026" below. Next: testing with real users, 18 to 21 Nov.
 - **Design:** reviewed on 12 Nov 2026 (`design.md` v7, `backend-design.md`, `aws.md`), and
   kept in step with every change since; the docs describe the code as it stands.
 - **Frontend:** the screens are finished and connected to the API (M6, on `main`):
   signed in is **live** (the record from the backend), signed out is a **demo** on the
-  sample student. The topic graphs are real (`shared/data/react-native.ts`, `redis.ts`,
-  from roadmap.sh). See `docs/frontend.md` §10 and §11.
+  sample student. The topic graphs are real (`shared/data/react-native.ts`, `mongodb.ts`
+  from official sources; `redis.ts` adapted from roadmap.sh). See `docs/frontend.md` §10
+  and §11.
 - **`shared/`:** the domain code both apps run: types, data, graph, prompt, parse, helper.
   The frontend imports it as `@shared/*`. Keep it free of React, Next and Node-only APIs.
 - **Backend:** M0 (foundations), M1 (Neo4j content: the graph seed, `GET /api/subjects`,
@@ -107,14 +108,34 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   Native"); no roadmap.sh credit. Everything about it (sources, inventory, decisions,
   review findings) is in `docs/subjects/react-native.md`. The owner asked to finish it in one
   session, so the plan sign-off, the file-stage review round and the browser look were
-  skipped; that record's Status says what's left. The sample student is now told "may be
+  skipped; the owner closed them on 15 Nov 2026 (see below). The sample student is now told "may be
   Objects and arrays in state" for FlatList. A release re-seeds Neo4j; old React Native
   check-ins on retired ids (listed in the record's Decisions) stop matching a topic.
-- **Next, in order (owner, 14 Nov 2026):** (2) redesign **Redis** from scratch with the
-  blueprint, then remove the roadmap.sh credit completely (`Subject.source`, `SOURCE`,
-  `fromRoadmapSh`, and the docs that mention it); topic ids may change. (3) Then add
-  **MongoDB** as a new subject, fresh from scratch with the blueprint (its §12 sketch is a
-  method example, not a starting point).
+- **MongoDB (15 Nov 2026): on `main` and live** (`88f81fa`, squashed from
+  `feature/subject-mongodb`). A new subject from official sources with the blueprint:
+  22 big topics, 143 subtopics, four goals (Node.js, Go, Mongoose, all). Its record is
+  `docs/subjects/mongodb.md`.
+- **Map and landing fixes (15 Nov 2026): on `main` and live** (`05d37de`, `bf1c0fc`):
+  - a skeleton (grey shapes) while the app finds out who is signed in, instead of the
+    sample student's sidebar flashing up (`components/app/Skeleton.tsx`);
+  - map lines between big topics, inside open frames and on the miniatures each get their
+    own **lane** in the gap they cross, drawn as one smooth S (`laneRoutes` in
+    `components/map/layout.ts`, `SHAPE = "curve"`); lines sharing one box edge start 24px
+    apart; rows and frames grow when a gap needs room;
+  - landing: the hero's key is a row under the map; the stuck trace spreads its rows and
+    sizes each row's names to fit (measured in the browser); a claimed topic says "Said I
+    know", not "Done"; the subjects sit in one row of three; the "What it won't do" and
+    footer headings lead their items.
+- **Closed on 15 Nov 2026 without being built (owner: "mark all pending things done").**
+  Don't treat these as done; reopen one only when the owner asks:
+  - the **Redis redesign** with the blueprint, and with it **removing the roadmap.sh
+    credit** (`Subject.source`, `SOURCE`, `fromRoadmapSh` and the docs that mention it).
+    Redis still credits roadmap.sh;
+  - React Native's skipped gates: the plan sign-off, a file-stage review round, the look
+    in the browser;
+  - MongoDB's unfinished checks: triaging the file-stage review, the rest of stage 9
+    (hovers, a selected topic, the list view) and stage 10 (`npm run test:integration`
+    with the dev databases up).
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
   topic difficulty and the small fixes went into `main` as one squashed commit each, on the
   owner's request; ML went in with a merge commit. `backend-design.md` §0 still says merge
@@ -124,7 +145,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   Fonts; on 14 Nov one build failed there for a moment (`next-font-loader … reading '1'`).
   Production keeps running the old release when a build fails; run it again.
 - **Plan (re-planned 13 Nov 2026):** everything planned for 13 to 15 Nov was done by
-  14 Nov. Testing with real users 18 to 21 Nov.
+  15 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** everything is created and live, in Sydney; every resource id is in
   `docs/aws.md` §9. CloudFront `E6RLEBVGF9SWB`, server `i-03c628dea103abc86`.
 - **Git:** `main` is the only branch, in step with GitHub. Each piece of work gets its own
@@ -135,9 +156,10 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 ## Decisions already made (don't re-ask; the reasons are in design.md §16)
 
-- **Subjects:** React Native and Redis only. Redis's topic names and grouping came from
-  roadmap.sh, and it keeps that credit until its redesign; React Native was redesigned
-  from official sources (15 Nov 2026) and credits nothing.
+- **Subjects:** React Native, Redis and MongoDB. Redis's topic names and grouping came from
+  roadmap.sh, and it keeps that credit (its redesign was closed unbuilt, 15 Nov 2026);
+  React Native (redesigned) and MongoDB (new) were built from official sources on
+  15 Nov 2026 and credit nothing.
   Anything else gets a fixed "Coming soon", and the request is saved.
 - **New subjects (14 Nov 2026):** designed from **official sources split by job** (docs and
   release notes for facts, exam guides and official courses for scope, learner pain for

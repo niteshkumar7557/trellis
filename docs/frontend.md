@@ -5,14 +5,14 @@ How the frontend is built and how to change it safely. The product rules live in
 the code map, the rules each part follows, the gotchas, and the **data contract** the
 backend must serve.
 
-**Status (14 Nov 2026):** the screens are finished and connected to the API (M6, on
-`main`). A signed-in student is **live**: their record comes from the backend.
+**Status (15 Nov 2026):** the screens are finished, connected to the API and live
+(`bf1c0fc`). A signed-in student is **live**: their record comes from the backend.
 A visitor who isn't signed in sees a **demo** on the sample student, kept in this
 browser. How the two modes work is in §10 and §11.
 
-**Still to build:** the design review of 12 Nov 2026 agreed a set of product changes. They
-are listed in **§13** and built in milestone M6 (and MS for the `shared/` rules). Sections
-1 to 12 describe the code as it is today.
+**Nothing is left to build.** The product changes agreed in the design review of
+12 Nov 2026 (**§13**) were all built in M6 and MS. Sections 1 to 12 describe the code as
+it is today.
 
 ## 1. Run and check
 
@@ -568,10 +568,11 @@ These are the shapes the screens consume (`shared/types.ts`). The backend return
 
 The endpoints that serve these are in `backend-design.md` §4.
 
-## 13. Product changes agreed on 12 Nov 2026 (not built yet)
+## 13. Product changes agreed on 12 Nov 2026 (all built)
 
-These came out of the design review. The reasons are in `design.md` §16. Each row says
-where it is built. Until then, sections 1 to 12 describe the code as it stands.
+These came out of the design review. The reasons are in `design.md` §16. Every row was
+built in M6 or MS (each row says where); sections 1 to 12 describe the result. Kept as a
+record of what changed and why.
 
 ### New or changed behaviour
 
