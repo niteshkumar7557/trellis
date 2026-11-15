@@ -57,6 +57,9 @@ function traced(id: string, step: 1 | 2, under: string): Traced {
   else if (status === "new") evidence = "Not studied yet";
   else if (status === "learning") evidence = "Partly done";
   else if (status === "stuck") evidence = "Stuck too";
+  // Claimed, not finished: the rule weighs it as weaker than done, so the drawing must not
+  // call it "Done" (it did until 15 Nov 2026, under a hollow "said I know" ring).
+  else if (status === "know") evidence = "Said I know";
   else if (suspect?.doubt) evidence = "Done, but it was hard";
   if (suspect?.matched) evidence += ". Your words agree.";
   return { topic, status, step, under, place: place === -1 ? null : place, evidence };

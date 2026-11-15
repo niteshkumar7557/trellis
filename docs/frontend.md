@@ -75,7 +75,7 @@ drifts from the product the first time the product changes; this one changes wit
 | Hero | `HeroMap.tsx` | The big topics (25 in React Native) as the app draws them: it uses the classes of `map/map.module.css` directly (`.closed`, `.edge`, `.arrowHead`), on the app's layout (size `plate` in `map/layout.ts`). **Live:** switch the goal to see what it lets you skip; pick a topic to read "Don't skip / Can skip" and why (`importanceOf`). |
 | Stuck | `StuckTrace.tsx` | The "may be why" rule played by the scroll: pinned for about one screen, one GSAP timeline on `scrub`. |
 | Prompt | `PromptSlip.tsx` | The real prompt for the stuck topic. Pointing at a source lights its part. Copy and the two links work. |
-| Subjects, Won't do, Start, Footer | `Landing.tsx` | The two graphs at their real sizes (`MiniMap`), the promises beside the espalier, the one action. |
+| Subjects, Won't do, Start, Footer | `Landing.tsx` | Every subject's graph at its real size (`MiniMap`), one row while there are three or fewer (`columnsFor`), the promises beside the espalier, the one action. |
 
 Things that are easy to break:
 
@@ -326,7 +326,7 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
   pointed more than 45° off up). Soft links are not laid out by dagre and use `link()`, a
   plain vertical cubic.
 - **Lines between big topics run in lanes** (`laneRoutes`, 15 Nov 2026; full map and the
-  landing hero, not the miniature). `route()` put every line's bend at the exact middle of
+  landing hero and, since the same day, the miniature). `route()` put every line's bend at the exact middle of
   the gap between two rows, so on the redesigned React Native (over 4000px wide) the lines
   crossing a gap ran flat along one height and lay on top of each other, and lines came
   out either as soft S-curves or rigid flat runs. Now each line that moves sideways in a

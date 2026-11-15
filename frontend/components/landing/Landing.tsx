@@ -160,6 +160,7 @@ function Hero() {
 /** "Two", "Three": the count is worked out, so adding a subject needs no copy change here. */
 const COUNT = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
 const howMany = (n: number) => COUNT[n] ?? String(n);
+const columnsFor = (n: number) => (n <= 3 ? n : n === 4 ? 2 : 3);
 
 function Subjects() {
   return (
@@ -173,7 +174,9 @@ function Subjects() {
           another when you sign up and the request is kept.
         </p>
       </div>
-      <div className={styles.subjectGrid}>
+      {/* One row while there are three or fewer; four go two by two, more go in threes.
+          A fixed two columns left the third subject alone on a row with an empty half. */}
+      <div className={styles.subjectGrid} style={{ "--cols": columnsFor(subjects.length) } as React.CSSProperties}>
         {subjects.map((s) => {
           const size = sizeOf(s.id);
           // Every big topic counts as "on the goal" here, so the whole shape is drawn in ink.

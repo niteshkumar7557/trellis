@@ -80,8 +80,9 @@ const cache = new Map<string, Layout>();
 /*
   `ranksep` is the least room between two rows of big topics. The map makes it taller when
   a gap has more lanes than fit (see laneRoutes). `lanes` says how lines between big topics
-  are drawn: the corner radius and the space between two lanes in a gap, or null for the
-  old smoothed route (the miniature, whose lines are a few pixels long).
+  are drawn: the corner radius and the space between two lanes in a gap (null would mean
+  the old smoothed route). The miniature has lanes too since 15 Nov 2026: without them
+  React Native's showed the same flat bundles the full map had.
 */
 /**
  * How a line crosses a gap. "curve": one smooth S from straight up, through its lane, to
@@ -96,7 +97,7 @@ const FRAME_LANES = { radius: 10, space: 7, shape: SHAPE };
 const SIZES = {
   full: { nodesep: 28, ranksep: 72, margin: 40, w: BIG_W, h: BIG_H, lanes: { radius: 22, space: 10, shape: SHAPE } },
   /** For the miniature: closed big topics only, packed tight so the shape reads at a glance. */
-  mini: { nodesep: 8, ranksep: 26, margin: 4, w: 30, h: 12, lanes: null },
+  mini: { nodesep: 8, ranksep: 26, margin: 4, w: 30, h: 12, lanes: { radius: 5, space: 3, shape: SHAPE } },
   /**
    * For the landing page's hero: closed big topics drawn exactly as on the app's map, a
    * little smaller and packed closer, so the widest row (seven topics in React Native)

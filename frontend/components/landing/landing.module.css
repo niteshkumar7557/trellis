@@ -566,9 +566,11 @@
 .subjectsHead .h2 { grid-column: 1 / 7; }
 .subjectsHead .lead { grid-column: 8 / 13; }
 
+/* --cols is set from the number of subjects (Landing.tsx), so a third subject sits beside
+   the other two instead of alone on a second row. */
 .subjectGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
   gap: var(--l-gutter);
 }
 
@@ -623,9 +625,14 @@
   background: var(--l-field-2);
 }
 
+/* The heading is set at the display size and the five words one step under it: with the
+   words at display size (until 15 Nov 2026) they were bigger than their own heading,
+   which then read as one more line instead of the title over them. */
 .wont .h2 {
   grid-column: 1 / -1;
   margin-bottom: 40px;
+  font-size: var(--t-display);
+  line-height: 1;
 }
 
 .wontList {
@@ -647,7 +654,7 @@
 
 .wontWord {
   font-family: var(--display);
-  font-size: var(--t-display);
+  font-size: var(--t-heading);
   line-height: 1;
   font-weight: 500;
   letter-spacing: -0.025em;
@@ -785,11 +792,14 @@
   grid-template-columns: repeat(4, 1fr);
   gap: var(--l-gutter);
 }
+/* Each column's heading leads it: bright, semibold, at body size, with a little room under
+   it; the items are softer and one step smaller. They were the same size and nearly the
+   same weight until 15 Nov 2026, so the headings didn't stand out. */
 .footCols > div { display: grid; align-content: start; gap: 6px; }
-.footCols p { margin: 0; color: var(--l-on-charcoal-soft); }
-.footCols a { color: var(--l-on-charcoal-soft); text-decoration: none; }
+.footCols p { margin: 0; color: var(--l-on-charcoal-soft); font-size: var(--t-small); }
+.footCols a { color: var(--l-on-charcoal-soft); font-size: var(--t-small); text-decoration: none; }
 .footCols a:hover { color: var(--l-on-charcoal); }
-.footCols .footHead { color: var(--l-on-charcoal); font-weight: 500; }
+.footCols .footHead { margin-bottom: 6px; color: var(--l-on-charcoal); font-size: var(--t-body); font-weight: 600; }
 
 .footBottom {
   display: grid;
