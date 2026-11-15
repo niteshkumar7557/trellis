@@ -41,11 +41,10 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 - **Before any AWS action, run the account check in `docs/aws.md` §2.** The AWS tools on
   this machine were signed in to a different account. Never act on that one.
 
-## Where things stand (14 Nov 2026)
+## Where things stand (15 Nov 2026)
 
 - **In one line:** every milestone of v1 (M0 to M7, MS, ML) is built, merged and **live at
-  https://trellis.niteshkumar.xyz**. Production runs `73b62c6` (the map fixes and the subject
-  blueprint, released 14 Nov 2026). Next: testing with real users, 18 to 21 Nov.
+  https://trellis.niteshkumar.xyz**. Production runs `a4319bd` (React Native redesigned, released 15 Nov 2026). Next: testing with real users, 18 to 21 Nov.
 - **Design:** reviewed on 12 Nov 2026 (`design.md` v7, `backend-design.md`, `aws.md`), and
   kept in step with every change since; the docs describe the code as it stands.
 - **Frontend:** the screens are finished and connected to the API (M6, on `main`):
@@ -102,8 +101,8 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   The blueprint for adding a subject is `docs/subject-blueprint.md` (14 Nov 2026, live in
   `73b62c6`); a subject is now one file plus one line in `shared/data/index.ts` and its id
   in `SubjectId`.
-- **React Native redesigned (15 Nov 2026), on branch `feature/subject-react-native`, not
-  merged or released.** Built from official sources with the blueprint: 25 big topics, 159
+- **React Native redesigned (15 Nov 2026): on `main` and live** (`a4319bd`, squashed from
+  `feature/subject-react-native`). Built from official sources with the blueprint: 25 big topics, 159
   subtopics, three goals, an "I already know React" shortcut on /start/sort ("Build my first app", "Publish to the app stores", "All of React
   Native"); no roadmap.sh credit. Everything about it (sources, inventory, decisions,
   review findings) is in `docs/subjects/react-native.md`. The owner asked to finish it in one
