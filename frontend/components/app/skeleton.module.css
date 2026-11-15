@@ -1,0 +1,126 @@
+/*
+  Loading shapes. They sit in the same places as the real sidebar and map page (the
+  paddings below copy shell.module.css and map.module.css), so nothing jumps when the
+  real content replaces them. If those layouts change, change these too.
+
+  The pulse is opacity only: cheap to animate, and it reads as "waiting" without the
+  sideways shimmer that pulls the eye. Reduced motion turns it off.
+*/
+
+.bone {
+  display: block;
+  flex: none;
+  border-radius: 4px;
+  background: var(--active);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.round { border-radius: 50%; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bone, .node { animation: none; }
+}
+
+/* ------------------------------------------------------------ sidebar */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.nav {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+}
+.navRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px;
+}
+.group {
+  display: grid;
+  gap: 8px;
+  margin-top: 28px;
+  padding: 0 10px;
+}
+.subject {
+  display: grid;
+  gap: 10px;
+  padding: 9px 0 10px;
+}
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 10px;
+}
+.userText {
+  display: grid;
+  gap: 6px;
+}
+
+/* ------------------------------------------------------------ page */
+
+.page {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+.header {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 20px var(--pad) 18px;
+}
+.field {
+  display: grid;
+  gap: 8px;
+}
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--rail-w, 400px);
+  min-height: 0;
+  border-top: 1px solid var(--border);
+}
+.canvas {
+  position: relative;
+  min-height: 0;
+}
+.node {
+  position: absolute;
+  width: 150px;
+  height: 40px;
+  translate: -50% -50%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.rail {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px 20px;
+  border-left: 1px solid var(--border);
+}
+.lines {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 24px var(--pad);
+  border-top: 1px solid var(--border);
+}
+
+/* The map page shows a list instead of the canvas on narrow screens (and no rail). */
+@media (max-width: 900px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .rail { display: none; }
+}

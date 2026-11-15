@@ -13,6 +13,7 @@ import { useResolvedTheme, useTheme } from "@/lib/theme";
 import { NEARLY, backAt, tighterWindow } from "@/lib/usage";
 import type { SubjectId } from "@shared/types";
 import { Search } from "./Search";
+import { PageSkeleton, SidebarSkeleton } from "./Skeleton";
 import styles from "./shell.module.css";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
@@ -36,7 +37,9 @@ export function Shell({ children }: { children: ReactNode }) {
         <Link href="/map" className={styles.brand}>
           <Logo size={20} />
         </Link>
-        <SidebarBody />
+        {/* Until the store knows who is here it holds the sample student; showing its
+            subjects and name would flash the wrong person. See Skeleton.tsx. */}
+        {mode === "loading" ? <SidebarSkeleton /> : <SidebarBody />}
       </aside>
 
       <header className={styles.topbar}>
@@ -56,9 +59,9 @@ export function Shell({ children }: { children: ReactNode }) {
 
       <main className={styles.sheet}>
         <StatusBars />
-        {/* While the store finds out who is here, show nothing rather than the sample
-            student flashing up before a signed-in student's own map. */}
-        {mode === "loading" ? <div className={styles.loading} aria-busy="true" aria-label="Loading your map" /> : children}
+        {/* While the store finds out who is here, show the page's shape rather than the
+            sample student flashing up before a signed-in student's own map. */}
+        {mode === "loading" ? <PageSkeleton map={pathname.startsWith("/map")} /> : children}
       </main>
     </div>
   );

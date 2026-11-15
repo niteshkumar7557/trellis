@@ -72,7 +72,7 @@ drifts from the product the first time the product changes; this one changes wit
 
 | Section | File | What it shows |
 |---|---|---|
-| Hero | `HeroMap.tsx` | The 19 big topics as the app draws them: it uses the classes of `map/map.module.css` directly (`.closed`, `.edge`, `.arrowHead`), on the app's layout (size `plate` in `map/layout.ts`). **Live:** switch the goal to see what it lets you skip; pick a topic to read "Don't skip / Can skip" and why (`importanceOf`). |
+| Hero | `HeroMap.tsx` | The big topics (25 in React Native) as the app draws them: it uses the classes of `map/map.module.css` directly (`.closed`, `.edge`, `.arrowHead`), on the app's layout (size `plate` in `map/layout.ts`). **Live:** switch the goal to see what it lets you skip; pick a topic to read "Don't skip / Can skip" and why (`importanceOf`). |
 | Stuck | `StuckTrace.tsx` | The "may be why" rule played by the scroll: pinned for about one screen, one GSAP timeline on `scrub`. |
 | Prompt | `PromptSlip.tsx` | The real prompt for the stuck topic. Pointing at a source lights its part. Copy and the two links work. |
 | Subjects, Won't do, Start, Footer | `Landing.tsx` | The two graphs at their real sizes (`MiniMap`), the promises beside the espalier, the one action. |
@@ -100,6 +100,13 @@ Things that are easy to break:
   a simpler drawing of the same layout and styles, so the landing page doesn't load the
   canvas code. The map is laid out in pixels and scaled to its width by one CSS variable
   (`--s`, set by a `ResizeObserver` in `HeroMap.tsx`).
+- **Both drawings must survive a subject growing.** The redesigned React Native
+  (15 Nov 2026) broke two things that were fitted to the old data: the hero's key sat in
+  the map's "emptier bottom corner", and the new map has none, so it covered topics (it is
+  now a row of its own under the map); and the trace put each step-two topic under the
+  middle of the topics that need it, so FlatList's four landed on each other (each row is
+  now spread evenly, ordered by its parents, boxes narrowed to fit; a row whose longest name
+  doesn't fit is set smaller, measured in the browser, so every name shows in full). Check both sections after changing a subject's links.
 - The design inspector fails this page on "few pictures" and "no footage". That is the
   SVG-only rule at work and is expected.
 
@@ -299,7 +306,7 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
 ### Layout (`components/map/layout.ts`)
 
 - dagre over **big topics only**, `rankdir: BT` (foundations at the bottom), nodesep 28,
-  ranksep 56. A closed big topic is 212×58; an **open** one is a frame sized to hold its
+  ranksep 72 or more (see lanes below). A closed big topic is 212×58; an **open** one is a frame sized to hold its
   subtopics.
 - Inside a frame (`arrangeFrame`), the subtopics linked to each other are laid out by a
   **second dagre** (same direction; gaps 12px across, **24px** between rows). Each level is
@@ -318,6 +325,23 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
   those made lines leave sideways and hook back under the box (11 of 27 Redis arrowheads
   pointed more than 45° off up). Soft links are not laid out by dagre and use `link()`, a
   plain vertical cubic.
+- **Lines between big topics run in lanes** (`laneRoutes`, 15 Nov 2026; full map and the
+  landing hero, not the miniature). `route()` put every line's bend at the exact middle of
+  the gap between two rows, so on the redesigned React Native (over 4000px wide) the lines
+  crossing a gap ran flat along one height and lay on top of each other, and lines came
+  out either as soft S-curves or rigid flat runs. Now each line that moves sideways in a
+  gap gets a height of its own (lines share one only when they don't overlap sideways,
+  ordered so lines cross as little as possible), the lines leaving or entering one box are
+  spread along its edge (ports, `PORT_GAP` 24px apart; 12 read as one thick stroke), and every line is the same shape: up, across, up, with
+  each crossing drawn as one smooth S that is flattest at its own lane (`SHAPE = "curve"`;
+  `"corner"` gives up-across-up with rounded corners instead, the owner picked curves on
+  15 Nov 2026). If a gap needs more lanes than fit, the map is laid out again with more
+  room between rows (`ranksep` is 72 at least; it was 56).
+- **Lines inside an open frame use the same lanes** (`FRAME_LANES`: smaller corners, closer
+  lanes). The frame's rows start 24px apart and the frame is laid out again, taller, when
+  a gap needs more room. With a fixed 24px, Redis's Persistence (How AOF works feeding
+  three subtopics) drew hooks and a flat run under the boxes. `route()` is now used only
+  for soft links and the miniature.
 - A link between subtopics in **different** big topics is never drawn on its own: it shows
   as the line between their big topics (MapCanvas below).
 - **Arrowheads** are drawn as their own triangles (`Arrowhead` in MapCanvas), not SVG
@@ -460,7 +484,7 @@ A `useReducer` context with **two modes** (`mode`):
 
 | Mode | Who | Where the record comes from | Where changes go |
 |---|---|---|---|
-| `loading` | everyone, for a moment | — | — (the shell shows a blank sheet, so the sample never flashes up) |
+| `loading` | everyone, for a moment | — | — (the shell shows a skeleton, `components/app/Skeleton.tsx`: grey shapes where the sidebar and the page will be, so the sample's "React Native" and "Sample student" never flash up; until 15 Nov 2026 the sheet was blank but the sidebar showed the sample) |
 | `demo` | not signed in | the sample student, or this browser's saved copy (`trellis-demo-v5`) | the reducer, then localStorage |
 | `live` | signed in | `GET /api/state` | the API; the reducer applies the server's answer |
 

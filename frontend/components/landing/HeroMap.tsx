@@ -48,14 +48,6 @@ export function HeroMap() {
   const shown = layout.byId.get(shownId)!.topic;
   const verdict = importanceOf(shownId, goal, required);
 
-  // Free room in each bottom corner: how far the lower half's boxes stay from each side.
-  const keySide = useMemo(() => {
-    const low = layout.nodes.filter((n) => n.y + n.h > layout.height / 2);
-    const left = Math.min(...low.map((n) => n.x));
-    const right = layout.width - Math.max(...low.map((n) => n.x + n.w));
-    return right > left ? "right" : "left";
-  }, [layout]);
-
   const bigOnRoute = layout.nodes.filter((n) => required.has(n.topic.id)).length;
   const canSkip = subtopicsOf(SUBJECT).filter((t) => !required.has(t.id)).length;
 
@@ -161,21 +153,22 @@ export function HeroMap() {
           })}
         </div>
 
-        {/* The key sits in the bottom corner the map leaves emptier: a subject is narrow at
-            its foundations and wide at the top, but which side its foundations lean to
-            depends on the data (it moved right when the big-topic links started being
-            worked out from the subtopics', 14 Nov 2026), so it is measured, not assumed. */}
-        <ul className={styles.legend} data-side={keySide} aria-label="Key">
-          {LEGEND.map((s) => (
-            <li key={s}>
-              <StatusMark status={s} size={10} />
-              {STATUS_LABEL[s]}
-            </li>
-          ))}
-          <li className={styles.legendNote}>One tick for each core part of a topic.</li>
-          <li className={styles.legendNote}>Faded: this goal lets you skip it.</li>
-        </ul>
       </div>
+
+      {/* The key has its own row under the map. It used to sit in whichever bottom corner
+          of the map was emptier, but the redesigned React Native (15 Nov 2026) is wide at
+          the bottom too, so no corner was empty and the key covered topics. A row of its
+          own can never collide, whatever shape a subject's map takes. */}
+      <ul className={styles.legend} aria-label="Key">
+        {LEGEND.map((s) => (
+          <li key={s}>
+            <StatusMark status={s} size={10} />
+            {STATUS_LABEL[s]}
+          </li>
+        ))}
+        <li className={styles.legendNote}>One tick for each core part of a topic.</li>
+        <li className={styles.legendNote}>Faded: this goal lets you skip it.</li>
+      </ul>
 
       <div className={styles.readout}>
         <div className={styles.readTopic} aria-live="polite">
