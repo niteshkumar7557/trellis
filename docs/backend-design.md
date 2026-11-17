@@ -969,6 +969,11 @@ the spend for today, this week and the last 30 days against the limits, and the 
 that used most this week, **by id only**. It is a money report, not a way to read anyone's
 record (design.md §11): no names, no emails, and the table holds no message text.
 
+`test/reader.test.ts` guards every subject's instruction length at 12,000 characters
+and a typical call's worst-case reservation at $0.006. A new topic list or price that
+crosses either ceiling requires an explicit review of real `ai_calls.input_tokens`,
+the per-message cost, and the student allowance before raising the test ceiling.
+
 To change a limit: set the variable in Parameter Store (`/trellis/prod/AI_USER_DAILY_USD`
 and so on), run a release, and the new value applies to the current window at once,
 because nothing but `ai_calls` is stored.
