@@ -7,6 +7,7 @@ import { replyFor, type HelperContext } from "@shared/helper";
 import type { ChatMessage } from "@shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { READING_SCHEMA, checkReading, instructionsFor, messageFor, readByModel, warmUp } from "../src/ai/reader.js";
+import { worstCaseUsd } from "../src/ai/limits.js";
 import { reserveAiCall, settleAiCall } from "../src/repos/ai-calls.repo.js";
 
 // The reader only calls the model when AI_PROVIDER=bedrock. vi.hoisted runs before the
@@ -192,6 +193,13 @@ describe("what the model is told", () => {
     for (const id of subjectById.keys()) {
       const length = instructionsFor(id).length;
       expect(length, `${id}: ${length} characters exceeds ${maxCharacters}; review the per-message Bedrock cost before raising this budget`).toBeLessThanOrEqual(maxCharacters);
+    }
+  });
+
+  it("keeps a typical call's worst-case reservation below the reviewed cost ceiling", () => {
+    for (const id of subjectById.keys()) {
+      const reserved = worstCaseUsd(`${instructionsFor(id)}\nThe student's message:\n<<<\nfinished the topic\n>>>`, 600);
+      expect(reserved, `${id}: ${reserved} USD reserved per call; review prices and allowances before raising the ceiling`).toBeLessThanOrEqual(0.006);
     }
   });
 
