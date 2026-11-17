@@ -13,7 +13,7 @@
 
 import { limits } from "../ai/limits.js";
 import config from "../config/index.js";
-import { spendReport, type SpendReport } from "../repos/ai-calls.repo.js";
+import { aiHealthReport, spendReport, type AiHealthReport, type SpendReport } from "../repos/ai-calls.repo.js";
 import pool from "./index.js";
 
 const usd = (n: number) => `$${n.toFixed(4)}`;
@@ -43,12 +43,31 @@ export function formatReport(r: SpendReport): string[] {
   return lines;
 }
 
+/** The model's success rate and latency, with no student data. */
+export function formatHealth(r: AiHealthReport): string[] {
+  const model = r.readers.find((x) => x.readBy === "model")?.messages ?? 0;
+  const rules = r.readers.find((x) => x.readBy === "rules")?.messages ?? 0;
+  const total = model + rules;
+  const share = (n: number) => total ? `${Math.round(n / total * 100)}%` : "-";
+  const latency = (n: number | null) => n === null ? "-" : `${Math.round(n)}ms`;
+  return [
+    "",
+    "Last 7 days (typed messages):",
+    `  model ${model} (${share(model)}); rules ${rules} (${share(rules)})`,
+    "Bedrock read attempts by result (count, median, p90):",
+    ...(r.attempts.length ? r.attempts.map((a) =>
+      `  ${a.error ?? "ok"}: ${a.calls}, ${latency(a.p50Ms)}, ${latency(a.p90Ms)}`,
+    ) : ["  none"]),
+  ];
+}
+
 // Run only when started as a script, not when a test imports formatReport.
 const isScript = process.argv[1]?.replace(/\.ts$/, ".js").endsWith("ai-spend.js");
 
 if (isScript) {
   try {
-    console.log(formatReport(await spendReport()).join("\n"));
+    const [spend, health] = await Promise.all([spendReport(), aiHealthReport()]);
+    console.log([...formatReport(spend), ...formatHealth(health)].join("\n"));
   } finally {
     await pool.end();
   }
