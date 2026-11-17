@@ -185,6 +185,16 @@ describe("checkReading", () => {
 });
 
 describe("what the model is told", () => {
+  it("keeps each subject's instructions within the reviewed input budget", () => {
+    // The topic list dominates every model call. A larger list silently reduces the
+    // number of messages a student can use before the dollar limit is reached.
+    const maxCharacters = 12_000;
+    for (const id of ["react-native", "redis", "mongodb"] as const) {
+      const length = instructionsFor(id).length;
+      expect(length, `${id}: ${length} characters exceeds ${maxCharacters}; review the per-message Bedrock cost before raising this budget`).toBeLessThanOrEqual(maxCharacters);
+    }
+  });
+
   it("lists every topic of the subject, and none of the other subject", () => {
     const text = instructionsFor("react-native");
     expect(text).toContain("# rn-lists: Lists");
