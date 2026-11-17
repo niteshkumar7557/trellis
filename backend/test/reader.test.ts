@@ -2,7 +2,7 @@
 // ids, a timeout) and what each becomes. A null Reading means the rules read the message.
 // No network and no AWS account: the SDK is replaced, like in bedrock.test.ts.
 
-import { goalById } from "@shared/data";
+import { goalById, subjectById } from "@shared/data";
 import { replyFor, type HelperContext } from "@shared/helper";
 import type { ChatMessage } from "@shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -189,7 +189,7 @@ describe("what the model is told", () => {
     // The topic list dominates every model call. A larger list silently reduces the
     // number of messages a student can use before the dollar limit is reached.
     const maxCharacters = 12_000;
-    for (const id of ["react-native", "redis", "mongodb"] as const) {
+    for (const id of subjectById.keys()) {
       const length = instructionsFor(id).length;
       expect(length, `${id}: ${length} characters exceeds ${maxCharacters}; review the per-message Bedrock cost before raising this budget`).toBeLessThanOrEqual(maxCharacters);
     }
