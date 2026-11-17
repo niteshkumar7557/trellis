@@ -191,3 +191,31 @@ export async function spendReport(top = 10): Promise<SpendReport> {
     stuckPending: stuck.rows[0]!.n,
   };
 }
+
+export interface AiHealthReport {
+  /** Typed student messages in the last seven days, including those read by rules. */
+  readers: { readBy: "model" | "rules"; messages: number }[];
+  /** Bedrock read attempts only. Blocked calls make no row. */
+  attempts: { error: string | null; calls: number; p50Ms: number | null; p90Ms: number | null }[];
+}
+
+/** Operational counts without student text or identifiers. */
+export async function aiHealthReport(): Promise<AiHealthReport> {
+  const readers = await pool.query<{ read_by: "model" | "rules"; messages: number }>(
+    `SELECT read_by, COUNT(*)::int AS messages FROM chat_messages
+     WHERE role = 'student' AND read_by IN ('model', 'rules')
+       AND at >= NOW() - INTERVAL '7 days'
+     GROUP BY read_by ORDER BY read_by`,
+  );
+  const attempts = await pool.query<{ error: string | null; calls: number; p50_ms: number | null; p90_ms: number | null }>(
+    `SELECT error, COUNT(*)::int AS calls,
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_ms,
+            percentile_cont(0.9) WITHIN GROUP (ORDER BY latency_ms) AS p90_ms
+     FROM ai_calls WHERE purpose = 'read' AND at >= NOW() - INTERVAL '7 days'
+     GROUP BY error ORDER BY calls DESC, error NULLS FIRST`,
+  );
+  return {
+    readers: readers.rows.map((r) => ({ readBy: r.read_by, messages: r.messages })),
+    attempts: attempts.rows.map((r) => ({ error: r.error, calls: r.calls, p50Ms: r.p50_ms, p90Ms: r.p90_ms })),
+  };
+}
