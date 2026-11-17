@@ -47,7 +47,7 @@ free plan · 4 The server and its address · 5 Bedrock · 6 Deploy and secrets �
 | Route 53 | DNS for the subdomain | $0.50 |
 | CloudFront | Caches the site at edges in India; HTTPS for visitors | $0 (inside the always-free 1 TB and 10 million requests a month) |
 | ACM | CloudFront's certificate | free |
-| Bedrock | GLM 5 reads helper messages (about $0.0019 each) | $1 to $3 typical; capped at $15 |
+| Bedrock | GLM 5 reads helper messages (about $0.0019 each when measured on 14 Nov; about $0.003 since the 15 Nov subjects, §5) | $1 to $3 typical; capped at $15 |
 | S3 | Database backups | under $0.10 |
 | ECR | Stores the two Docker images | under $0.10 |
 | IAM, Systems Manager, Budgets | Permissions, secrets, shell access, alerts | free |
@@ -360,7 +360,7 @@ be one more place where students' requests are stored).
 | Region | **`ap-southeast-2` (Sydney)**, beside the server (14 Nov 2026; §3 "Regions"). It runs in-region; there is no cross-region profile for this model. GLM 5 is also active in Mumbai on this account (Bedrock is one of the few things the free plan allows there), but nothing gains from splitting the regions |
 | API | Converse, with structured output (a JSON schema). It does not support tool calling on this API |
 | Price in Sydney | $1.03 per million input tokens, $3.30 per million output tokens (standard tier; AWS Price List API, 14 Nov 2026). Mumbai is $1.20 and $3.84 |
-| A helper message | **Measured** (23 real calls, 14 Nov 2026): about 1,680 tokens in and 40 to 120 out, **about $0.0019**, 2.3 seconds on average from India. No reasoning block |
+| A helper message | **Measured** (23 real calls, 14 Nov 2026): about 1,680 tokens in and 40 to 120 out, **about $0.0019**, 2.3 seconds on average from India. No reasoning block. **Since 15 Nov** the subjects' topic lists are longer, so expect about 2,100 to 2,700 tokens in and **about $0.003** (estimated 17 Nov from the instructions' size; re-measure from `ai_calls`, `backend-design.md` §5 "Cost limits") |
 | Access | **Confirmed by a real call on 14 Nov 2026.** Enabled on first use; no request form. Z.AI models are not sold through AWS Marketplace, which is where credit problems with third-party models usually come from |
 | Permission | The server's role may call `bedrock:InvokeModel` on this one model only |
 | Privacy | Bedrock does not use prompts to train models and does not share them with the model's maker. Re-read AWS's Bedrock data protection page before repeating this claim anywhere new |

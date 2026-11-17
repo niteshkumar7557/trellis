@@ -113,7 +113,7 @@ export interface Experience {
   kind: ExperienceKind;
   /** Exactly what the student said. They can see, edit and delete it. */
   text: string;
-  /** A clean one-line version for prompts. (The AI writes it; the stand-in tidies the text.) */
+  /** A clean one-line version for prompts: written by GLM 5 when it read the message, else by tidy() in parse.ts. */
   line: string;
   messageId?: string;
 }

@@ -51,13 +51,21 @@ subject gets a "coming soon" for now. New subjects follow
 
 ## Docs
 
+New to the code? Start with [`docs/README.md`](docs/README.md) (the reading order) and
+[`docs/codebase.md`](docs/codebase.md) (a tour of the whole codebase).
+
 | File | What it covers |
 |---|---|
+| [`docs/README.md`](docs/README.md) | Start here: which doc answers which question, and the order to read them in |
+| [`docs/codebase.md`](docs/codebase.md) | The whole codebase for someone new: every folder, how a request flows, sign-in, the AI, the data, conventions |
+| [`docs/testing.md`](docs/testing.md) | The backend's tests: the two suites, each technique with its files, how to write and debug a test, the gaps |
 | [`docs/design.md`](docs/design.md) | The product: what it is, who it's for, the user flows, promises, the v1 boundary, and every decision with its reason. **The source of truth.** |
 | [`docs/backend-design.md`](docs/backend-design.md) | The backend: architecture, data model, API, auth, the helper, the build plan and the progress |
 | [`docs/aws.md`](docs/aws.md) | Hosting on AWS: each service and why, the free plan's limits, costs, DNS, backups and setup steps |
 | [`docs/frontend.md`](docs/frontend.md) | How the frontend is built and how to change it; the data contract the backend must serve |
-| [`docs/tech-stack.md`](docs/tech-stack.md) | The tools: in use, planned, later |
+| [`docs/tech-stack.md`](docs/tech-stack.md) | The tools: in use, later, dropped |
+| [`docs/subject-blueprint.md`](docs/subject-blueprint.md) | How to add a subject: official sources, a staged path with review gates |
+| [`docs/subjects/`](docs/subjects/) | One design record per subject built with the blueprint (React Native, MongoDB) |
 
 ## Tech
 
@@ -85,7 +93,7 @@ FlatList. Redis starts from zero, so you can try the start flow. **Settings → 
 **Dev database:**
 
 ```bash
-cp backend/example.env backend/.env   # then point DB_URL at port 5050
+cp backend/example.env backend/.env   # then set JWT_SECRET: openssl rand -hex 32
 docker compose -f docker-compose.dev.yml up -d   # Postgres on localhost:5050, Neo4j on 7687 (browser UI on 7474)
 ```
 
@@ -99,6 +107,14 @@ npm run seed:graph   # copies the topic graph into Neo4j
 npm run dev
 ```
 
+**Checks** (run before every merge; nothing runs them automatically yet):
+
+```bash
+cd backend && npm run typecheck && npm test        # 329 unit tests, no database, ~3 s
+npm run test:integration                            # 112 tests against the dev databases
+cd ../frontend && npx tsc --noEmit && npx eslint . && npm run lint:shared
+```
+
 ## Project layout
 
 ```
@@ -108,16 +124,20 @@ frontend/
   components/landing/  landing page: the real map, live, on the sample student's record
   components/brand/    the mark, the lockup, and the icons and share image drawn from them
   components/art/      SVG drawings (the espalier)
-  lib/store.tsx        client state: the one place to swap in API calls
+  lib/api.ts           the one API client (the access token in memory, refresh and retry)
+  lib/store.tsx        client state: live (signed in, from the API) or demo (the sample student)
 shared/                domain code the frontend and backend both run (imported as @shared/*)
   data/                one reviewed file per subject (React Native, Redis, MongoDB), and a sample student;
                        adding a subject: docs/subject-blueprint.md
   graph.ts             derived logic: statuses, next topic, what's open, skip or not, stuck diagnosis
-  helper.ts            the helper chat's brain (stand-in for the AI): ask, propose, reply
+  helper.ts            the helper's rules: read a message (readByRules), reply (replyFor), after a save
+  parse.ts             the rule-based reader's keyword matching
   prompt.ts            the three-part prompt: known topics, experiences, instructions
 backend/
-  src/                 Express API (accounts and the start of the student's record; the helper is next)
-docs/                  design, backend design, AWS, frontend, tech stack
+  src/                 Express API: accounts, each student's record, the helper, the AI and its limits
+  test/                Vitest unit tests; test/integration/ against the real databases
+deploy/                production: Docker Compose, Caddy, the release, deploy and backup scripts
+docs/                  start at docs/README.md
 ```
 
 ## Our promises

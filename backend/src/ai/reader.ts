@@ -102,8 +102,9 @@ export function instructionsFor(subjectId: SubjectId): string {
   if (cached) return cached;
 
   const subject = subjectById.get(subjectId)!;
-  // Big topics as "# id: name", each followed by its subtopics as "- id: name". This is
-  // about 100 lines, most of the call's input tokens.
+  // Big topics as "# id: name", each followed by its subtopics as "- id: name". One line
+  // per topic (129 for Redis, 165 for MongoDB, 184 for React Native on 17 Nov 2026), and
+  // most of the call's input tokens: the whole instructions are about 2,100 to 2,700.
   const topicLines = topicsOf(subjectId)
     .filter((t) => t.parentId === null)
     .flatMap((big) => [`# ${big.id}: ${big.name}`, ...kids(big.id).map((t) => `- ${t.id}: ${t.name}`)]);

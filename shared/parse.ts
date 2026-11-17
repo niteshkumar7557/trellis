@@ -1,6 +1,10 @@
-// Stand-in for the AI's reading of a message: which topic, and how it went. It matches
-// topic names and keywords as whole words, and a few phrases for the outcome. The real
-// version calls DeepSeek; the student confirms everything before it is saved either way.
+// The rule-based reader's building blocks: which topic a message is about, and how it went.
+// It matches topic names and keywords as whole words, and a few phrases for the outcome.
+//
+// This is the reader that always works: the demo runs only this, and the backend falls
+// back to it whenever GLM 5 on Bedrock can't read a message (the AI is off, slow, failed,
+// sent something unusable, or a spending limit is reached; docs/backend-design.md §5).
+// Either way the student confirms everything before it is saved.
 
 import { bigTopicsOf, subtopicsOf, topicById } from "./data";
 import type { Outcome, SubjectId } from "./types";
@@ -69,7 +73,10 @@ export function readKind(text: string, asked: "easy" | "hard" | "clicked"): "eas
 
 const FILLER = /\b(lol|lmao|idk|tbh|ngl|um+|uh+|like,|basically|honestly|kinda|sorta)\b/gi;
 
-/** A clean one-line version for prompts. (The AI writes this; the stand-in only tidies.) */
+/**
+ * A clean one-line version for prompts. When GLM 5 reads a message it writes this line
+ * itself; the rules, and the server when a student edits a note, make it here.
+ */
 export function tidy(text: string): string {
   const t = text.replace(FILLER, " ").replace(/\s+/g, " ").trim().replace(/[\s.!?]+$/, "");
   if (!t) return "";

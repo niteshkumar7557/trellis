@@ -45,7 +45,7 @@ export async function getSubjectGraph(subjectId: string): Promise<SubjectGraph |
   if (topics.length === 0) return null;
 
   // Edges: tied to the subject through the `from` topic's :OF line, or every request would
-  // get both subjects' edges. type(r) is "NEEDS" or "HELPS"; the API uses lowercase.
+  // get every subject's edges. type(r) is "NEEDS" or "HELPS"; the API uses lowercase.
   const edgeResult = await driver.executeQuery(
     `MATCH (a:Topic)-[:OF]->(:Subject {id: $subjectId})
      MATCH (a)-[r:NEEDS|HELPS]->(b:Topic)

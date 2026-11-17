@@ -6,12 +6,13 @@ import type { PoolClient } from "pg";
 
 
 /**
- * TODO(Task C): make the table match the file:
- *   - insert every instruction, with `position` = its index in the file;
- *   - a line that's already there gets updated (INSERT ... ON CONFLICT (id) DO UPDATE);
- *   - a line no longer in the file gets deleted. This is reviewed content, not student data,
+ * Makes the table match the file, so running the seed twice changes nothing:
+ *   - every instruction is inserted, with `position` = its index in the file (a table
+ *     keeps no order, and the prompt's lines must come out in the file's order);
+ *   - a line that's already there is updated (INSERT ... ON CONFLICT (id) DO UPDATE);
+ *   - a line no longer in the file is deleted. This is reviewed content, not student data,
  *     so here deleting is right.
- * Parameterised SQL only.
+ * Tested in test/integration/instructions.test.ts.
  */
 
 export async function seedInstructions(client: PoolClient) {

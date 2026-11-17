@@ -12,7 +12,7 @@ export const PostClaimsBody = z.object({
   claims: z
     .array(z.object({ topicId: z.string().min(1).max(100), claim: z.enum(["know", "shaky", "new"]) }))
     .min(1)
-    // A claim per topic of both subjects is the most a real sort can send.
+    // A claim per topic of every subject is the most a real sort can send.
     .max(topics.length),
 });
 

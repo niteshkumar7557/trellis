@@ -91,7 +91,7 @@ export const prompt = buildPrompt(stuckTopic, statuses, sampleCheckIns, sampleEx
 
 // ---------------------------------------------------------------- the subjects
 
-/** Real sizes of a subject's graph, for the "two subjects" section. */
+/** Real sizes of a subject's graph, for the subjects section (one row of three). */
 export function sizeOf(subjectId: SubjectId) {
   const subs = subtopicsOf(subjectId);
   return {

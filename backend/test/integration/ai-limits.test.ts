@@ -35,7 +35,7 @@ const DOMAIN = "@it-ai-limits.trellis.test";
 const URL = "/api/helper/react-native/messages";
 let ada: Awaited<ReturnType<typeof registerStudent>>;
 
-/** What GLM 5 answers for "what's next?": 1,700 tokens in, 120 out, as measured. */
+/** What GLM 5 answers for "what's next?": 1,700 tokens in, 120 out, as measured on 14 Nov 2026. */
 const reading = {
   output: { message: { role: "assistant", content: [{ text: JSON.stringify({ path: "next", topicIds: [], bigId: null, outcome: null, experiences: [], help: null }) }] } },
   stopReason: "end_turn",

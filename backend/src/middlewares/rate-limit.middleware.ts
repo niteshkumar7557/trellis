@@ -47,6 +47,7 @@ export function makeLimiter(
 // login, register, reset-password: each attempt is a bcrypt hash, and each could be a
 // guess. One limiter per route, because one instance keeps one count: shared, a student
 // who registered and then mistyped their password twice would be counted three times.
+// (The one exception: GET /api/auth/google reuses loginLimiter; see auth.routes.ts.)
 export const registerLimiter = makeLimiter(10, 15 * MINUTE);
 export const loginLimiter = makeLimiter(10, 15 * MINUTE);
 export const resetLimiter = makeLimiter(10, 15 * MINUTE);

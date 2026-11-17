@@ -433,7 +433,7 @@ function whyStuck(ctx: HelperContext): Reply {
 // ---------------------------------------------------------------- how Trellis works
 // The real helper gets this as a short guide in its instructions, so it never invents features.
 
-// Keyed, so a Reading can name the entry (the model picks one of these keys in M5).
+// Keyed, so a Reading can name the entry (GLM 5 picks one of these keys; the rules match `when`).
 // Checked in this order: the first match wins.
 const GUIDE = {
   faded: { when: /(faded|pale|grey|gray|see.?through)/i, say: "Faded topics aren't needed for your goal. They're not unimportant, just skippable for what you chose." },
@@ -457,8 +457,11 @@ function helpTopicIn(text: string): HelpTopic | null {
 
 // ---------------------------------------------------------------- context
 
-/** The question the helper asked just before the student's latest message, if it asked one. */
-/** The question the helper just asked and is waiting on, if any. The model reader shows it to GLM 5. */
+/**
+ * The question the helper just asked and is waiting on, if any: the helper message before
+ * the student's latest one (or the latest message, when the student hasn't answered yet).
+ * The model reader shows it to GLM 5.
+ */
 export function pendingQuestion(ctx: HelperContext): ChatMessage["asks"] | null {
   const msgs = ctx.messages;
   const before = msgs.at(-1)?.role === "student" ? msgs.at(-2) : msgs.at(-1);

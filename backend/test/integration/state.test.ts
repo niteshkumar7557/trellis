@@ -1,6 +1,7 @@
 // GET /api/state, GET /api/export and DELETE /api/me against the real Postgres, on a
 // student with something in every part of the record.
 
+import { subjects } from "@shared/data";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import app from "../../src/app.js";
@@ -64,7 +65,9 @@ describe("GET /api/state", () => {
     expect(s.promptTakes).toHaveLength(1);
     expect(s.checkIns.map((c: { topicId: string }) => c.topicId)).toEqual(["rn-what", "rn-what"]);
     expect(s.experiences[0]).toMatchObject({ kind: "clicked", topicId: "rn-what" });
-    expect(s.moreMessages).toEqual({ "react-native": false, redis: false });
+    // One entry per subject in shared/data, so adding a subject doesn't break this line
+    // (it did when MongoDB arrived on 15 Nov 2026).
+    expect(s.moreMessages).toEqual(Object.fromEntries(subjects.map((sub) => [sub.id, false])));
   });
 
   it("fills a confirm card from its proposal, with the ids it saved", async () => {

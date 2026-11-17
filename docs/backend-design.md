@@ -7,24 +7,28 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (15 Nov 2026):** every task in §10 is done, on `main` and live (production runs
-`bf1c0fc`); nothing is pending (§11). M0 to M6 and MS were done by 14 Nov (M5 squashed in on
-14 Nov). **The helper reads typed messages with GLM 5 on Bedrock in Sydney**, tried
-against the real service (§5 "The first real call"). **M7 (deploy) is done: Trellis is live at https://trellis.niteshkumar.xyz** (14 Nov
-2026), squashed into `main` and pushed. Everything runs in Sydney (the free plan allows
-EC2 nowhere else, `docs/aws.md` §3) behind CloudFront, which serves the pages from New
-Delhi (§4). A release is `./deploy/release.sh` (`docs/aws.md` §6).
+**Status (17 Nov 2026):** every task in §10 is done, on `main` and live (production runs
+`bf1c0fc`); nothing is pending (§11). **The helper reads typed messages with GLM 5 on
+Bedrock in Sydney**, tried against the real service (§5 "The first real call"). **Trellis
+is live at https://trellis.niteshkumar.xyz** (since 14 Nov 2026). Everything runs in
+Sydney (the free plan allows EC2 nowhere else, `docs/aws.md` §3) behind CloudFront, which
+serves the pages from New Delhi (§4). A release is `./deploy/release.sh` (`docs/aws.md` §6).
+
+On 17 Nov 2026 the docs and code comments were brought up to date with the code (this
+commit changed no behaviour; one stale integration test was fixed). What a check on that
+day found is in §11 "Known gaps". New to the codebase? Start with `docs/README.md`.
 
 **AWS on this machine:** the `trellis` profile exists (`aws login --profile trellis`,
 account `631603562964`, checked 14 Nov 2026). Run the check in `docs/aws.md` §2 before
 any AWS step anyway: the sign-in expires, and the default profile is still another
 account's.
 
-**Google sign-in is live in development:** the owner set up the OAuth client (published,
-"In production"), with its id and secret in `backend/.env` and
-`NEXT_PUBLIC_GOOGLE_SIGNIN=on` in `frontend/.env` (14 Nov 2026).
-**The deadline is 21 Nov 2026**: the build is planned for 13 to 15 Nov (re-planned on
-13 Nov from 13 to 17 Nov), then testing with real users.
+**Google sign-in is on** in development and in production: the owner set up the OAuth
+client (published, "In production"), with its id and secret in `backend/.env` and
+`NEXT_PUBLIC_GOOGLE_SIGNIN=on` in `frontend/.env` (14 Nov 2026); `deploy/release.sh`
+builds the frontend with it on.
+**The deadline is 21 Nov 2026**: the build was done by 15 Nov; 18 to 21 Nov is testing
+with real users.
 
 **Contents:** 0 Workflow and rules · 1 What the backend does · 2 Architecture · 3 Data
 model · 4 API and auth · 5 The helper · 6 Prompts · 7 Derived logic · 8 Cross-cutting ·
@@ -41,11 +45,13 @@ model · 4 API and auth · 5 The helper · 6 Prompts · 7 Derived logic · 8 Cro
 2. Take the next tasks from §10, in order, and build each with its tests:
    `npm run typecheck`, `npm test` and `npm run test:integration` stay green against the
    real databases. Update the docs that change.
-3. Each milestone is built on its own branch from `main` (`backend/m2`, `backend/m3`, …).
-   When it's done it merges into `main` with a **merge commit, never a squash**, so every
-   commit keeps its author in the history, and the branch is deleted. Push and merge only
-   when the owner says so. (The owner chose a squash for M4 on 14 Nov 2026; that was a
-   one-off unless the owner changes this rule.)
+3. Each piece of work is built on its own branch from `main` (`backend/m2`,
+   `feature/…`, `fix/…`), and the branch is deleted after it merges. **How it goes into
+   `main` is the owner's call each time:** the rule was a merge commit (so every commit
+   keeps its author), but since 14 Nov 2026 the owner has mostly asked for one squashed
+   commit per piece, ML went in with a merge commit, and the 17 Nov docs update was
+   committed straight to `main` on the owner's request. So ask. Push, merge and deploy only
+   when the owner says so.
 4. Never create two branch names that differ only by case (a `Backend/m2` next to
    `backend/m2` corrupts remote-tracking refs in every clone on macOS and Windows).
 
@@ -78,8 +84,8 @@ Serve the frontend's data contract (`docs/frontend.md` §12) for real students:
 
 1. **Accounts:** sign up, log in (password or Google), stay logged in, log out, reset a
    password, see, export and delete everything.
-2. **Content:** the two subject maps (React Native, Redis): big topics, subtopics, links,
-   goals, and the prompt instructions. The same for everyone, read-only.
+2. **Content:** the subject maps (React Native, Redis, MongoDB): big topics, subtopics,
+   links, goals, and the prompt instructions. The same for everyone, read-only.
 3. **Each student's record:** goals, sort claims, check-ins, experiences, prompts taken,
    opened big topics, helper conversations. Private to them.
 4. **The helper:** read a message, propose updates, save only on confirm, and build the
@@ -132,7 +138,7 @@ else to Next.
   API would see Next's address instead of the visitor's, which breaks rate limiting.
 - **In development** there is no Caddy. Next's `rewrites()` in `frontend/next.config.ts`
   forwards `/api/*` to the backend, so the browser still sees one origin. That rewrite
-  must keep the `/api` prefix (today it strips it; fix in M6.1).
+  keeps the `/api` prefix (fixed in M6.1; before it, the rewrite stripped it).
 
 **Every backend route starts with `/api`** (auth included, at `/api/auth/*`; moved from
 `/user/*` in M2.1, before anything called it).
@@ -145,7 +151,9 @@ or "can I skip", the product breaks. So the domain logic lives in one place both
 ```
 shared/
   types.ts          ← every shape (the data contract)
-  data/             ← react-native.ts, redis.ts, build.ts, index.ts (with its checks), instructions.ts
+  data/             ← react-native.ts, redis.ts, mongodb.ts (one file per subject), build.ts,
+                      index.ts (the subject list, lookups and the checks), instructions.ts,
+                      student.ts (the sample student)
   graph.ts          ← statuses, summaries, next, revealed, importance, suspects, past unlocks
   prompt.ts         ← the three-part prompt builder
   parse.ts          ← keyword topic/outcome reading (the rule-based reader)
@@ -232,8 +240,8 @@ called once per typed helper message and nowhere else. Details in §5.
   new one. The runner (`src/db/migrate.ts`) applies every `.sql` file not yet recorded in
   `_migrations`, in filename order, each in its own transaction.
 
-**What exists today:** every table below (`ai_calls` is migration 0018, M5.1), plus
-`prompt_instructions` and `_migrations`. Migrations 0001 to 0017 exist.
+**What exists today:** every table below, plus `prompt_instructions` and `_migrations`.
+Migrations 0001 to 0019 exist (0018 `ai_calls`, 0019 the AI limits' `reserved_usd`).
 
 The SQL below is the plan. Once a migration file exists, the file is the truth.
 
@@ -283,7 +291,7 @@ CREATE TABLE password_resets (
 -- 0008_student_goals.sql: one goal per subject
 CREATE TABLE student_goals (
   user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  subject_id TEXT NOT NULL,                 -- 'react-native' | 'redis'
+  subject_id TEXT NOT NULL,                 -- 'react-native' | 'redis' | 'mongodb'
   goal_id    TEXT NOT NULL,                 -- e.g. 'goal-rn-first-app'
   since      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (user_id, subject_id)
@@ -476,7 +484,8 @@ Every error leaves the server in one shape:
 - `code` is for the frontend's code: stable, snake_case. `message` is for people.
 - Route handlers throw `HttpError(status, code, message)`; one error middleware turns
   anything thrown into this shape. Unknown errors become `500 internal` with no details,
-  and the real error goes to the log with the request id.
+  and the real error goes to the log (`console.error`; there is no request id yet, §8
+  "Logging and health").
 - **Why one shape:** the frontend has one place to handle failures, and no stack trace or
   SQL ever reaches a browser.
 
@@ -514,7 +523,7 @@ that an id exists.
 | The access token holds only `sub` (the user id) | A name or email inside a token goes stale when edited, and anyone holding the token can read it | The old payload `{id, role, name, email}` |
 | Access token in memory, never in localStorage | A script injected into the page cannot steal it from storage | localStorage: survives reloads, but so does a theft |
 | Refresh cookie: `HttpOnly; Secure; SameSite=Strict; Path=/api/auth` | Scripts cannot read it; other sites cannot make the browser send it | `SameSite=Lax`: needed only if the API were on another site |
-| Refresh tokens hashed in the database | A leaked database or backup cannot log in as anyone | Plain text (what exists today) |
+| Refresh tokens hashed in the database | A leaked database or backup cannot log in as anyone | Plain text (what the code did before M2.1) |
 | 60 days, extended on each use | A student returning after six weeks is still signed in (design.md §10) | 7 days: they would meet a login wall exactly when coming back is hardest |
 | No refresh-token rotation in v1 | Each tab refreshes on load. With rotation, two tabs opening together would race and one would be logged out | Rotation with reuse detection is the stricter practice. Add it with a short grace window when there is time to test it |
 | bcrypt for passwords (cost 12) | It exists and is sound | argon2id is the newer default; not worth a migration now |
@@ -526,8 +535,8 @@ they are choices, not surprises.
 **Rules the server enforces**
 
 - **Login never says which part was wrong.** An unknown email and a wrong password both
-  answer `401 invalid_credentials`. (Today the code answers 404 and 400, which tells an
-  attacker which emails have accounts.)
+  answer `401 invalid_credentials`. (Before M2.1 the code answered 404 and 400, which told
+  an attacker which emails have accounts.)
 - **Passwords:** 8 to 72 characters. bcrypt ignores everything after 72 bytes, so longer
   ones are refused rather than silently cut.
 - **Emails** are trimmed and lower-cased before any lookup or insert.
@@ -761,7 +770,8 @@ Reading, check the Reply.
   - **the first call with a new schema compiles it, which can take up to about 90
     seconds**, and the compiled schema is cached for 24 hours.
 - **What is sent:** fixed instructions (classify and extract; never explain a topic; what
-  each path means), this subject's topic ids and names (about 100 lines), the pending
+  each path means), this subject's topic ids and names (one line per topic: 129 for
+  Redis, 165 for MongoDB, 184 for React Native), the pending
   question if there is one, the selected topic, and the student's message.
   **Never** a name, an email, or another student's data.
 - **What comes back is checked** with zod, then against the map (`checkReading`): unknown
@@ -824,7 +834,8 @@ To repeat the check, the list of things to look at was:
 
 - that the account may call `zai.glm-5` at all (`denied` or `no_model` in `error` if not);
 - the real latency (`latency_ms`): if typical calls are near 6000, raise `AI_TIMEOUT_MS`;
-- the real token counts: the doc assumes about 1,700 in and 120 out. If GLM 5 writes a
+- the real token counts: measured at about 1,700 in and 120 out on 14 Nov, expected nearer
+  2,100 to 2,700 in since the 15 Nov subjects ("Cost limits" below). If GLM 5 writes a
   reasoning block first, output tokens will be far higher, and `error = 'max_tokens'` may
   appear. Then turn reasoning off for this model in the request, or raise `MAX_TOKENS`;
 - that the readings make sense: compare a few `read_by = 'model'` replies with what the
@@ -862,14 +873,20 @@ Three limits in dollars, and one in messages:
 An account's limits are for the account (its email), across all its subjects. Taps never
 call the model and never count.
 
-**What it costs.** One AI-read message is about **$0.002** (measured: 1,700 to 2,100
-tokens in, 40 to 120 out). So:
+**What it costs.** One AI-read message was about **$0.002** when measured on 14 Nov 2026
+(1,700 to 2,100 tokens in, 40 to 120 out). **That is out of date:** React Native was
+redesigned and MongoDB added on 15 Nov, and the instructions carry every topic of the
+subject. Measured by character count on 17 Nov, the instructions are now about 2,100
+tokens for Redis, 2,600 for MongoDB and 2,700 for React Native, so a message costs about
+**$0.0026 to $0.0032**. Re-measure from `ai_calls.input_tokens` once real calls come in,
+then decide whether to raise `AI_USER_DAILY_USD` or shrink the instructions. The limits are
+in dollars, so they hold either way; only the number of messages changes:
 
-| | Messages | Worst case for the owner |
-|---|---|---|
-| One account, a day | about 30 | $0.06 |
-| One account, a week | about 125 | $0.25, so at most **$1.08 a month** |
-| The whole site, a day | about 250 | $0.50, so at most **$15 a month**, whatever the accounts do |
+| | Messages at $0.002 (14 Nov) | At ~$0.003 (17 Nov estimate) | Worst case for the owner |
+|---|---|---|---|
+| One account, a day | about 30 | about 20 | $0.06 |
+| One account, a week | about 125 | about 80 | $0.25, so at most **$1.08 a month** |
+| The whole site, a day | about 250 | about 165 | $0.50, so at most **$15 a month**, whatever the accounts do |
 
 **Which limit protects the money.** The site's daily budget does. Sign-up doesn't verify
 email addresses yet, so one person can make several accounts, each with a full allowance.
@@ -907,7 +924,8 @@ day; counting too little costs money.
 
 **The reservation** is `maxTokens` of output (600, which Bedrock enforces) plus one input
 token per 3 bytes of the instructions and the message (`worstCaseUsd`). The measured rate
-is about one token per 3.7 characters, so it runs some 25% high: about $0.0043 against a
+is about one token per 3.7 characters, so it runs some 25% high: on 14 Nov about $0.0043
+(about $0.005 with the 17 Nov instructions) against a
 real $0.002. It is an estimate, not a guarantee.
 
 **Why a lock.** Without it, ten messages sent at the same moment each add up the same old
@@ -1052,9 +1070,12 @@ same first suspect the Stuck button names.
   after a goal change as an offer to sort just those.
 
 **Golden test** (`backend/test/golden.test.ts`): with the sample student
-(`shared/data/student.ts`) the React Native next topic is **State**, FlatList is stuck,
-its first suspect is **State**, and **Redis has no goal**. It must still pass after the
-suspect change, and gains cases for "done with doubt" and the text match.
+(`shared/data/student.ts`) the React Native next topic is **Conditional rendering, lists**
+(`rn-jsx-lists`), FlatList is stuck, its first suspect is **Objects and arrays in state**
+(`rn-state-updates`), and **Redis has no goal** (its 129 topics are all new). These
+answers changed with the React Native redesign on 15 Nov 2026 (before it: State and
+State). It also pins FlatList's prompt: it starts with the gap, keeps FlatList's own hard
+note while it is stuck and drops it once done, and adds what worked underneath.
 `backend/test/data-checks.test.ts` fails if any `console.assert` in `shared/data/index.ts`
 fails.
 
@@ -1100,7 +1121,8 @@ deploy (`docs/aws.md` §6). Secrets are never committed and never baked into an 
 
   | Routes | Limit | Keyed by |
   |---|---|---|
-  | `/api/auth/login`, `/register`, `/reset-password` | 10 per 15 minutes, each route counted on its own | IP address |
+  | `/api/auth/login`, `/register`, `/reset-password` | 10 per 15 minutes, each route counted on its own (except that `GET /api/auth/google` shares login's count) | IP address |
+  | `DELETE /api/me` | 10 per 15 minutes | IP address |
   | `/api/auth/refresh` | 60 per 15 minutes | IP address |
   | `POST /api/helper/*/messages` | 30 per minute | user id |
   | everything else under `/api` | 300 per minute | user id, or IP when signed out |
@@ -1125,16 +1147,35 @@ deploy (`docs/aws.md` §6). Secrets are never committed and never baked into an 
 
 ### Logging and health
 
-- **`pino`** writes one JSON line per request to stdout: time, request id, method, path,
-  status, duration, user id. Docker keeps and rotates the files. **Never logged:** message
-  text, passwords, tokens, cookies, email addresses.
-- Every response carries `X-Request-Id`, and the same id is on its log line and on any
-  error logged for it. So "it failed at 21:40" can be traced to one request.
+**What exists (checked 17 Nov 2026):**
+
+- The API logs with plain `console.log` / `console.warn` / `console.error` to stdout. What
+  it writes: the start-up lines (Postgres connected, the Neo4j state, which AI reader is
+  on), Neo4j state **changes** (`graph.middleware.ts` logs only when the state changes),
+  Bedrock failures as a short code (`bedrock.ts`), warm-up results, a failed Google
+  exchange, and every unexpected error with its stack (`error.middleware.ts`, before it
+  answers `500 internal`).
+- **There is no per-request log and no request id.** A normal request leaves no line.
+- Docker keeps each container's stdout and rotates it (5 files of 10 MB,
+  `deploy/docker-compose.yml`): `docker compose logs -f api` on the server.
+- Caddy has no `log` directive, so it keeps no access log either.
+- **Never logged:** message text, passwords, tokens, cookies, email addresses. (The one
+  exception by design: `npm run reset-link` prints the address it made a link for, on the
+  server, for the admin.)
 - `GET /api/health` → `{ postgres: "ok", neo4j: "ok" | "down" | "drift" }`. It answers `200`
   when Postgres is reachable and `503` when it is not. Neo4j never changes the status.
-- **Why not Sentry or a log service now:** one server and a few dozen users. `docker logs`
-  with a request id is enough, and costs nothing. Add CloudWatch or Sentry when reading
-  logs by hand stops working.
+
+**Planned and not built: request logging.** The design was `pino` writing one JSON line
+per request (time, request id, method, path, status, duration, user id) and an
+`X-Request-Id` on every response, with the same id on any error logged for it, so "it
+failed at 21:40" could be traced to one request. It is the first thing to add if a student
+reports an error you can't reproduce (`pino-http` is the usual way, as one middleware at
+the top of `src/app.ts`). Keep the "never logged" list when you build it: log the path,
+never the body.
+
+**Why not Sentry or a log service now:** one server and a few dozen users. `docker logs` is
+enough, and costs nothing. Add CloudWatch or Sentry when reading logs by hand stops
+working.
 
 ### Tests
 
@@ -1148,6 +1189,15 @@ Vitest plus supertest, in two commands.
   reader's tests (`test/reader.test.ts`) feed fixed model outputs (good, malformed, wrong
   shape, made-up topic ids, cut off, a timeout) and check the fallback; `test/bedrock.test.ts`
   checks the request we send and the `ai_calls` row each outcome leaves.
+- **Counts on 17 Nov 2026:** `npm test` 329 tests in 34 files (about 3 seconds);
+  `npm run test:integration` 112 tests in 16 files (about 25 seconds), all passing.
+- **What isn't tested automatically:** nothing runs the tests for you (there is no CI, and
+  `deploy/release.sh` doesn't run them), the frontend has no test runner (its pure map
+  layout code is tested from here, `test/map-layout.test.ts`), there are no browser
+  end-to-end tests, and coverage isn't measured. Run both suites before every merge.
+
+How the tests are built, technique by technique, and how to write a new one:
+`docs/testing.md`.
 
 ### Code style
 
@@ -1165,9 +1215,14 @@ backend/src/
   controllers/            read the request, call repos and shared/, send the reply
   repos/                  every SQL and Cypher statement lives here, nowhere else
   middlewares/            auth, validation, errors, rate limits
-  ai/                     bedrock.ts (the client), reader.ts (message → Reading)
-  db/                     pools, migrations, seeds
-  utils/                  small helpers (tokens, HttpError, health)
+  ai/                     bedrock.ts (the client; reserve, call, settle), reader.ts (message →
+                          Reading, the warm-up), limits.ts (the money rules, pure functions)
+  db/                     the Postgres pool and transactions (index.ts), the Neo4j driver,
+                          migrations, seeds, and the admin scripts (reset-link.ts, ai-spend.ts)
+  utils/                  small helpers (tokens, google, HttpError, health, graph drift, row ids)
+  types/express.d.ts      adds req.userId to Express's Request
+backend/test/             unit tests; test/integration/ the real-database ones (docs/testing.md)
+backend/tools/subject.ts  `npm run subject`: a subject's curriculum as Trellis works it out
 ```
 
 ### Deploy and backups
@@ -1339,11 +1394,14 @@ Update this table at the start of each planning session from `git log` and merge
 | MongoDB, a new subject from official sources | done; live (its unfinished checks closed by the owner, 15 Nov 2026) | `main`, 15 Nov 2026 (squashed, `88f81fa`) |
 | Loading skeleton, map lines in curved lanes, landing fixes | done; live | `main`, 15 Nov 2026 (squashed, `05d37de` and `bf1c0fc`) |
 | Redis redesign and removing the roadmap.sh credit | **closed without being built** (owner, 15 Nov 2026); Redis still credits roadmap.sh | — |
+| Docs and comments brought up to date with the code; `docs/README.md`, `docs/codebase.md`, `docs/testing.md` added; a stale integration test fixed | done; no behaviour changed, so no release needed | `main`, 17 Nov 2026 (committed directly, on the owner's request) |
 
-**Expected test counts now:** 329 passed in `npm test` (checked 15 Nov 2026, after
-`bf1c0fc`). Before that, 300 (14 Nov, after `2e9ebc7`). `npm run test:integration` was 112 after ML and has not been run since: the
-later changes added unit tests only, so expect 112, and check it the next time Docker's
-databases are up. After ML: 279 and 112. After M7.1: 250 and 86.
+**Test counts now (run 17 Nov 2026):** `npm test` 329 in 34 files, all passing.
+`npm run test:integration` 112 in 16 files, all passing after one fix: `state.test.ts`
+still expected only React Native and Redis in `moreMessages`, and failed once MongoDB
+existed (15 Nov), which nobody saw because the suite hadn't been run since ML. Its
+expectation is now built from the subject list. Earlier counts: 300 and 112 (14 Nov,
+after `2e9ebc7`); after ML: 279 and 112. After M7.1: 250 and 86.
 After M5: 246 and 86. After MS
 they were 211 and 81. After M6 they were 193 and 81; after M4, 178 and 77. M6 was also checked by
 hand in a browser against the real API (sign-up to delete, a reset link, the helper's
@@ -1354,8 +1412,8 @@ client ("Web application") with the redirect URIs
 `http://localhost:3000/api/auth/google/callback` and
 `https://trellis.niteshkumar.xyz/api/auth/google/callback`. Put its id and secret in
 `backend/.env` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) and set
-`NEXT_PUBLIC_GOOGLE_SIGNIN=on` in `frontend/.env`. Until then the routes answer 404 and
-the button is hidden. Not tested against Google itself yet: the tests fake it.
+`NEXT_PUBLIC_GOOGLE_SIGNIN=on` in `frontend/.env`. Without them the routes answer 404 and
+the button is hidden. (Done on 14 Nov 2026.) The automated tests always fake Google.
 
 **How M3 is tested without the helper:** nothing can create a check-in or an experience
 through the API until M4.3 (only saving a proposal does). The integration tests write
@@ -1373,15 +1431,29 @@ more (`openssl rand -hex 32`); the server refuses `admin123`. Then `npm run db:m
 to run 0007 to 0011. Migration 0007 deletes every stored refresh token (they were plain
 text and can't be converted), so everyone signs in once more.
 
-**Known gaps in the code today, each fixed by the task named:**
+**Known gaps in the code (checked 17 Nov 2026).** None blocks the 18 Nov testing; each is
+a choice to make, not a bug:
+
+- **The AI costs more per message than §5 was written for** (about $0.003, not $0.002),
+  so a student reaches basic mode after about 20 AI-read messages a day, not 30. Re-measure
+  from `ai_calls`, then raise `AI_USER_DAILY_USD` or shrink the instructions (§5 "Cost
+  limits").
+- **No request logging** (§8 "Logging and health"): `pino` and `X-Request-Id` were planned
+  and not built.
+- **Nothing runs the tests automatically:** no CI, and `deploy/release.sh` doesn't run
+  them. GitHub Actions is listed under "Later" in `docs/tech-stack.md`.
+- **No frontend tests** beyond the map layout, and no browser end-to-end tests.
 - `users.role` is still a column but nothing reads it (the token no longer carries it,
   and there are no admin routes). Harmless; drop it in a later migration if it stays
   unused.
-- `frontend/next.config.ts` strips `/api` when forwarding. → M6.1
+- The `cors` package is a dependency but is never imported (the app has no CORS on
+  purpose, §2). Remove it from `backend/package.json` in a later change.
+- `GET /api/auth/google` shares login's rate-limit count (§8 "Security"). Harmless at 10
+  per 15 minutes; give it its own `makeLimiter()` if it ever matters.
 
 ## 12. Open questions
 
-Nothing blocks M7. To settle when reached:
+Nothing blocks the testing with real users (18 to 21 Nov). To settle when reached:
 
 - **Rate limits and a shared campus address.** The auth limits are per IP address. If a
   class signs up together on one campus Wi-Fi, they may all share one public address,

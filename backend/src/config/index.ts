@@ -73,8 +73,8 @@ const config = {
   // development, where nothing sits in front and a forged header must not be believed.
   trust_proxy_hops: num("TRUST_PROXY_HOPS", nodeEnv === "production" ? 2 : 0),
 
-  // Where the site lives, as the browser sees it. Used to build reset links (and, in M6.3,
-  // the Google redirect). Replaces CLIENT_URL: with one origin there is no separate client.
+  // Where the site lives, as the browser sees it. Used to build reset links and the Google
+  // redirect URI. Replaces CLIENT_URL: with one origin there is no separate client.
   public_url: str("PUBLIC_URL", "http://localhost:3000").replace(/\/$/, ""),
 
   db: {
@@ -121,9 +121,11 @@ const config = {
     // The spending limits, in dollars (backend-design.md §5 "Cost limits"). The site's
     // daily budget is the one that caps the bill: $0.50 a day is at most $15 a month.
     daily_budget_usd: money("AI_DAILY_BUDGET_USD", 0.5),
-    // Each account's own allowance, the same across its subjects. At about $0.002 a
-    // message these are roughly 30 AI-read messages a day and 125 a week; at most $1.08 a
-    // month from one account. Students see them only as a percentage.
+    // Each account's own allowance, the same across its subjects; at most $1.08 a month
+    // from one account. A message cost about $0.002 when measured (14 Nov 2026), so about
+    // 30 AI-read messages a day and 125 a week; the topic lists have grown since, so
+    // expect nearer $0.003, 20 and 80 (re-measure from ai_calls.input_tokens). Students
+    // see these only as a percentage.
     user_daily_usd: money("AI_USER_DAILY_USD", 0.06),
     user_weekly_usd: money("AI_USER_WEEKLY_USD", 0.25),
     // Typed messages a day, whoever reads them: a guard against a script filling the

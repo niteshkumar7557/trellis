@@ -1,48 +1,53 @@
 # Tech stack
 
-The tools, in one place. Where this disagrees with `design.md` §13, `backend-design.md` or
-`aws.md`, those win. The reasons for each choice are in those files.
+The tools, in one place (checked against the code on 17 Nov 2026). Where this disagrees
+with `design.md` §13, `backend-design.md` or `aws.md`, those win. The reasons for each
+choice are in those files.
 
-## In use
+## In use (all live since 14 Nov 2026)
 
 | Part | Choice |
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, CSS modules with design tokens (Tailwind 4 installed, barely used) |
-| Map | dagre for layout, drawn in SVG |
-| Motion | GSAP (Draggable, DrawSVG, Inertia, ScrollTrigger) |
-| Backend | Node.js 24, Express 5, TypeScript (ESM), built with tsup |
-| Shared domain code | `shared/`, used by both the frontend and the backend |
-| Database | PostgreSQL 18 |
-| Topic graph | Neo4j 5 (content only, seeded from `shared/data`) |
-| Validation | zod |
-| Testing | Vitest + supertest |
-| Auth | JWT access tokens + database-backed refresh tokens (httpOnly cookie), bcrypt |
-
-## Planned for v1 (see backend-design.md §10)
-
-| Part | Choice |
-|---|---|
-| Sign-in | Google (OAuth 2, `google-auth-library`) next to email and password |
-| AI | **GLM 5 on Amazon Bedrock** (`@aws-sdk/client-bedrock-runtime`), one call per typed helper message; the rule-based reader is the fallback |
-| Rate limiting | express-rate-limit (in memory; one server) |
-| Logging | pino, JSON lines to stdout |
+| Map | `@dagrejs/dagre` for layout, drawn in SVG |
+| Motion | GSAP 3 (Draggable, DrawSVG, Inertia, ScrollTrigger), through `frontend/lib/gsap.ts` |
+| Backend | Node.js 24, Express 5, TypeScript (strict ESM), built with tsup; `tsx` in development |
+| Shared domain code | `shared/`, imported as `@shared/*` by both the frontend and the backend |
+| Database | PostgreSQL 18 (`pg`), plain SQL migrations (`backend/src/db/migrations/`) |
+| Topic graph | Neo4j 5 (`neo4j-driver`), content only, seeded from `shared/data`; the site runs without it |
+| Validation | zod 4 (request bodies, and the AI model's replies) |
+| Testing | Vitest + supertest (backend only; the frontend has no test runner) |
+| Auth | JWT access tokens (`jsonwebtoken`, HS256, 15 minutes) + database-backed refresh tokens in an httpOnly cookie (60 days, sliding), bcrypt (cost 12) |
+| Sign-in with Google | OAuth 2 authorization code flow on the server, `google-auth-library` |
+| AI | **GLM 5 on Amazon Bedrock** in Sydney (`@aws-sdk/client-bedrock-runtime`, the Converse API with structured output), one call per typed helper message; the rule-based reader is the fallback |
+| Rate limiting | `express-rate-limit` (in memory; correct for one server) |
+| Security headers | `helmet`; no CORS (one origin) |
+| Logging | `console.*` to stdout, kept and rotated by Docker. **No per-request log** (pino was planned and not built; `backend-design.md` §8) |
 | Hosting | AWS, Sydney: one EC2 server (t4g.small, arm64) running Docker Compose, behind CloudFront |
-| HTTPS and routing | Caddy (certificates from Let's Encrypt) |
+| HTTPS and routing | Caddy 2 (certificates from Let's Encrypt), in front of the API and Next.js |
 | DNS | Route 53 for `trellis.niteshkumar.xyz`; the parent domain stays at GoDaddy |
-| Images | Amazon ECR |
-| Secrets | AWS Systems Manager Parameter Store |
-| Backups | Nightly `pg_dump` to Amazon S3, kept 14 days |
+| Images | Amazon ECR, built on the laptop by `deploy/release.sh` |
+| Secrets | AWS Systems Manager Parameter Store, written into the server's env file at deploy |
+| Backups | Nightly `pg_dump` to Amazon S3, kept 14 days (a systemd timer on the server) |
 
 ## Later (not v1)
 
 | Part | Choice |
 |---|---|
 | Email (password reset codes, then reminders) | Amazon SES |
-| CI / CD | GitHub Actions, signing in to AWS with OIDC |
+| CI / CD | GitHub Actions, signing in to AWS with OIDC. Today nothing runs the tests automatically |
+| Request logging | `pino` / `pino-http` with an `X-Request-Id` per request |
+| Frontend and end-to-end tests | Vitest for `frontend/lib`; Playwright for the browser |
 | Infrastructure as code | Terraform |
 | Error tracking and uptime | Sentry; CloudWatch alarms |
 | Cache / limits across several servers | Redis, only if the backend ever runs as more than one instance |
 | Other notification channels (design.md §15: reminders) | Telegram, Discord, WhatsApp |
+
+## Installed but unused
+
+| Package | Note |
+|---|---|
+| `cors` (backend) | Never imported: the app deliberately has no CORS. Safe to remove |
 
 ## Dropped on 12 Nov 2026
 

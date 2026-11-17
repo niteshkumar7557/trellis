@@ -8,7 +8,10 @@ juniors first.
 
 ## Start every session here
 
-1. Read this file, then the doc for the job:
+1. Read this file, then the doc for the job (`docs/README.md` maps every doc to the
+   question it answers):
+   - `docs/codebase.md`: **the whole codebase for someone new**: every folder, how a
+     request flows, sign-in, the AI, the data, conventions, where to make common changes.
    - `docs/design.md`: **the product (v7), the source of truth.** §5 user flows, §7 the
      helper, §8 stuck, §9 prompts, §12 AI, §14 the v1 boundary, §16 every decision and why.
    - `docs/backend-design.md`: the backend design with its reasons, the **rules for coding
@@ -19,6 +22,8 @@ juniors first.
    - `README.md` (public overview; keep in step) and `docs/tech-stack.md`.
    - `docs/subject-blueprint.md`: **adding a subject**: official sources, a staged path with
      gates, a review panel of agents, and a design record per subject (`docs/subjects/`).
+   - `docs/testing.md`: the backend's two test suites, each technique with its files, how to
+     write and debug a test, and the gaps.
 2. Run `git log --oneline -15` and `git status` to see what changed since.
 
 ### When asked "what's next in the backend?"
@@ -41,8 +46,21 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 - **Before any AWS action, run the account check in `docs/aws.md` §2.** The AWS tools on
   this machine were signed in to a different account. Never act on that one.
 
-## Where things stand (15 Nov 2026)
+## Where things stand (17 Nov 2026)
 
+- **Docs and comments brought up to date (17 Nov 2026), committed straight to `main` on the
+  owner's request; not pushed, and no release needed (no behaviour changed).** Added
+  `docs/README.md`, `docs/codebase.md` and `docs/testing.md`; fixed stale lines across the
+  docs and code comments; fixed `test/integration/state.test.ts`, which had failed since
+  MongoDB arrived (nobody ran the suite). Counts: `npm test` 329, `npm run test:integration`
+  112, all passing. What the check found is in `backend-design.md` §11 "Known gaps":
+  - **the AI costs about $0.003 a message now, not $0.002** (the 15 Nov topic lists are
+    bigger), so a student gets about 20 AI-read messages a day, not 30; re-measure from
+    `ai_calls` and decide on `AI_USER_DAILY_USD`;
+  - **no request logging** (pino and `X-Request-Id` were planned, never built);
+  - **nothing runs the tests automatically** (no CI; `release.sh` doesn't run them);
+  - the unused `cors` dependency, the unused `users.role` column, and Google's start
+    sharing login's rate-limit count.
 - **In one line:** every milestone of v1 (M0 to M7, MS, ML) is built, merged and **live at
   https://trellis.niteshkumar.xyz**. Production runs `bf1c0fc` (released 15 Nov 2026). Three subjects are live: React Native, Redis and MongoDB. **Nothing is pending** (owner, 15 Nov 2026: "mark all pending things done"); the items closed without being built are listed under "Closed on 15 Nov 2026" below. Next: testing with real users, 18 to 21 Nov.
 - **Design:** reviewed on 12 Nov 2026 (`design.md` v7, `backend-design.md`, `aws.md`), and
@@ -138,8 +156,9 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
     with the dev databases up).
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
   topic difficulty and the small fixes went into `main` as one squashed commit each, on the
-  owner's request; ML went in with a merge commit. `backend-design.md` §0 still says merge
-  commits. Ask which for the next one.
+  owner's request; ML went in with a merge commit; the 17 Nov docs update was committed
+  straight to `main` on the owner's request (a one-off). `backend-design.md` §0 now says
+  "the owner's call each time". Ask which for the next one.
 - **Releasing:** run `./deploy/release.sh` on its own, **never piped** (`| tail` hides a
   failed build behind a success code). Every build downloads IBM Plex Sans from Google
   Fonts; on 14 Nov one build failed there for a moment (`next-font-loader … reading '1'`).
@@ -148,10 +167,11 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   15 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** everything is created and live, in Sydney; every resource id is in
   `docs/aws.md` §9. CloudFront `E6RLEBVGF9SWB`, server `i-03c628dea103abc86`.
-- **Git:** `main` is the only branch, in step with GitHub. Each piece of work gets its own
-  branch from `main` (`backend/m2`, `feature/…`, `fix/…`); commit only there. **Push,
-  merge and deploy only on the owner's say-so.** The rule in `backend-design.md` §0 is a
-  merge commit; the owner has asked for squashes since 14 Nov (see "Merging"), so ask.
+- **Git:** `main` is the only branch. On 17 Nov it is ahead of GitHub by the docs-update
+  commit (committed on the owner's request, not pushed). Each piece of work gets its own
+  branch from `main` (`backend/m2`, `feature/…`, `fix/…`); commit only there, unless the
+  owner says otherwise. **Push, merge and deploy only on the owner's say-so.** How to merge
+  is the owner's call each time (see "Merging"), so ask.
   The branch is deleted after. No Claude co-author line.
 
 ## Decisions already made (don't re-ask; the reasons are in design.md §16)

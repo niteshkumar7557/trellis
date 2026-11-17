@@ -5,8 +5,8 @@ How the frontend is built and how to change it safely. The product rules live in
 the code map, the rules each part follows, the gotchas, and the **data contract** the
 backend must serve.
 
-**Status (15 Nov 2026):** the screens are finished, connected to the API and live
-(`bf1c0fc`). A signed-in student is **live**: their record comes from the backend.
+**Status (17 Nov 2026):** the screens are finished, connected to the API and live
+(`bf1c0fc`). The code map in §5 was checked against the files on 17 Nov. A signed-in student is **live**: their record comes from the backend.
 A visitor who isn't signed in sees a **demo** on the sample student, kept in this
 browser. How the two modes work is in §10 and §11.
 
@@ -208,37 +208,41 @@ frontend/
   app/                     routes (above); globals.css holds every token; icon.svg, apple-icon, manifest, opengraph-image (§3b)
   components/
     app/Shell.tsx          sidebar (with the AI usage meter) + top bar;   Search.tsx  ⌘K full-page search (§9)
+    app/Skeleton.tsx       grey shapes while the store finds out who is signed in (§10)
     ui/Dropdown.tsx        our own dropdown (ARIA listbox); used instead of every <select>
     map/
       layout.ts            dagre layout: big topics, frames, links, midpoints, arrowheads (§7)
+      focus.ts             what lights up and gets a name on hover or selection (§7)
       MapCanvas.tsx        pan/zoom camera, hover chains, labels, trace, frame-open motion (§7)
       Rail.tsx             TopicPanel, BigPanel, PromptView (the three-part prompt), rows
       Chat.tsx             the helper's thread, confirm cards, folded prompt cards, compose
       GoalPicker.tsx       the goal dropdown, what a goal change does, the note after one
-      useHelper.ts         runs the conversation against shared/helper.ts (the API later)
+      useHelper.ts         runs the conversation: shared/helper.ts in the browser (demo), the API (live)
       RouteList.tsx        the list view (and the phone view), grouped by big topic
       MiniMap.tsx          the small whole-map drawing on /start
       TopicOptions.tsx     <optgroup> topic picker (check-ins edit form)
     landing/               the landing page (§3a): Landing, HeroMap, StuckTrace, PromptSlip, sample.ts
     brand/                 brand.ts (the mark's path, brand colours), Mark, Logo, images.tsx (§3b)
     art/Espalier.tsx       the procedural espalier drawing, four seasons
-    ui/                    Icon, Status (StatusMark, StatusPill), ui.module.css
+    ui/                    Icon, Status (StatusMark, StatusPill), Difficulty (the word and bar meter), ui.module.css
   lib/
+    api.ts                 the one API client: the access token in memory, refresh and retry (§11)
     store.tsx              the client store (§10)
     usage.ts               the words for the AI allowance: which window, reset times, basic mode (§11)
     theme.tsx, gsap.ts     theme and motion setup
 shared/                    the domain code; the backend runs the same files (import as @shared/*)
   types.ts                 every shape (the data contract, §12)
-  data/react-native.ts     the React Native graph (reviewed content)
-  data/redis.ts            the Redis graph (reviewed content)
+  data/react-native.ts     the React Native graph (reviewed content, from official sources)
+  data/redis.ts            the Redis graph (reviewed content, adapted from roadmap.sh)
+  data/mongodb.ts          the MongoDB graph (reviewed content, from official sources)
   data/build.ts            helpers: big(), sub(), edgesFrom()
-  data/index.ts            subjects, lookups (topicById, kids, bigOf…) and the data checks
-  data/instructions.ts     prompt part 3 (a DB table later)
+  data/index.ts            the subject list (one line per subject), lookups (topicById, kids, bigOf…) and the data checks
+  data/instructions.ts     prompt part 3; the backend seeds it into the prompt_instructions table
   data/student.ts          the sample student, history and conversation; TODAY = 2026-11-03
   graph.ts                 all derived logic (§6)
   prompt.ts                the three-part prompt builder (§8)
   parse.ts                 keyword reader: topic, outcome, reason, kind, tidy
-  helper.ts                the helper's brain (stand-in for the AI; §8)
+  helper.ts                the helper's rules: readByRules, replyFor, afterSave (§8; the backend adds GLM 5 as a reader)
 ```
 
 `shared/` sits outside `frontend/`. The frontend reaches it through the `@shared/*` path in
@@ -350,7 +354,7 @@ root (`frontend/Dockerfile`, `frontend/Dockerfile.dockerignore`), so it can copy
   until 14 Nov 2026), heads came out tilted wherever a line covers a lot of ground sideways
   in little height. An earlier note here said straightened line ends "looked worse"; that
   was with lines that started from box sides, before `route()`.
-- `backend/test/map-layout.test.ts` checks, for both subjects with everything closed and
+- `backend/test/map-layout.test.ts` checks, for every subject with everything closed and
   everything open: no boxes overlap, no hard line crosses a box or another frame, every
   head points up, and the hover rules below hold.
 - Transforms are rounded to two decimals: the server and the browser otherwise differ in

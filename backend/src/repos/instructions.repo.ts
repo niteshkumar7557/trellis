@@ -4,11 +4,12 @@ import type { Instruction } from "@shared/types";
 import pool from "../db/index.js";
 
 /**
- * Every instruction, in file order.
+ * Every instruction, in file order (`position` is its index in shared/data/instructions.ts).
  *
- * TODO(Task C): query prompt_instructions and turn each row into the Instruction shape in
- * shared/types.ts. SQL NULL isn't "missing": a base line's row has status = null and
- * topic_id = null, but its Instruction must not have those keys at all.
+ * Each row becomes the Instruction shape in shared/types.ts. SQL NULL isn't "missing": a
+ * base line's row has status = null and topic_id = null, but its Instruction must not have
+ * those keys at all, so they are added only when set. Otherwise the API's answer would
+ * differ from the file the frontend reads in demo mode.
  */
 export async function listInstructions(): Promise<Instruction[]> {
     const result = await pool.query(`
