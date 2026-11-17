@@ -968,6 +968,10 @@ with two corrections so it never contradicts what happens: anything spent shows 
 the spend for today, this week and the last 30 days against the limits, and the accounts
 that used most this week, **by id only**. It is a money report, not a way to read anyone's
 record (design.md §11): no names, no emails, and the table holds no message text.
+It also shows the last seven days of typed messages read by model or rules and Bedrock
+read attempts grouped by result, with median and 90th-percentile latency. A rising rules
+share with `timeout` or `bad_output` identifies a degraded model; rules with no attempt
+rows may mean the provider is off or the allowance is exhausted.
 
 To change a limit: set the variable in Parameter Store (`/trellis/prod/AI_USER_DAILY_USD`
 and so on), run a release, and the new value applies to the current window at once,
