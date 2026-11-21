@@ -7,7 +7,19 @@
 import { app, ipcMain, session, shell } from "electron";
 import { siteOrigin } from "./config";
 import { isAllowedUrl, isExternalSafe } from "./security";
-import { createMainWindow, isTrustedSender, retry, showWindow } from "./window";
+import { buildMenu } from "./menu";
+import type { AppActions } from "./menu-template";
+import { registerShortcut, unregisterShortcuts } from "./shortcut";
+import { createTray } from "./tray";
+import { createMainWindow, isTrustedSender, openSearch, retry, showPath, showWindow } from "./window";
+
+/** Everything the menu bar, the tray and the shortcut can do, in one place. */
+const actions: AppActions = {
+  show: showWindow,
+  go: showPath,
+  openSearch,
+  checkForUpdates: () => {}, // Task 3
+};
 
 // The e2e tests run each launch with a throwaway data folder, so one test's saved window
 // position or cookies can't leak into the next. Ignored in the packaged app.
@@ -49,7 +61,13 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     createMainWindow();
+    buildMenu(actions);
+    createTray(actions);
+    registerShortcut(actions.openSearch);
   });
+
+  // Global shortcuts belong to the whole system: give them back when the app quits.
+  app.on("will-quit", unregisterShortcuts);
 
   // Clicking the Dock icon with the window hidden brings it back.
   app.on("activate", () => showWindow());

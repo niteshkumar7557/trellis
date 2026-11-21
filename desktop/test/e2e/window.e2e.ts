@@ -13,7 +13,9 @@ let siteUrl = "";
 test.beforeAll(async () => {
   site = createServer((_req, res) => {
     res.writeHead(200, { "content-type": "text/html" });
-    res.end(`<!doctype html><title>Fake Trellis</title><a id="out" href="https://example.com/">out</a>`);
+    // Like the real site's search (frontend/components/app/Search.tsx), it reacts to ⌘K.
+    res.end(`<!doctype html><title>Fake Trellis</title><a id="out" href="https://example.com/">out</a>
+      <script>addEventListener("keydown", (e) => { if (e.metaKey && e.key.toLowerCase() === "k") document.title = "Search open"; });</script>`);
   });
   await new Promise<void>((resolve) => site.listen(0, "127.0.0.1", resolve));
   const addr = site.address();
@@ -90,5 +92,33 @@ test("an unreachable site shows the offline page", async () => {
   const page = await app.firstWindow();
   await expect(page).toHaveTitle("Can't reach Trellis");
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+  await app.close();
+});
+
+test("the Go menu opens the sidebar's pages", async () => {
+  const app = await launch(siteUrl);
+  const page = await app.firstWindow();
+  await expect(page).toHaveTitle("Fake Trellis");
+  await app.evaluate(({ Menu }) => {
+    const go = Menu.getApplicationMenu()!.items.find((i) => i.label === "Go")!;
+    go.submenu!.items.find((i) => i.label === "Check-ins")!.click();
+  });
+  await expect(page).toHaveURL(`${siteUrl}/check-ins`);
+  await app.close();
+});
+
+test("⌃⌥T is registered, and it opens the site's search", async () => {
+  const app = await launch(siteUrl);
+  const page = await app.firstWindow();
+  await expect(page).toHaveTitle("Fake Trellis");
+  expect(await app.evaluate(({ globalShortcut }) => globalShortcut.isRegistered("Control+Alt+T"))).toBe(true);
+
+  // Pressing real keys system-wide from a test isn't possible, so call what the shortcut
+  // calls: the same "Search…" item the menu bar and the tray use.
+  await app.evaluate(({ Menu }) => {
+    const view = Menu.getApplicationMenu()!.items.find((i) => i.label === "View")!;
+    view.submenu!.items.find((i) => i.label === "Search…")!.click();
+  });
+  await expect(page).toHaveTitle("Search open");
   await app.close();
 });

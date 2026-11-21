@@ -16,7 +16,7 @@
 - Production origin `https://trellis.niteshkumar.xyz`. `TRELLIS_URL` may override it **only when `!app.isPackaged`** (local dev against `http://localhost:3000`).
 - Window: `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`; all permission requests refused; start path `/map`.
 - Deep-link scheme `trellis`; accepted: `trellis://auth?code=<43 base64url chars>` and `trellis://open/map`. Everything else ignored.
-- Global shortcut `Control+Alt+T` (⌃⌥T); Go menu: Map ⌘1 (`/map`), Start ⌘2 (`/start`), Settings ⌘3 (`/settings`).
+- Global shortcut `Control+Alt+T` (⌃⌥T); Go menu: Map ⌘1 (`/map`), Check-ins ⌘2 (`/check-ins`), Settings ⌘3 (`/settings`).
 - Reminder copy: title "Time to study", body "Your map is waiting." Update copy: title "Trellis <version> is available", body "Click to download it."
 - Update source: `https://api.github.com/repos/niteshkumar7557/trellis-desktop/releases/latest` (public release repo; the owner creates it).
 - Hand-off code: 32 random bytes base64url (43 chars), stored as SHA-256 hex, 2-minute expiry, single use. Challenge = base64url(SHA-256(verifier)), 43 chars.

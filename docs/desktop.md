@@ -245,7 +245,7 @@ $99-a-year Developer Program; that's the production answer.
 
 | Feature | What it does | Electron API |
 |---|---|---|
-| **Menu** | The standard Mac menus (Trellis, Edit, View, Window, Help) plus **Go**: Map ⌘1, Start ⌘2, Settings ⌘3. View: reload, zoom. Trellis menu: **Check for Updates…** | `Menu`, `MenuItem` roles |
+| **Menu** | The standard Mac menus (Trellis, Edit, View, Window, Help) plus **Go**: Map ⌘1, Check-ins ⌘2, Settings ⌘3 (the site's sidebar; changed from "Start" while building, 21 Nov 2026: Start is the one-time setup page). View: Search…, reload, zoom. Trellis menu: **Check for Updates…** | `Menu`, `MenuItem` roles |
 | **Tray** (menu-bar icon) | Show Trellis, Search, Daily reminder on/off and time, Check for Updates, Quit | `Tray`, a template image |
 | **Notifications** | A **daily study reminder** at a time the student picks ("Time to study. Your map is waiting."); and **"Trellis X is available"**. Clicking one opens the app on `/map` (or the download). Scheduled in main; no server. | `Notification` |
 | **Global shortcut** | **⌃⌥T** from any app: bring Trellis to the front and open search (the site's ⌘K). Not ⌘⇧T, which every browser uses for "reopen tab". | `globalShortcut`, `webContents.sendInputEvent` |
@@ -328,8 +328,8 @@ desktop/
 
 | Step | State |
 |---|---|
-| 1. The secure window | not started |
-| 2. Menu, tray, shortcut | not started |
+| 1. The secure window | done |
+| 2. Menu, tray, shortcut | done (icons script too) |
 | 3. Notifications, update check | not started |
 | 4. Deep links | not started |
 | 5. Backend hand-off + `/auth/desktop` + tests | not started |

@@ -130,3 +130,24 @@ export function retry(): void {
 function isOnScreen(b: Bounds): boolean {
   return screen.getAllDisplays().some(({ workArea: a }) => b.x < a.x + a.width && b.x + b.width > a.x && b.y < a.y + a.height && b.y + b.height > a.y);
 }
+
+/**
+ * Bring Trellis forward with the site's search open.
+ *
+ * It presses ⌘K for the page (`sendInputEvent` is a real key event, as if typed), so the
+ * site's own shortcut handler opens its search. The alternative, a new bridge call the
+ * site would listen for, means changing the frontend for something the site can already
+ * do. The cost: the site's ⌘K toggles, so pressing it while search is open closes it.
+ */
+export function openSearch(): void {
+  const w = win ?? createMainWindow();
+  w.show();
+  w.focus();
+  const press = () => {
+    w.webContents.focus();
+    for (const type of ["keyDown", "keyUp"] as const) w.webContents.sendInputEvent({ type, keyCode: "K", modifiers: ["meta"] });
+  };
+  // A window that's still loading would drop the key; wait for it.
+  if (w.webContents.isLoading()) w.webContents.once("did-finish-load", press);
+  else press();
+}
