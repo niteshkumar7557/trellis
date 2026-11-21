@@ -14,8 +14,15 @@ test.beforeAll(async () => {
   site = createServer((_req, res) => {
     res.writeHead(200, { "content-type": "text/html" });
     // Like the real site's search (frontend/components/app/Search.tsx), it reacts to ⌘K.
+    // Also a link to a second page, and a stand-in for the map: a box that uses every scroll
+    // (preventDefault), as the real map does to pan (frontend/components/map/MapCanvas.tsx).
     res.end(`<!doctype html><title>Fake Trellis</title><a id="out" href="https://example.com/">out</a>
-      <script>addEventListener("keydown", (e) => { if (e.metaKey && e.key.toLowerCase() === "k") document.title = "Search open"; });</script>`);
+      <a id="next" href="/next">next</a>
+      <div id="map" style="position:fixed;right:0;bottom:0;width:300px;height:300px;background:#ddd"></div>
+      <script>
+        addEventListener("keydown", (e) => { if (e.metaKey && e.key.toLowerCase() === "k") document.title = "Search open"; });
+        document.getElementById("map").addEventListener("wheel", (e) => e.preventDefault(), { passive: false });
+      </script>`);
   });
   await new Promise<void>((resolve) => site.listen(0, "127.0.0.1", resolve));
   const addr = site.address();
@@ -178,5 +185,74 @@ test("the first page is Log in when signed out, and your map once you have a ses
   app = await launch(siteUrl, { userData });
   page = await app.firstWindow();
   await expect(page).toHaveURL(`${siteUrl}/map`);
+  await app.close();
+});
+
+/** Click a Go menu item by label. */
+const clickGo = (app: ElectronApplication, label: string) =>
+  app.evaluate(({ Menu }, l) => {
+    const go = Menu.getApplicationMenu()!.items.find((i) => i.label === "Go")!;
+    go.submenu!.items.find((i) => i.label === l)!.click();
+  }, label);
+const goEnabled = (app: ElectronApplication) =>
+  app.evaluate(({ Menu }) => {
+    const m = Menu.getApplicationMenu()!;
+    return { back: m.getMenuItemById("back")!.enabled, forward: m.getMenuItemById("forward")!.enabled };
+  });
+
+test("Go → Back and Forward move through history, greyed out when there's nowhere to go", async () => {
+  const app = await launch(siteUrl);
+  const page = await app.firstWindow();
+  await expect(page).toHaveURL(`${siteUrl}/login`);
+  expect(await goEnabled(app)).toEqual({ back: false, forward: false });
+
+  await page.click("#next");
+  await expect(page).toHaveURL(`${siteUrl}/next`);
+  await expect.poll(() => goEnabled(app)).toEqual({ back: true, forward: false });
+
+  await clickGo(app, "Back");
+  await expect(page).toHaveURL(`${siteUrl}/login`);
+  await expect.poll(() => goEnabled(app)).toEqual({ back: false, forward: true });
+
+  await clickGo(app, "Forward");
+  await expect(page).toHaveURL(`${siteUrl}/next`);
+  await app.close();
+});
+
+/** A two-finger swipe: real (trusted) scroll events, 16 ms apart, with the pointer at (x, y). */
+async function swipe(page: import("@playwright/test").Page, x: number, y: number, dx: number) {
+  await page.mouse.move(x, y);
+  for (let i = 0; i < 10; i++) {
+    await page.mouse.wheel(dx, 0);
+    await page.waitForTimeout(16);
+  }
+}
+
+test("a two-finger swipe goes back and forward", async () => {
+  const app = await launch(siteUrl);
+  const page = await app.firstWindow();
+  await expect(page).toHaveURL(`${siteUrl}/login`);
+  await page.click("#next");
+  await expect(page).toHaveURL(`${siteUrl}/next`);
+
+  await swipe(page, 100, 100, -40); // toward the left edge: Back
+  await expect(page).toHaveURL(`${siteUrl}/login`);
+  await page.waitForTimeout(400); // a pause: the next swipe is a new gesture
+  await swipe(page, 100, 100, 40); // toward the right edge: Forward
+  await expect(page).toHaveURL(`${siteUrl}/next`);
+  await app.close();
+});
+
+test("a swipe over the map pans it and never leaves the page", async () => {
+  const app = await launch(siteUrl);
+  const page = await app.firstWindow();
+  await expect(page).toHaveURL(`${siteUrl}/login`);
+  await page.click("#next");
+  await expect(page).toHaveURL(`${siteUrl}/next`);
+
+  const box = (await page.locator("#map").boundingBox())!;
+  await swipe(page, box.x + 150, box.y + 150, -40); // over the "map", which uses the scroll
+  await page.waitForTimeout(500);
+  expect(page.url()).toBe(`${siteUrl}/next`);
   await app.close();
 });

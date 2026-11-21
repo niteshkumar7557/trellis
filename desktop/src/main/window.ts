@@ -4,7 +4,7 @@
 // no Electron, its own sandboxed process. Everything it may ask main for goes through the
 // preload (src/preload/index.ts), and main checks who's asking (isTrustedSender).
 
-import { app, BrowserWindow, nativeTheme, screen, session, shell, type IpcMainEvent } from "electron";
+import { app, BrowserWindow, Menu, nativeTheme, screen, session, shell, type IpcMainEvent } from "electron";
 import { join } from "node:path";
 import { BACKGROUND, siteOrigin, START_PATH } from "./config";
 import { isAllowedUrl, isExternalSafe } from "./security";
@@ -141,6 +141,12 @@ export function createMainWindow(): BrowserWindow {
   });
   w.on("closed", () => (win = null));
 
+  // Back and Forward in the Go menu are greyed out when there's nowhere to go. A full page
+  // load and the site's own client-side moves (Next.js uses history.pushState, which
+  // Electron reports as "in-page") both change that.
+  w.webContents.on("did-navigate", updateHistoryItems);
+  w.webContents.on("did-navigate-in-page", updateHistoryItems);
+
   void firstPath().then((path) => w.loadURL(siteOrigin() + path));
   return w;
 }
@@ -186,4 +192,25 @@ export function openSearch(): void {
   // A window that's still loading would drop the key; wait for it.
   if (w.webContents.isLoading()) w.webContents.once("did-finish-load", press);
   else press();
+}
+
+/** The Go menu's Back. Electron 32+ keeps history on webContents.navigationHistory. */
+export function goBack(): void {
+  const h = win?.webContents.navigationHistory;
+  if (h?.canGoBack()) h.goBack();
+}
+
+export function goForward(): void {
+  const h = win?.webContents.navigationHistory;
+  if (h?.canGoForward()) h.goForward();
+}
+
+/** Grey out Back / Forward when there's nowhere to go (the items' ids are in menu-template.ts). */
+export function updateHistoryItems(): void {
+  const menu = Menu.getApplicationMenu();
+  const h = win?.webContents.navigationHistory;
+  const back = menu?.getMenuItemById("back");
+  const forward = menu?.getMenuItemById("forward");
+  if (back) back.enabled = Boolean(h?.canGoBack());
+  if (forward) forward.enabled = Boolean(h?.canGoForward());
 }

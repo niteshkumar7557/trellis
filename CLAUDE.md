@@ -49,9 +49,9 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 ## Where things stand (21 Nov 2026)
 
 - **Desktop app (21 Nov 2026): merged into `main` with merge commits and released; pushed.
-  Current version 1.0.1.** `desktop/` is an Electron Mac app (Apple Silicon, ad-hoc signed,
+  Current version 1.0.2.** `desktop/` is an Electron Mac app (Apple Silicon, ad-hoc signed,
   no notarization: $0) that loads the live site in a locked-down window, with a menu,
-  menu-bar icon, update check, ⌃⌥T, and Google sign-in in the system browser handed back by
+  menu-bar icon, update check, ⌃⌥T, Back/Forward (⌘[ ⌘] and a two-finger swipe that yields to the map's panning), and Google sign-in in the system browser handed back by
   `trellis://` with PKCE. It opens Log in when signed out, the map when signed in. **No
   reminders** (1.0.1 removed 1.0.0's daily reminder: design.md §14 and the landing page
   promise none). It's a graded elective; **everything about it is in `docs/desktop.md`.**
@@ -60,7 +60,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   the app, `frontend/lib/desktop.ts`). The backend half is live: migration 0020
   `desktop_handoffs`, `GET /api/auth/google?desktop=`, `POST /api/auth/desktop/exchange`,
   the `/auth/desktop` page. Counts: backend `npm test` 329, `npm run test:integration` 96;
-  desktop `npm test` 26, `npm run test:e2e` 8, `npm run test:e2e:stack` 3.
+  desktop `npm test` 33, `npm run test:e2e` 11, `npm run test:e2e:stack` 3.
 - **No graph database (21 Nov 2026): merged into `main` with a merge commit (branch
   `chore/drop-graph-database`, deleted) and released the same day; pushed.** The owner removed it: it took a 768 MB share of the 2 GB server and
   nothing a student sees needed it. The API now reads the topic graph from `shared/data`

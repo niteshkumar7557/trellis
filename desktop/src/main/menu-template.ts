@@ -20,6 +20,17 @@ export function goItems(): GoItem[] {
 }
 
 /**
+ * Back and Forward, on the keys Safari and Chrome use. The ids let window.ts grey them out
+ * when there's nowhere to go.
+ */
+export function historyItems(): { id: "back" | "forward"; label: string; accelerator: string }[] {
+  return [
+    { id: "back", label: "Back", accelerator: "CmdOrCtrl+[" },
+    { id: "forward", label: "Forward", accelerator: "CmdOrCtrl+]" },
+  ];
+}
+
+/**
  * The global shortcut: bring Trellis forward with search open, from any app.
  * Not ⌘⇧T: a global shortcut takes the keys away from EVERY app, and ⌘⇧T is "reopen the
  * closed tab" in every browser. ⌃⌥T is free in macOS and in common apps.
@@ -32,4 +43,6 @@ export interface AppActions {
   go(path: string): void;
   openSearch(): void;
   checkForUpdates(): void;
+  back(): void;
+  forward(): void;
 }
