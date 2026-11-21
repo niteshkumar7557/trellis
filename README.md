@@ -137,7 +137,7 @@ backend/
   src/                 Express API: accounts, each student's record, the helper, the AI and its limits
   test/                Vitest unit tests; test/integration/ against the real Postgres
 desktop/               the Mac app (Electron, Apple Silicon): the live site in a locked-down window,
-                       with a menu, tray, reminder, ⌃⌥T and Google sign-in by trellis://; docs/desktop.md
+                       with a menu, tray, ⌃⌥T and Google sign-in by trellis://; docs/desktop.md
 deploy/                production: Docker Compose, Caddy, the release, deploy and backup scripts
 docs/                  start at docs/README.md
 ```

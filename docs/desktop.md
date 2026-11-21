@@ -8,8 +8,9 @@ sign-in through the system browser, and an update check.
 It's a graded university elective (21 Nov 2026). The owner must explain every decision in
 a viva, so every choice below names the alternatives and the trade-off.
 
-Status: **1.0.0 released, 21 Nov 2026** (design approved by the owner the same day; merged
-into `main` with a merge commit). Download: https://github.com/niteshkumar7557/trellis-desktop/releases/latest
+Status: **1.0.1 released, 21 Nov 2026** (1.0.0 the same day; design approved by the owner
+that morning). Download: https://github.com/niteshkumar7557/trellis-desktop/releases/latest,
+linked from the landing page's footer and from Settings (§13 lists what 1.0.1 changed).
 
 ---
 
@@ -121,9 +122,10 @@ and the ad-hoc signature only proves the app hasn't changed since it was built, 
 built it (§6).
 
 **Small things the window also does:** it remembers its size and position (a JSON file in
-the app's data folder); it starts at `/map` (a signed-in student sees their map; a
-signed-out one sees the demo with "Sign in"); it shows a bundled offline page when the site
-can't be reached.
+the app's data folder); it opens `/map` for a student with a session and `/login` for anyone
+else (`start-path.ts`, since 1.0.1; 1.0.0 always opened `/map`, which left a signed-out
+student on the sample student with no way to log in); it shows a bundled offline page when
+the site can't be reached.
 
 ---
 
@@ -260,8 +262,8 @@ $99-a-year Developer Program; that's the production answer.
 | Feature | What it does | Electron API |
 |---|---|---|
 | **Menu** | The standard Mac menus (Trellis, Edit, View, Window, Help) plus **Go**: Map ⌘1, Check-ins ⌘2, Settings ⌘3 (the site's sidebar; changed from "Start" while building, 21 Nov 2026: Start is the one-time setup page). View: Search…, reload, zoom. Trellis menu: **Check for Updates…** | `Menu`, `MenuItem` roles |
-| **Tray** (menu-bar icon) | Show Trellis, Search, Daily reminder on/off and time, Check for Updates, Quit | `Tray`, a template image |
-| **Notifications** | A **daily study reminder** at a time the student picks ("Time to study. Your map is waiting."); and **"Trellis X is available"**. Clicking one opens the app on `/map` (or the download). Scheduled in main; no server. | `Notification` |
+| **Tray** (menu-bar icon) | Show Trellis, Search, Check for Updates, Quit | `Tray`, a template image |
+| **Notifications** | Only **"Trellis X is available"**, from the update check; clicking it opens the download page. (1.0.0 also had a daily study reminder; 1.0.1 removed it, see §13.) | `Notification` |
 | **Global shortcut** | **⌃⌥T** from any app: bring Trellis to the front and open search (the site's ⌘K). Not ⌘⇧T, which every browser uses for "reopen tab". | `globalShortcut`, `webContents.sendInputEvent` |
 | **Deep links** | `trellis://auth?code=…` (sign-in, §5) and `trellis://open/map`. Anything else is ignored. | `open-url`, `CFBundleURLTypes` |
 | **Update check** | At start, once a day and from the menu: ask GitHub for the release repo's latest release, compare its version with `app.getVersion()`, and if newer, notify and offer to open the download page. | `net.fetch`, `shell.openExternal` |
@@ -273,7 +275,7 @@ allows 60 unauthenticated calls an hour per address, far more than a daily check
 The release repo must be **public**; the owner creates it (an outward-facing step, so it
 waits for the owner's say-so).
 
-**Settings the app keeps** (reminder on/off, its time, window bounds): a small JSON file
+**Settings the app keeps** (the window's position): a small JSON file
 in `app.getPath("userData")`. Not `electron-store`: the needs are tiny and one file with
 `JSON.parse` is easier to debug.
 
@@ -307,8 +309,7 @@ desktop/
       settings.ts          the JSON settings file                  (pure, unit-tested)
       menu-template.ts     the Go items, the shortcut, AppActions  (pure, unit-tested)
       menu.ts  tray.ts  shortcut.ts
-      reminder-time.ts     when the reminder fires next            (pure, unit-tested)
-      reminder.ts          the reminder's timer, notification and tray submenu
+      start-path.ts        the first page: map or Log in            (pure, unit-tested)
       version.ts           version compare, GitHub's answer         (pure, unit-tested)
       updates.ts           the update check
       deeplink.ts          parse trellis:// links, the start-up queue (pure, unit-tested)
@@ -326,7 +327,7 @@ Generated and git-ignored: `dist/` (compiled code), `build/` and `assets/` (icon
 `release/` (the `.app` and `.dmg`).
 
 **Why "pure" files:** anything that decides something (is this URL allowed, is this
-version newer, when does the reminder fire, is this link valid) lives in a file with no
+version newer, which page opens first, is this link valid) lives in a file with no
 `electron` import. Those run in plain Node, so they're fast to test and run in CI. The
 files that touch macOS stay thin and are covered by the Playwright tests.
 
@@ -343,8 +344,8 @@ directly).
 | `npm start` | Build and open the app from source, on the live site. |
 | `TRELLIS_URL=http://localhost:3000 npm start` | The same, on the local frontend (see CLAUDE.md "Run"). |
 | `npm run typecheck` | `tsc` with no output. |
-| `npm test` | Unit tests (27): the pure files. In CI too. |
-| `npm run test:e2e` | Playwright (8): launches the real app against a tiny fake site; checks the lockdown, permissions, offline page, menu, shortcut, update check and reminder. |
+| `npm test` | Unit tests (26): the pure files. In CI too. |
+| `npm run test:e2e` | Playwright (8): launches the real app against a tiny fake site; checks the lockdown, permissions, offline page, menu, shortcut, update check and the first page (Log in, or the map with a session). |
 | `npm run test:e2e:stack` | Playwright (3): the real app against the **local stack** (dev Postgres, backend on :8000, frontend on :3000 must be running): the whole Google sign-in except Google itself, an unasked-for link ignored, `trellis://open/map`. |
 | `npm run dist` | Icons, build, and `release/Trellis-<version>-arm64.dmg`, ad-hoc signed with the Fuses set. |
 
@@ -356,7 +357,6 @@ them to change a student's copy):
 | `TRELLIS_URL` | Point the window at another site, e.g. the local frontend. |
 | `TRELLIS_USER_DATA` | Use another data folder (each e2e test gets a fresh one). |
 | `TRELLIS_UPDATES=off` | No background update check (tests never depend on GitHub). |
-| `TRELLIS_REMINDER_TEST=1` | The reminder fires 10 seconds after start, to see it work. |
 
 From source, the app never registers `trellis://` with macOS (it would register the
 generic Electron binary); tests deliver links by emitting `open-url`.
@@ -410,10 +410,13 @@ on the owner's laptop.
 | 21 Nov 2026 | The hand-off code reuses the backend's `newRandomToken()` (64 hex) | One random-secret function to audit, not two |
 | 21 Nov 2026 | `.dmg` in a public GitHub release repo (owner) | Free; private code stays private |
 | 21 Nov 2026 | Update check, not auto-update | Squirrel.Mac needs Developer ID signing |
-| 21 Nov 2026 | Daily reminder + update notifications; ⌃⌥T (owner) | Real desktop features with no server change |
+| 21 Nov 2026 | Daily reminder + update notifications; ⌃⌥T (owner) | Real desktop features with no server change. **The reminder was reversed the same day (1.0.1)**, see below |
 | 21 Nov 2026 | Go menu: Map, Check-ins, Settings | Mirrors the site's sidebar; Start is a one-time page |
-| 21 Nov 2026 | Closing the window hides it; ⌘Q quits | The Mac convention; the reminder keeps working and reopening is instant |
+| 21 Nov 2026 | Closing the window hides it; ⌘Q quits | The Mac convention; ⌃⌥T keeps working and reopening is instant |
 | 21 Nov 2026 | The `.dmg` has a plain background colour | electron-builder's default background is a bitmap; Trellis ships none |
+| 21 Nov 2026 | **No daily reminder** (removed in 1.0.1, owner) | It broke two written promises: `design.md` §14 puts "Reminders, notifications" outside v1, and the landing page says "No streaks, no reminders". It was proposed without checking the design. The update notification stays: it answers a check, it doesn't ask the student to study |
+| 21 Nov 2026 | The app opens Log in when signed out (1.0.1) | The app has no landing page; 1.0.0 opened the sample student with no way to log in |
+| 21 Nov 2026 | Download links in the landing footer and in Settings, hidden inside the app | Signed-in students never see the landing page; the links point at the latest release page, which never changes |
 
 ---
 
@@ -429,14 +432,12 @@ on the owner's laptop.
 | 6. Icons, packaging, `.dmg` | done: `Trellis-1.0.0-arm64.dmg` built and checked locally |
 | 7. Docs in step | done |
 | Shipped (21 Nov 2026) | merged into `main` with a merge commit and released (the backend hand-off is live); the public repo https://github.com/niteshkumar7557/trellis-desktop has release **v1.0.0** with the `.dmg` |
-| Not yet | a download link on the site (not in this design) |
+| 1.0.1 (21 Nov 2026) | see §13 |
 
 **Known limits** (honest, for the viva):
 
 - Without notarization, every student meets Gatekeeper's "Open Anyway" once.
 - Updates are manual: download and replace.
-- The reminder only fires while the app runs (closing the window keeps it running; ⌘Q
-  stops it). Starting at login isn't built.
 - The global shortcut presses ⌘K, and the site's ⌘K toggles: pressing ⌃⌥T while search is
   already open closes it.
 - Signing in with Google needs the browser's "Open Trellis?" prompt allowed once.
@@ -446,3 +447,26 @@ on the owner's laptop.
   (HTTP 403 "rate limit exceeded"). The app then stays quiet (background) or says
   "Couldn't check for updates" (menu); it never breaks. The fix, if it matters: a small
   `latest.json` served by the site (CloudFront), checked first.
+
+---
+
+## 13. Changes since 1.0.0
+
+**1.0.1 (21 Nov 2026), with a site release the same day.** The owner opened 1.0.0 and found
+the sample student with no way to log in or out:
+
+- **The cause:** 1.0.0 opened `/map`. Signed out, the site shows the sample student there,
+  and its bar offered only "Start your own map". A browser visitor finds Log in on the
+  landing page; the app never shows it. (This doc's first version claimed the demo had a
+  "Sign in"; it didn't, and nobody checked.) Log out was there all along, in Settings →
+  Account, but only when signed in.
+- **App:** opens `/login` when the window's cookie store has no `refresh_token`, else
+  `/map` (`start-path.ts`, `firstPath()` in `window.ts`; unit and e2e tested).
+- **Site:** the sample-student bar has **Log in** next to "Start your own map", in the
+  browser and in the app (`components/app/Shell.tsx`).
+- **Site:** a download link: "Mac app (Apple Silicon)" in the landing footer and a "Mac app"
+  panel in Settings, both to the latest release page and hidden inside the app
+  (`frontend/lib/desktop.ts`: `MAC_APP_URL`, `useIsDesktopApp()`, which reads
+  `window.trellisDesktop` from the preload).
+- **App:** the daily study reminder is gone (§11, "No daily reminder"). The settings file
+  keeps only the window's position; a 1.0.0 file's reminder field is ignored.

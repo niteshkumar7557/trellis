@@ -229,6 +229,8 @@ frontend/
     api.ts                 the one API client: the access token in memory, refresh and retry (§11)
     store.tsx              the client store (§10)
     usage.ts               the words for the AI allowance: which window, reset times, basic mode (§11)
+    desktop.ts             the Mac app's download link (MAC_APP_URL) and useIsDesktopApp(), which hides
+                           it inside the app (docs/desktop.md §13)
     theme.tsx, gsap.ts     theme and motion setup
 shared/                    the domain code; the backend runs the same files (import as @shared/*)
   types.ts                 every shape (the data contract, §12)
