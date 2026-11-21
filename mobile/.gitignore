@@ -32,6 +32,9 @@ yarn-error.*
 
 # local env files
 .env*.local
+# Trellis: mobile/.env holds the release signing key (docs/mobile.md §9). Expo's template
+# only ignores .env*.local, because Expo expects .env to be committed; ours is a secret.
+.env
 
 # typescript
 *.tsbuildinfo

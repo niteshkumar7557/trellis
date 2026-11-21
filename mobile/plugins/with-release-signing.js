@@ -4,8 +4,9 @@
 // 1. Release builds are signed with OUR key. As generated, React Native signs release
 //    builds with the public debug key ("Caution! In production, you need to generate your
 //    own keystore"); anyone could sign an "update" with that. The keystore and its passwords
-//    are read from ~/.gradle/gradle.properties (TRELLIS_UPLOAD_*), never from the repo. If
-//    they're missing, the release build FAILS rather than quietly using the debug key.
+//    come from mobile/.env (git-ignored), which scripts/apk.sh hands to Gradle as
+//    TRELLIS_UPLOAD_* properties. If they're missing, the release build FAILS rather than
+//    quietly using the debug key.
 // 2. Only arm64-v8a is built: every phone sold in years is 64-bit ARM, and leaving out the
 //    other three architectures roughly halves the APK.
 
@@ -13,7 +14,7 @@ const { withAppBuildGradle, withGradleProperties } = require("expo/config-plugin
 
 const SIGNING = `
         release {
-            // From ~/.gradle/gradle.properties: see docs/mobile.md §9 (Signing).
+            // From mobile/.env through scripts/apk.sh: see docs/mobile.md §9 (Signing).
             if (project.hasProperty('TRELLIS_UPLOAD_STORE_FILE')) {
                 storeFile file(TRELLIS_UPLOAD_STORE_FILE)
                 storePassword TRELLIS_UPLOAD_STORE_PASSWORD
@@ -26,7 +27,7 @@ const GUARD = `
 // Trellis: never ship a release signed with the debug key (plugins/with-release-signing.js).
 gradle.taskGraph.whenReady { graph ->
     if (graph.allTasks.any { it.name.toLowerCase().contains("release") } && !project.hasProperty('TRELLIS_UPLOAD_STORE_FILE')) {
-        throw new GradleException("Release signing isn't set up: add TRELLIS_UPLOAD_* to ~/.gradle/gradle.properties (docs/mobile.md §9).")
+        throw new GradleException("Release signing isn't set up: build with npm run apk, which reads mobile/.env (docs/mobile.md §9).")
     }
 }
 `;

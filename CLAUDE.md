@@ -58,8 +58,8 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   mobile` makes the auth routes keep the refresh token in the JSON body (the app stores it
   in `expo-secure-store`); Google reuses the desktop hand-off through Chrome Custom Tabs.
   Built locally into a self-signed arm64 `.apk` (`npm run apk`; JDK 17 from Homebrew; the
-  keystore is `~/.trellis/trellis-android.keystore`, passwords in `~/.gradle/gradle.properties`,
-  **never in the repo, back it up**). Releases go to the public `trellis-android` repo
+  signing key and its passwords are in **`mobile/.env` (git-ignored; never commit it)**,
+  read by `npm run apk`; a copy of the keystore is in `~/.trellis/`; **back it up off the Mac**). Releases go to the public `trellis-android` repo
   (`gh release create v<version> …`, docs/mobile.md §9). **An APK must never need an API
   the live site doesn't have yet: release the backend first.** No reminders or
   notifications (design.md §14). Counts: backend `npm test` 338, `npm run test:integration`
