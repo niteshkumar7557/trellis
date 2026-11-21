@@ -49,10 +49,16 @@ const config: ExpoConfig = {
     },
     // Android 13+'s back gesture shows the screen underneath before you let go (§7).
     predictiveBackGestureEnabled: true,
-    // Nothing the app does needs a permission beyond the internet, which React Native
-    // declares itself. An empty list keeps libraries from adding any by default.
+    // Nothing the app does needs a permission beyond the internet (React Native declares
+    // it) and vibration (haptics, which expo-haptics declares).
     permissions: [],
+    // Libraries add some by default; each is removed here because Trellis never uses it:
+    // biometrics (expo-secure-store's optional fingerprint lock), the Play Store install
+    // referrer (expo-application), and storage and overlay access.
     blockedPermissions: [
+      "android.permission.USE_BIOMETRIC",
+      "android.permission.USE_FINGERPRINT",
+      "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE",
       "android.permission.SYSTEM_ALERT_WINDOW",
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -84,6 +90,10 @@ const config: ExpoConfig = {
         dark: { image: "./assets/generated/splash-dark.png", backgroundColor: GROUND_DARK },
       },
     ],
+    // Release signing with our own key, arm64 only (docs/mobile.md §9).
+    "./plugins/with-release-signing",
+    // Long-press the icon: Map, Helper (docs/mobile.md §7).
+    "./plugins/with-shortcuts",
   ],
   experiments: {
     typedRoutes: true,
