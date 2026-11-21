@@ -4,7 +4,8 @@
 #   ./deploy/release.sh            from the repo root, on a clean, committed tree
 #
 # Steps, each printed as it runs:
-#   1. the AWS account check (aws.md §2): stop unless it is the Trellis account
+#   1. the AWS account check (aws.md §2): stop unless it is the Trellis account; then
+#      stop unless GitHub's CI passed for this exact commit (.github/workflows/ci.yml)
 #   2. build both images for linux/arm64 (the server is a Graviton t4g.small)
 #   3. push them to ECR, tagged with the commit's short hash
 #   4. copy deploy/ to /opt/trellis and run deploy.sh <tag> there, through Session
@@ -32,6 +33,37 @@ if [[ -n "$(git status --porcelain)" ]]; then
   echo "Commit or stash your changes first: the tag must describe exactly what ships." >&2
   exit 1
 fi
+
+# Only a commit that CI passed may ship. Why here and not by hand: the checks used to
+# depend on remembering to run them, and a broken test once went unnoticed for two days.
+# The commit must be pushed, so GitHub has run the workflow on it.
+#
+# SKIP_CI_CHECK=1 is the emergency override (GitHub down, a fix that can't wait). It is
+# loud on purpose: run the checks by hand first (CLAUDE.md "Checks").
+SHA=$(git rev-parse HEAD)
+if [[ "${SKIP_CI_CHECK:-}" == 1 ]]; then
+  echo "WARNING: SKIP_CI_CHECK=1, releasing ${SHA:0:7} without checking CI." >&2
+else
+  command -v gh >/dev/null || { echo "The CI check needs the GitHub CLI: brew install gh, then gh auth login." >&2; exit 1; }
+  # The newest CI run for this commit: "<status> <conclusion> <url>", or nothing.
+  # `.[]` and not `.[0]`: with no run, .[0] would print "null null null".
+  RUN=$(gh run list --commit "$SHA" --workflow ci.yml --limit 1 \
+    --json status,conclusion,url --jq '.[] | "\(.status) \(.conclusion) \(.url)"') ||
+    { echo "Could not ask GitHub about CI (the error is above). Check gh auth status." >&2; exit 1; }
+  read -r CI_STATUS CI_CONCLUSION CI_URL <<<"$RUN"
+  if [[ -z "$RUN" ]]; then
+    echo "No CI run for ${SHA:0:7}. Push it (git push), wait for CI to pass, then release." >&2
+    exit 1
+  elif [[ "$CI_STATUS" != completed ]]; then
+    echo "CI is still running for ${SHA:0:7}: ${CI_URL}. Release when it passes (gh run watch)." >&2
+    exit 1
+  elif [[ "$CI_CONCLUSION" != success ]]; then
+    echo "CI did not pass for ${SHA:0:7} (${CI_CONCLUSION}): ${CI_URL}" >&2
+    exit 1
+  fi
+  echo "CI passed for ${SHA:0:7}: ${CI_URL}"
+fi
+
 TAG=$(git rev-parse --short HEAD)
 REGISTRY="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
 echo "Releasing ${TAG} to ${REGISTRY}"
