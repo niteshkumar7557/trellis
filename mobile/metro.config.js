@@ -17,6 +17,8 @@ config.watchFolders = [
   ...(config.watchFolders ?? []),
   path.resolve(__dirname, "../shared"),
   path.resolve(__dirname, "../frontend/components/brand"),
+  // usage.ts: the words for the AI allowance, so the app says what the site says.
+  path.resolve(__dirname, "../frontend/lib"),
 ];
 
 // Babel adds helper imports (like @babel/runtime) to every file it compiles, ../shared's
