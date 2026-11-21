@@ -7,10 +7,12 @@ the same domain code as the site (`shared/`) and talks to the same API.
 It's a graded university elective (21 Nov 2026). The owner must explain every decision in a
 viva, so every choice below names the alternatives and the trade-off.
 
-Status: **built on branch `feature/mobile` (21 Nov 2026)**: every screen, the backend's
-mobile mode, the signed `release/Trellis-1.0.0-arm64.apk` (31 MB). Checked on the Android 17
-emulator (sign-up, Start, the swipe sort, the map, the topic sheet) and by 70 tests. Not yet
-merged, released or published; §11 says what's left.
+Status: **1.0.0 published, 21 Nov 2026.** Download:
+https://github.com/niteshkumar7557/trellis-android/releases/latest (linked from the landing
+footer and Settings). Merged into `main` with a merge commit (`d7e48b6`); the backend's
+mobile mode released the same day. Checked on the owner's Android 17 phone (motorola edge 70
+fusion) with the release APK against the live site: Google sign-in, the map with a real
+record, a topic, the helper (Got it → Save → Undo), Check-ins, Settings, dark mode. 70 tests.
 
 ---
 
@@ -524,7 +526,8 @@ a push, and the keystore must never leave the Mac.
 | 7. Check-ins and Settings | done (unit-tested; not yet tried on a device) |
 | 8. Icons, signing, release APK, update check | done: `Trellis-1.0.0-arm64.apk`, installed and opened on the emulator |
 | 9. CI, docs | done |
-| Left | the owner's phone (USB debugging) for §12's checklist; merge (owner's choice of how); the backend release; create `trellis-android` and publish v1.0.0 **after** the backend release |
+| Shipped (21 Nov 2026) | merged (`d7e48b6`, merge commit), CI green, backend released, checked on the owner's phone, `trellis-android` created, **v1.0.0 published** (SHA-256 `23f14e69…2d4b39`) |
+| Not yet tried on a device | email sign-up on the live site, Share and the AI apps, swipe-to-delete, export, airplane mode, the launcher shortcuts (all unit-tested or tried on the emulator) |
 
 ---
 
