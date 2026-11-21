@@ -8,8 +8,9 @@ sign-in through the system browser, and an update check.
 It's a graded university elective (21 Nov 2026). The owner must explain every decision in
 a viva, so every choice below names the alternatives and the trade-off.
 
-Status: **design approved by the owner, 21 Nov 2026; being built on `feature/desktop`.** This doc is
-updated as each part lands; the "Progress" table at the end says what exists.
+Status: **built on `feature/desktop`, 21 Nov 2026** (design approved by the owner the same
+day). Version 1.0.0 is built and checked locally; the "Progress" table at the end says what's
+left before students can download it.
 
 ---
 
@@ -110,7 +111,7 @@ says what it stops.
 | `webSecurity` left on | Turning off the same-origin rules. |
 | **Navigation allow-list**: only `https://trellis.niteshkumar.xyz` may load in the window (`will-navigate`, `will-redirect`) | A link or redirect taking the trusted window to another site. |
 | **New windows**: `setWindowOpenHandler` denies all; `http(s)` links open in the default browser with `shell.openExternal` | Pop-ups inside the app; and nothing but `http(s)` is ever passed to the OS. |
-| **Permissions**: every request (camera, microphone, location, …) is refused | The site, or anything injected into it, using the Mac's hardware. Trellis needs none. |
+| **Permissions**: every request (camera, microphone, location, …) is refused, except writing to the clipboard from the site itself | The site, or anything injected into it, using the Mac's hardware. The one exception is because "Copy prompt" uses `navigator.clipboard`, which Chromium treats as a permission. |
 | **IPC checks**: main answers a message only if it came from the main window's frame and the frame's URL is on the allow-list | A stray frame calling the bridge. |
 | A small preload API: about five functions, each taking plain values | The page reaching anything else. |
 | **Electron Fuses** (set when packaging): no `RunAsNode`, no `NODE_OPTIONS`, no `--inspect`, cookies encrypted, app code only from the signed `asar` with integrity checking | Someone using the installed app as a general Node.js runner, or swapping its code. |
@@ -228,11 +229,25 @@ so the `SameSite=Strict` refresh cookie works as it does in a browser.
 
 **Ad-hoc signing** (`mac.identity: "-"`): a signature made without any certificate.
 Apple Silicon refuses to run unsigned code at all, so some signature is required; ad-hoc
-proves the bundle hasn't changed since it was signed, not who made it. Electron's own
-frameworks carry Apple's team signature, so the app also needs the
-`com.apple.security.cs.disable-library-validation` entitlement, or macOS refuses to load
-them into an ad-hoc-signed app. This keeps the hardened runtime on (the alternative,
-turning hardened runtime off, weakens more).
+proves the bundle hasn't changed since it was signed, not who made it.
+
+**The hardened runtime stays on.** It stops other programs injecting code into the app or
+tampering with its memory. Two of its rules have to be relaxed, each with an
+**entitlement** (a permission baked into the signature, in `entitlements.mac.plist`):
+
+- `com.apple.security.cs.allow-jit`: V8 compiles JavaScript to machine code while it
+  runs, which needs memory that is written and then executed. Without it the app dies at
+  launch with "Failed to reserve virtual memory for CodeRange". The first packaged build
+  did exactly that (21 Nov 2026); running from source hid it, because the development
+  Electron doesn't use the hardened runtime. It's the narrow form; the broader
+  `allow-unsigned-executable-memory` isn't needed.
+- `com.apple.security.cs.disable-library-validation`: the hardened runtime loads only
+  code signed by the app's own team. Electron's frameworks carry Electron's team
+  signature and an ad-hoc app has no team, so without this they can't be loaded. A
+  Developer ID-signed app wouldn't need it.
+
+The alternative to both, turning the hardened runtime off, would drop every other
+protection it gives.
 
 **What a student sees:** a downloaded, un-notarized app is blocked the first time
 ("Apple could not verify…"). The fix is **System Settings → Privacy & Security → Open
@@ -280,33 +295,99 @@ bitmap is drawn by hand or committed as the source.
 
 ```
 desktop/
-  package.json            electron, electron-builder, typescript (dev); the build config
-  tsconfig.json
-  entitlements.mac.plist  disable-library-validation (§6)
+  package.json             scripts; dev dependencies only (Electron is the runtime)
+  tsconfig.json            one config, CommonJS (a sandboxed preload can't be an ES module)
+  electron-builder.yml     how the .app and .dmg are made: signing, Fuses, URL scheme (§6)
+  entitlements.mac.plist   allow-jit + disable-library-validation (§6)
   src/
-    main/                 the main process: one file per job
-      index.ts            start-up: single instance, deep-link listener, ready
-      window.ts           the secure window (§4)
-      security.ts         the allow-list and checks (pure, unit-tested)
-      menu.ts  tray.ts  shortcut.ts  notifications.ts  updates.ts  deeplink.ts  auth.ts
-      settings.ts         the JSON settings file
-    preload/index.ts      the bridge (§2)
-    offline.html          the "can't reach Trellis" page
-  scripts/icons.mjs       SVG → PNG and .icns (§8)
-  test/                   unit tests (vitest); one Playwright launch test
+    main/                  the main process, one file per job
+      index.ts             start-up: single instance, open-url, permissions, ready
+      config.ts            the site's origin (TRELLIS_URL only from source)
+      window.ts            the secure window (§4), showPath, openSearch, the offline page
+      security.ts          isAllowedUrl, isExternalSafe            (pure, unit-tested)
+      settings.ts          the JSON settings file                  (pure, unit-tested)
+      menu-template.ts     the Go items, the shortcut, AppActions  (pure, unit-tested)
+      menu.ts  tray.ts  shortcut.ts
+      reminder-time.ts     when the reminder fires next            (pure, unit-tested)
+      reminder.ts          the reminder's timer, notification and tray submenu
+      version.ts           version compare, GitHub's answer         (pure, unit-tested)
+      updates.ts           the update check
+      deeplink.ts          parse trellis:// links, the start-up queue (pure, unit-tested)
+      pkce.ts              verifier and challenge                   (pure, unit-tested)
+      auth.ts              Google sign-in: start in the browser, finish from the link
+    preload/index.ts       the bridge (§2): isDesktop, retry
+    offline.html           "Can't reach Trellis"
+  scripts/icons.ts         SVG mark → app icon (.icns) and tray PNGs (§8)
+  test/                    unit tests (vitest, plain Node)
+  test/e2e/                Playwright: the real app against a fake local site
+  test/e2e-stack/          Playwright: the real app against the local Trellis stack
 ```
+
+Generated and git-ignored: `dist/` (compiled code), `build/` and `assets/` (icons),
+`release/` (the `.app` and `.dmg`).
+
+**Why "pure" files:** anything that decides something (is this URL allowed, is this
+version newer, when does the reminder fire, is this link valid) lives in a file with no
+`electron` import. Those run in plain Node, so they're fast to test and run in CI. The
+files that touch macOS stay thin and are covered by the Playwright tests.
 
 ---
 
 ## 10. Building, running and testing
 
-(Filled in as the parts land.)
+All commands run in `desktop/`. Node 24 or newer (the icons script runs TypeScript
+directly).
 
-- **Tests:** unit tests for the pure logic (the URL allow-list, deep-link parsing, version
-  comparison, PKCE); backend unit and integration tests for the hand-off; one Playwright
-  test that launches the app and checks the window is locked down.
-- **CI:** a desktop job runs the typecheck and the unit tests. The `.dmg` is built on the
-  owner's laptop: macOS runners use up a private repo's free minutes ten times faster.
+| Command | What it does |
+|---|---|
+| `npm install` | Dev dependencies. Electron downloads its binary the first time it runs. |
+| `npm start` | Build and open the app from source, on the live site. |
+| `TRELLIS_URL=http://localhost:3000 npm start` | The same, on the local frontend (see CLAUDE.md "Run"). |
+| `npm run typecheck` | `tsc` with no output. |
+| `npm test` | Unit tests (27): the pure files. In CI too. |
+| `npm run test:e2e` | Playwright (8): launches the real app against a tiny fake site; checks the lockdown, permissions, offline page, menu, shortcut, update check and reminder. |
+| `npm run test:e2e:stack` | Playwright (3): the real app against the **local stack** (dev Postgres, backend on :8000, frontend on :3000 must be running): the whole Google sign-in except Google itself, an unasked-for link ignored, `trellis://open/map`. |
+| `npm run dist` | Icons, build, and `release/Trellis-<version>-arm64.dmg`, ad-hoc signed with the Fuses set. |
+
+**Development-only switches** (each is ignored in the packaged app, so nobody can use
+them to change a student's copy):
+
+| Variable | Effect |
+|---|---|
+| `TRELLIS_URL` | Point the window at another site, e.g. the local frontend. |
+| `TRELLIS_USER_DATA` | Use another data folder (each e2e test gets a fresh one). |
+| `TRELLIS_UPDATES=off` | No background update check (tests never depend on GitHub). |
+| `TRELLIS_REMINDER_TEST=1` | The reminder fires 10 seconds after start, to see it work. |
+
+From source, the app never registers `trellis://` with macOS (it would register the
+generic Electron binary); tests deliver links by emitting `open-url`.
+
+**Checking a build** (all done on 21 Nov 2026 for 1.0.0):
+
+```bash
+codesign -dv --verbose=2 release/mac-arm64/Trellis.app   # Signature=adhoc, flags (adhoc,runtime)
+codesign --verify --deep --strict release/mac-arm64/Trellis.app
+codesign -d --entitlements - --xml release/mac-arm64/Trellis.app | plutil -p -
+npx @electron/fuses read --app release/mac-arm64/Trellis.app
+open "trellis://open/map"                                 # reaches the running copy
+spctl --assess --type execute release/mac-arm64/Trellis.app   # "rejected": not notarized (§6)
+```
+
+`fuses read` prints one line as "undefined is Enabled": a fuse newer than the reading
+tool's list of names. It isn't one of ours.
+
+**Releasing a version:**
+
+1. Raise `version` in `desktop/package.json` (the update check compares it).
+2. `npm run dist`.
+3. On GitHub, in the public `trellis-desktop` repo, create a release tagged `v<version>`
+   and attach `release/Trellis-<version>-arm64.dmg`. Running copies see it within a day,
+   or at once from "Check for Updates…".
+
+**CI:** the `desktop` job in `.github/workflows/ci.yml` runs `npm run typecheck` and
+`npm test` on every push. The Playwright tests need a display and the `.dmg` needs
+macOS; macOS runners use up a private repo's free minutes ten times faster, so both run
+on the owner's laptop.
 
 ---
 
@@ -317,10 +398,17 @@ desktop/
 | 21 Nov 2026 | Load the live site; don't bundle the frontend | One frontend, always current; the API needs the network anyway |
 | 21 Nov 2026 | electron-builder; TypeScript with `tsc` | One config makes a signed `.dmg`; no hidden bundler |
 | 21 Nov 2026 | Ad-hoc signing, no notarization | $0; the cost is the one-time "Open Anyway" |
+| 21 Nov 2026 | Two entitlements: `allow-jit`, `disable-library-validation` | The hardened runtime stays on; V8 needs the first, an ad-hoc app loading Electron's frameworks the second. `allow-jit` was found missing when the first packaged build crashed at launch ("Failed to reserve virtual memory for CodeRange") |
+| 21 Nov 2026 | Fuses set by electron-builder's `electronFuses`, before signing | The signature then covers them; no extra script |
+| 21 Nov 2026 | Every permission refused except `clipboard-sanitized-write` from the site | "Copy prompt" uses the clipboard; found while building, pinned by an e2e test |
 | 21 Nov 2026 | Google in the system browser, a one-time code by deep link, PKCE | Google blocks embedded sign-in; RFC 8252 |
+| 21 Nov 2026 | The hand-off code reuses the backend's `newRandomToken()` (64 hex) | One random-secret function to audit, not two |
 | 21 Nov 2026 | `.dmg` in a public GitHub release repo (owner) | Free; private code stays private |
 | 21 Nov 2026 | Update check, not auto-update | Squirrel.Mac needs Developer ID signing |
 | 21 Nov 2026 | Daily reminder + update notifications; ⌃⌥T (owner) | Real desktop features with no server change |
+| 21 Nov 2026 | Go menu: Map, Check-ins, Settings | Mirrors the site's sidebar; Start is a one-time page |
+| 21 Nov 2026 | Closing the window hides it; ⌘Q quits | The Mac convention; the reminder keeps working and reopening is instant |
+| 21 Nov 2026 | The `.dmg` has a plain background colour | electron-builder's default background is a bitmap; Trellis ships none |
 
 ---
 
@@ -332,6 +420,17 @@ desktop/
 | 2. Menu, tray, shortcut | done (icons script too) |
 | 3. Notifications, update check | done |
 | 4. Deep links | done (with the app's half of Google sign-in) |
-| 5. Backend hand-off + `/auth/desktop` + tests | done (not released yet) |
-| 6. Icons, packaging, `.dmg` | not started |
-| 7. Docs in step (README, docs/README.md, tech-stack.md, CLAUDE.md) | not started |
+| 5. Backend hand-off + `/auth/desktop` + tests | done; **needs a production release** before Google sign-in works in the app |
+| 6. Icons, packaging, `.dmg` | done: `Trellis-1.0.0-arm64.dmg` built and checked locally |
+| 7. Docs in step | done |
+| Not yet | push; CI; release the backend; create the public `trellis-desktop` repo and its v1.0.0 release; a download link on the site (not in this design) |
+
+**Known limits** (honest, for the viva):
+
+- Without notarization, every student meets Gatekeeper's "Open Anyway" once.
+- Updates are manual: download and replace.
+- The reminder only fires while the app runs (closing the window keeps it running; ⌘Q
+  stops it). Starting at login isn't built.
+- The global shortcut presses ⌘K, and the site's ⌘K toggles: pressing ⌃⌥T while search is
+  already open closes it.
+- Signing in with Google needs the browser's "Open Trellis?" prompt allowed once.

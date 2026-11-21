@@ -64,6 +64,7 @@ New to the code? Start with [`docs/README.md`](docs/README.md) (the reading orde
 | [`docs/aws.md`](docs/aws.md) | Hosting on AWS: each service and why, the free plan's limits, costs, DNS, backups and setup steps |
 | [`docs/frontend.md`](docs/frontend.md) | How the frontend is built and how to change it; the data contract the backend must serve |
 | [`docs/tech-stack.md`](docs/tech-stack.md) | The tools: in use, later, dropped |
+| [`docs/desktop.md`](docs/desktop.md) | The Mac app (Electron): the secure window, Google sign-in through the browser, the desktop features, signing, building and testing |
 | [`docs/subject-blueprint.md`](docs/subject-blueprint.md) | How to add a subject: official sources, a staged path with review gates |
 | [`docs/subjects/`](docs/subjects/) | One design record per subject built with the blueprint (React Native, MongoDB) |
 
@@ -135,6 +136,8 @@ shared/                domain code the frontend and backend both run (imported a
 backend/
   src/                 Express API: accounts, each student's record, the helper, the AI and its limits
   test/                Vitest unit tests; test/integration/ against the real Postgres
+desktop/               the Mac app (Electron, Apple Silicon): the live site in a locked-down window,
+                       with a menu, tray, reminder, ⌃⌥T and Google sign-in by trellis://; docs/desktop.md
 deploy/                production: Docker Compose, Caddy, the release, deploy and backup scripts
 docs/                  start at docs/README.md
 ```

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements: permissions baked into the app's signature (docs/desktop.md §6). Two, each
+  an exception to the hardened runtime (on, in electron-builder.yml), which otherwise
+  protects the app from having its memory or its libraries tampered with.
+
+  allow-jit: V8, Electron's JavaScript engine, compiles JavaScript to machine code while it
+    runs, which needs memory that is written and then executed. The hardened runtime
+    forbids that memory without this, and the app dies at launch with "Failed to reserve
+    virtual memory for CodeRange" (found by testing, 21 Nov 2026). It's the narrow form;
+    the broader allow-unsigned-executable-memory isn't needed.
+
+  disable-library-validation: the hardened runtime lets a program load only code signed by
+    the same team. Electron's own frameworks carry Electron's team signature, and an
+    ad-hoc-signed app has no team at all, so without this they can't be loaded. A Developer
+    ID-signed app wouldn't need it; that's the $99 a year.
+
+  The alternative to both, switching the hardened runtime off, would drop every other
+  protection it gives.
+-->
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+  </dict>
+</plist>

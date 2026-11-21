@@ -1,0 +1,56 @@
+# How `npm run dist` turns the app into Trellis.app and a .dmg (docs/desktop.md §3, §6).
+appId: xyz.niteshkumar.trellis # reverse-DNS of the site; macOS identifies the app by it
+productName: Trellis
+copyright: Trellis
+
+directories:
+  output: release # the .app and the .dmg land here (git-ignored)
+  buildResources: build # where icon.icns is (made by scripts/icons.ts)
+
+# Only what the app runs: the compiled code, the tray icons, package.json. Not src/, the
+# tests or node_modules (there are no runtime dependencies; Electron itself is the runtime).
+files:
+  - dist/**
+  - assets/**
+  - package.json
+
+# app.asar: the app's files in one archive. With the integrity fuse below, Electron
+# refuses to start if the archive was changed after the build.
+asar: true
+
+# trellis:// links: written into Info.plist (CFBundleURLTypes), which is how macOS knows
+# to send them to this app.
+protocols:
+  - name: Trellis
+    schemes: [trellis]
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64] # Apple Silicon only (docs/desktop.md §1)
+  icon: build/icon.icns
+  category: public.app-category.education
+  identity: "-" # ad-hoc: a signature with no certificate ($0; docs/desktop.md §6)
+  hardenedRuntime: true
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist # the helper processes (renderer, GPU) need it too
+  notarize: false # needs a paid Apple Developer account
+
+dmg:
+  title: Trellis ${version}
+  # A plain colour, not electron-builder's default background picture: Trellis ships no
+  # raster images (CLAUDE.md). The site's --ground (frontend/app/globals.css, light theme).
+  background: null
+  backgroundColor: "#f2f4f0"
+  artifactName: Trellis-${version}-arm64.${ext}
+
+# Fuses: switches inside the Electron binary, flipped here BEFORE signing, so the
+# signature covers them and they can't be flipped back (docs/desktop.md §4).
+electronFuses:
+  runAsNode: false # ELECTRON_RUN_AS_NODE can't turn the app into a plain Node.js
+  enableNodeOptionsEnvironmentVariable: false # NODE_OPTIONS can't inject code
+  enableNodeCliInspectArguments: false # --inspect can't attach a debugger
+  enableCookieEncryption: true # cookies (the refresh token) encrypted on disk with a Keychain key
+  enableEmbeddedAsarIntegrityValidation: true # refuse a changed app.asar
+  onlyLoadAppFromAsar: true # never load app code from a loose folder next to it
+  grantFileProtocolExtraPrivileges: false # file:// pages (the offline page) get no extra powers

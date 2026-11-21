@@ -79,6 +79,10 @@ trellis/
 │   │   └── types/            adds req.userId to Express
 │   ├── test/                 Vitest unit tests; test/integration/ uses the real Postgres
 │   └── tools/subject.ts      `npm run subject`: print a subject as Trellis works it out
+├── desktop/                  the Mac app (Electron): the live site in a locked-down window (docs/desktop.md)
+│   ├── src/main/             the main process: window, menu, tray, reminder, updates, deep links, sign-in
+│   ├── src/preload/          the small bridge the page may use
+│   └── test/                 Vitest (pure logic), Playwright (the real app)
 ├── deploy/                   production: docker-compose.yml, Caddyfile, release/deploy/backup scripts
 ├── docker-compose.dev.yml    the development database: Postgres (:5050)
 └── team-tasks/, notes.txt    the owner's private notes (git-ignored)

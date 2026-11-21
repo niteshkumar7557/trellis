@@ -11,7 +11,7 @@
 # Deploys are NOT done here: images are built for arm64 on the laptop by release.sh.
 # The tests don't depend on the CPU, so ordinary x64 runners are fine for them.
 #
-# Three jobs run side by side; each needs a clean machine, so each installs its own
+# Four jobs run side by side; each needs a clean machine, so each installs its own
 # packages (npm's cache, keyed on the lock files, makes that a few seconds).
 
 name: CI
@@ -128,3 +128,27 @@ jobs:
         env:
           NEXT_PUBLIC_GOOGLE_SIGNIN: "on" # as release.sh builds it
           NEXT_TELEMETRY_DISABLED: "1"
+
+  desktop:
+    name: Desktop app (typecheck, unit tests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Only the checks that need no screen and no Mac (docs/desktop.md §10). The Playwright
+    # tests launch the real app, which needs a display, and the .dmg needs macOS; macOS
+    # runners cost a private repo's free minutes ten times faster. Both run on the laptop.
+    env:
+      # The unit tests never start Electron, so don't download its ~100 MB binary.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+        working-directory: desktop
+      - run: npm run typecheck
+        working-directory: desktop
+      - run: npm test
+        working-directory: desktop
