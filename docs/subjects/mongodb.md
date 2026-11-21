@@ -11,8 +11,8 @@ first look in the browser (stage 9, partial): /start shows MongoDB with its four
 and "Next: Documents and collections". **Still to do:** triage the file-stage review
 (three reviewers, R2 practitioner, R4 format auditor, R5 goal walker, were started; their
 reports were not triaged this session: re-run them), the rest of stage 9 (hovers, a
-selected topic, the list view), and stage 10 (freshness, `npm run seed:graph` and
-`npm run test:integration` with the dev databases up, CLAUDE.md's subjects line, which
+selected topic, the list view), and stage 10 (freshness and
+`npm run test:integration` with the dev database up, CLAUDE.md's subjects line, which
 needs the owner's yes). Branch `feature/subject-mongodb`.
 Versions: **MongoDB 9.0** (9.0.8, 10 Nov 2026), **Node.js driver 7.9.0**, **Go driver
 v2.10.0**, **Mongoose 9.12.1**, **mongosh 2.14.2**.

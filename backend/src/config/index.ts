@@ -98,13 +98,6 @@ const config = {
     client_secret: str("GOOGLE_CLIENT_SECRET", ""), // a secret: from .env only
   },
 
-  // The topic graph's database. The site runs without it (backend-design.md §2).
-  neo4j: {
-    url: str("NEO4J_URL", "bolt://localhost:7687"),
-    user: str("NEO4J_USER", "neo4j"),
-    password: process.env.NEO4J_PASSWORD, // a secret: from .env only, no default
-  },
-
   // The helper's AI: GLM 5 on Amazon Bedrock (milestone M5). "off" means the rule-based
   // reader reads every message and no AWS is needed, which is right for development and
   // tests. AWS credentials are never read here: the SDK finds them itself (§5).

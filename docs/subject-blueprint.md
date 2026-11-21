@@ -269,8 +269,8 @@ that stage on. Never patch only the downstream symptom.
   - **Coverage:** re-check the Coverage table against the final ids: every "went to" names
     a subtopic that exists, with the same meaning.
   - Re-run every gate from stage 7 on; `cd frontend && npx tsc --noEmit && npx eslint . &&
-    npm run lint:shared`; `cd backend && npm run seed:graph && npm run test:integration`
-    with the dev databases up.
+    npm run lint:shared`; `cd backend && npm test && npm run test:integration`
+    with the dev database up.
   - Update the docs (§10, step 4).
 - **Produces:** a finished design record; the pull request (commit on the branch; push,
   merge and deploy only on the owner's say-so). Its description: the big topics, the
@@ -507,7 +507,7 @@ first and continues there. Commit at every gate on the branch.
 1. `shared/types.ts`: add the id to `SubjectId`.
 2. `shared/data/index.ts`: import the file's object and add it to `files`. That list feeds
    the landing page (its subject count and list), /start, the "Coming soon" text, search,
-   the helper, the backend's routes, the Neo4j seed and the tests.
+   the helper, the backend's routes and the tests.
 3. Optional: lines for single topics in `shared/data/instructions.ts` (extra prompt lines
    for a topic people often get stuck on; seeded into Postgres).
 4. Docs: `CLAUDE.md` ("Decisions → Subjects", "Where things stand"), `README.md` ("v1

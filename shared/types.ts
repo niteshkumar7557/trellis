@@ -11,7 +11,7 @@ export interface Subject {
   blurb: string;
   /**
    * The page the topic list started from, credited on /start. Optional: a subject designed
-   * from scratch credits nothing. Not stored in Neo4j; screens read it from shared/data.
+   * from scratch credits nothing.
    */
   source?: string;
 }

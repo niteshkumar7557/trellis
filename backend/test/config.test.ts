@@ -15,7 +15,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const OPTIONAL_VARS = [
-  "NODE_ENV", "PUBLIC_URL", "REFRESH_TOKEN_DAYS", "NEO4J_URL", "NEO4J_USER", "NEO4J_PASSWORD",
+  "NODE_ENV", "PUBLIC_URL", "REFRESH_TOKEN_DAYS",
   "AI_PROVIDER", "BEDROCK_REGION", "READER_MODEL", "AI_TIMEOUT_MS", "AI_DAILY_BUDGET_USD",
   "HELPER_DAILY_MESSAGES", "AI_USER_DAILY_USD", "AI_USER_WEEKLY_USD",
 ];
@@ -38,7 +38,6 @@ describe("config", () => {
     const config = await loadConfig();
     expect(config.refresh_token_days).toBe(60);
     expect(config.public_url).toBe("http://localhost:3000");
-    expect(config.neo4j.url).toBe("bolt://localhost:7687");
     expect(config.ai.provider).toBe("off"); // no AWS needed unless asked for
     expect(config.ai.reader_model).toBe("zai.glm-5");
     expect(config.ai.timeout_ms).toBe(6000);

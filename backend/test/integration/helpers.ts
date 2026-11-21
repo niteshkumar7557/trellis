@@ -1,16 +1,6 @@
 import request from "supertest";
 import app from "../../src/app.js";
 import pool from "../../src/db/index.js";
-import driver from "../../src/db/neo4j.js";
-
-/** Runs one Cypher query and returns each row as a plain object. */
-export async function cypher(query: string, params: Record<string, unknown> = {}) {
-  const { records } = await driver.executeQuery(query, params);
-  return records.map((r) => r.toObject());
-}
-
-// ------------------------------------------------------------------ Postgres helpers
-
 
 /**
  * Registers a fresh student through the real API and returns their user id and an

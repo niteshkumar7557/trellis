@@ -1,7 +1,7 @@
 // Seeds what EVERY fresh database needs (`npm run db:seed:dev`, run by `npm run db-init`
 // after the migrations). Not fake users: real content the app can't work without.
 //
-// The topic graph has its own seed (`npm run seed:graph`), because it lives in Neo4j.
+// The topic graph needs no seed: the API reads it from shared/data (repos/graph.repo.ts).
 //
 // Rules for a step:
 //   - Safe to run twice (INSERT ... ON CONFLICT ... DO UPDATE), because db-init is re-run

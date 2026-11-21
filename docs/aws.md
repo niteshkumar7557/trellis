@@ -28,7 +28,7 @@ free plan · 4 The server and its address · 5 Bedrock · 6 Deploy and secrets �
    ▼
  Region: ap-southeast-2 (Sydney)       origin.trellis.niteshkumar.xyz → Elastic IP
    ┌───────────────────────── EC2 t4g.small (2 GB, arm64, Ubuntu) ─────────────────────┐
-   │  Docker Compose:  Caddy (HTTPS) → Next.js  and  Express API → Postgres, Neo4j     │
+   │  Docker Compose:  Caddy (HTTPS) → Next.js  and  Express API → Postgres            │
    │  Instance role: lets the server call Bedrock, S3, ECR and Parameter Store         │
    └──────┬───────────────────┬──────────────────────┬─────────────────┬───────────────┘
           ▼                   ▼                      ▼                 ▼
@@ -58,7 +58,9 @@ about **$145 to $160**: more than the $100 the plan gives at sign-up. The other 
 from the console's activities (§3). **Earning it is not optional: do it in the first
 week.** Without it the credits run out around the fourth month, and that closes the
 account. If it can't be earned, the server has to shrink (`t4g.micro`, 1 GB, about $7.75 a
-month, which means dropping Neo4j in production) or the site stops early.
+month) or the site stops early. Since the graph database went (21 Nov 2026) the limits
+below add up to about 1.1 GB, so a 1 GB server would also need Next's and Postgres's
+limits cut; measure first.
 
 **Not used, and why**
 
@@ -194,7 +196,7 @@ this account. Look there.
 |---|---|---|
 | Type | `t4g.small`: 2 vCPUs, 2 GB memory, arm64 | On the free plan's list. arm64 is cheaper than the same size on x86, and matches an Apple Silicon laptop, so images built locally run unchanged |
 | System | Ubuntu Server 24.04 LTS, arm64 | Long support, familiar, Docker's own packages, and the Systems Manager agent comes installed |
-| Disk | 30 GB gp3, encrypted | Room for images, the databases and logs. Encryption costs nothing |
+| Disk | 30 GB gp3, encrypted | Room for images, the database and logs. Encryption costs nothing |
 | Network | The default VPC, a public subnet, one Elastic IP | The simplest correct layout for one server |
 | Firewall (security group) | In: TCP 443 **only from CloudFront** (the AWS-managed prefix list `com.amazonaws.global.cloudfront.origin-facing`); TCP 80 from anywhere. Nothing else. Out: everything | 443 carries the site, and only CloudFront may reach it, so nobody skips the cache and its protection. Port 80 is for Let's Encrypt's check (Caddy's certificate) and a redirect; it serves no pages. **No port 22**: there is no SSH (see below). The prefix list counts as about 55 rules of the group's 60 |
 | Metadata | IMDSv2 required, **hop limit 2** | The API runs in a container. With the default limit of 1 it cannot reach the server's role credentials, and Bedrock calls fail with a confusing "no credentials" error |
@@ -208,35 +210,37 @@ and the port still gets scanned.
 
 ### Memory: the plan for 2 GB
 
-Five containers share 2 GB. Each gets a limit in the compose file, so that if memory runs
-short the least important one is stopped, not the database.
+Four long-running containers share 2 GB. Each gets a limit in the compose file, so that
+if memory runs short the least important one is stopped, not the database.
 
 | Container | Limit | Notes |
 |---|---|---|
 | Postgres | 384 MB | The one that must never be killed |
-| Neo4j | 768 MB, **one core** | Heap 256 MB, page cache 64 MB. The graph is ~230 topics; it needs very little. **Changed on the first day:** with a 384 MB heap and a 128 MB cache, Java's memory outside the heap pushed it over 768 MB and it was killed in a loop; each restart took both cores and the API stopped answering. `cpus: 1.0` keeps a core for everything else. It settles at about 475 MB |
-| API | 256 MB | |
+| API | 256 MB | Holds the topic graph in memory too (well under 1 MB) |
 | Next.js | 384 MB | |
 | Caddy | 64 MB | |
 
 Plus a **2 GB swap file** as a cushion, and **images are never built on the server**: a
 Next.js build alone needs more than 1.5 GB (§6).
 
-**Measured on the live server (14 Nov 2026):** about 1.1 GB used plus some swap, with
-Neo4j at 475 MB, Postgres 48 MB, the API 44 MB, Next 55 MB and Caddy 33 MB.
+**Measured on the live server (14 Nov 2026):** about 1.1 GB used plus some swap. Postgres
+used 48 MB, the API 44 MB, Next 55 MB and Caddy 33 MB; the rest, about 475 MB, was a graph
+database with a 768 MB limit and one core, removed on 21 Nov 2026 (backend-design.md §2
+"No graph database"). It was the biggest user of memory, and on the first day its restart
+loop took both cores and the API stopped answering.
 
 **CPU credits: a `t4g` in "standard" mode starts with none.** It earns 24 an hour (one
 credit is one core at 100% for a minute) and may run at 20% of its two cores without
-spending any. The first day's setup, image pulls and Neo4j's restarts spent every credit
+spending any. The first day's setup, image pulls and a crashing container's restarts spent every credit
 as it came in, so for its first hour the server was held at 20% and felt slow. It is
 normal after a fresh server or a heavy deploy, and it passes as credits build up (to at
 most 576). Look at the `CPUCreditBalance` metric in CloudWatch. "Unlimited" mode would
 avoid the slowdown, but bills $0.04 per core-hour above the 20% average, with no cap: on
 the free plan, a slow hour is better than a surprise.
 
-**If it does not fit:** Neo4j is the one to move. The site already runs without it
-(backend-design.md §2), so the fallback is to run Neo4j only in development. The second
-fallback is a 4 GB server, but check the cost against the credits first.
+**If it does not fit:** lower Next's limit first (it uses about 55 MB of its 384), then
+the swap takes the peaks. The last fallback is a 4 GB server, but check the cost against
+the credits first.
 
 ### EC2 or Lightsail
 
@@ -424,7 +428,6 @@ Systems Manager Parameter Store, standard tier (free), under `/trellis/prod/`:
 |---|---|---|
 | `JWT_SECRET` | SecureString | `openssl rand -hex 32` |
 | `POSTGRES_PASSWORD` | SecureString | `openssl rand -hex 24` (hex: it goes inside a URL, so no symbols) |
-| `NEO4J_PASSWORD` | SecureString | `openssl rand -hex 24` |
 | `ORIGIN_VERIFY` | SecureString | `openssl rand -hex 32`; the same value goes in the CloudFront origin's custom header |
 | `GOOGLE_CLIENT_SECRET` | SecureString | Google Cloud Console |
 | `GOOGLE_CLIENT_ID` | String | Google Cloud Console (not a secret) |
@@ -448,8 +451,9 @@ One command on the laptop, from the repo root, on a committed tree:
 3. Pushes them to ECR.
 4. Runs `/opt/trellis/deploy.sh <tag>` on the server through Session Manager (no SSH).
    That script refreshes `.env` from Parameter Store, pulls, and runs `docker compose up
-   -d`. Compose starts things in order: Postgres → the one-shot `migrate` → the API; Neo4j →
-   the one-shot `seed-graph`; then Next and Caddy. The API does **not** wait for Neo4j.
+   -d`. Compose starts things in order: Postgres → the one-shot `migrate` → the API; then
+   Next and Caddy. `--remove-orphans` stops any container the compose file no longer
+   lists.
    It then waits up to a minute for the API to report healthy.
 5. Clears CloudFront's cache (§4).
 
@@ -489,7 +493,7 @@ release, start requiring it in the next).
 | When | Every night at 02:30 India time (21:00 UTC), by `trellis-backup.timer` on the server |
 | Where | A private S3 bucket in `ap-southeast-2`: Block Public Access on, encrypted, versioning **off** |
 | How long | A lifecycle rule deletes each backup after **14 days** |
-| Not backed up | Neo4j (rebuilt from the files in git by the seed) and Caddy's certificates (re-issued) |
+| Not backed up | Caddy's certificates (re-issued). The topic graph is in git (`shared/data`) |
 
 - **Why 14 days and versioning off:** design.md promises that "Delete everything" is gone
   from backups within 14 days. Versioning would quietly keep deleted backups.
@@ -612,7 +616,6 @@ of all, so the GoDaddy change could spread while the rest was built.
     - type a message to the helper, save the card, undo it;
     - make a reset link and use it;
     - export; delete the account; confirm the rows are gone;
-    - stop the Neo4j container and confirm the site still works;
     - `curl -I https://origin.trellis.niteshkumar.xyz` from the laptop is refused
       (only CloudFront may connect);
     - a second page load shows `x-cache: Hit from cloudfront` and an Indian edge in
