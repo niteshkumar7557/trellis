@@ -42,6 +42,31 @@ Tests live only in `backend/`. **The frontend has no test runner**, so the front
 map code (`frontend/components/map/layout.ts`, `focus.ts`) is tested from here
 (`test/map-layout.test.ts`), and so is everything in `shared/`, which both apps run.
 
+### CI (since 21 Nov 2026)
+
+GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request, as three
+jobs side by side on GitHub's Linux machines:
+
+| Job | Runs |
+|---|---|
+| Backend | `npm ci` in `frontend/` and `backend/`, then typecheck, `npm test`, `npm run build` |
+| Backend integration | a `postgres:18` service container, `npm run db-init`, `npm run test:integration` |
+| Frontend | `tsc --noEmit`, `eslint .`, `npm run lint:shared`, `npm run build` |
+
+- **The backend job installs the frontend's packages too**, because `test/map-layout.test.ts`
+  imports the map code in `frontend/components/map/`, which uses `@dagrejs/dagre`.
+- **There is no `backend/.env` in CI.** The job's `env:` gives `DB_URL`, `JWT_SECRET` and
+  `AI_PROVIDER=off`; the integration job's `JWT_SECRET` must match
+  `vitest.integration.config.ts`, which sets it anyway.
+- **A newer push cancels the older run** on the same branch (`concurrency`).
+- **Release gate:** `deploy/release.sh` stops unless this workflow passed for the exact
+  commit being released (`docs/aws.md` §6). Push, wait for green (`gh run watch`), release.
+- **Where to look when it's red:** the Actions tab on GitHub, or `gh run view --log-failed`.
+  A frontend build that fails while downloading IBM Plex Sans from Google Fonts is a network
+  hiccup: re-run the job (`gh run rerun --failed`).
+- **Cost:** the Free plan includes 2,000 minutes a month for a private repo; a run is a few
+  minutes per job. Check the usage page in GitHub's billing settings now and then.
+
 ## 2. How the configs set the stage
 
 `backend/vitest.config.ts` sets three things before any file is imported:
@@ -352,11 +377,8 @@ An integration test starts from `registerStudent(DOMAIN)` and ends with
 
 ## 12. Gaps
 
-- **Nothing runs the tests automatically.** No CI (no `.github/workflows/`), and
-  `deploy/release.sh` builds and deploys without running them. This is how the stale
-  `state.test.ts` expectation went unnoticed from 15 to 17 Nov. The first thing to add: a
-  GitHub Actions workflow for typecheck and unit tests on every push, then the integration
-  suite with a `postgres:18` service container.
+- ~~Nothing runs the tests automatically.~~ Fixed 21 Nov 2026 (§1 "CI"). Before it, a
+  stale `state.test.ts` expectation went unnoticed from 15 to 17 Nov.
 - **No frontend tests**: nothing covers `frontend/lib/api.ts` (refresh and retry, the shared
   refresh), the store's live/demo switch, or any component.
 - **No end-to-end tests** in a browser (Playwright would be the usual choice).

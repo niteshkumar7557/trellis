@@ -1,0 +1,130 @@
+# CI: every check from CLAUDE.md "Checks", run by GitHub on every push and pull request.
+#
+# Why: nothing ran the tests before (21 Nov 2026), and a broken integration test went
+# unnoticed for two days. deploy/release.sh now refuses to ship a commit this workflow
+# hasn't passed (docs/aws.md §6), so a red run here also blocks a release.
+#
+# Why GitHub Actions: the code is already on GitHub, the Free plan includes 2,000 minutes a
+# month for a private repo (one run is about 5 to 7), and it needs no server or AWS
+# credits. The alternatives (AWS CodeBuild, Jenkins, GitLab CI) are in docs/tech-stack.md.
+#
+# Deploys are NOT done here: images are built for arm64 on the laptop by release.sh.
+# The tests don't depend on the CPU, so ordinary x64 runners are fine for them.
+#
+# Three jobs run side by side; each needs a clean machine, so each installs its own
+# packages (npm's cache, keyed on the lock files, makes that a few seconds).
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A newer push to the same branch cancels the older run: only the newest commit matters,
+# and it saves minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# The workflow only reads the code; it can't write to the repo or anything else.
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (typecheck, unit tests, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # The same values vitest.config.ts sets; the build and typecheck read config too.
+    env:
+      JWT_SECRET: ci-secret-that-is-at-least-32-characters-long
+      DB_URL: postgresql://nobody@localhost:1/not-used-by-unit-tests
+      AI_PROVIDER: "off"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # the version in both Dockerfiles
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      # The frontend's packages too: test/map-layout.test.ts imports the map code in
+      # frontend/components/map/, which uses @dagrejs/dagre from frontend/node_modules.
+      - run: npm ci
+        working-directory: frontend
+      - run: npm ci
+        working-directory: backend
+      - run: npm run typecheck
+        working-directory: backend
+      - run: npm test
+        working-directory: backend
+      - run: npm run build # tsup: the same build the Docker image runs
+        working-directory: backend
+
+  integration:
+    name: Backend integration tests (real Postgres)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # A throwaway Postgres, the same major version as production (deploy/docker-compose.yml).
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: trellis
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: trellisdb
+        ports:
+          - 5432:5432
+        # The job's steps wait until Postgres answers, as the compose healthchecks do.
+        options: >-
+          --health-cmd "pg_isready -U trellis -d trellisdb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # There is no backend/.env here, so the real DB_URL comes from the environment.
+      DB_URL: postgresql://trellis:ci-only-password@localhost:5432/trellisdb
+      JWT_SECRET: test-secret-that-is-at-least-32-characters-long # matches vitest.integration.config.ts
+      AI_PROVIDER: "off"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm run db-init # migrations + the prompt-instructions seed
+        working-directory: backend
+      - run: npm run test:integration
+        working-directory: backend
+
+  frontend:
+    name: Frontend (tsc, eslint, lint:shared, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx tsc --noEmit
+        working-directory: frontend
+      - run: npx eslint .
+        working-directory: frontend
+      - run: npm run lint:shared
+        working-directory: frontend
+      # The production build catches what tsc doesn't (a server component importing
+      # client code, a broken page). It downloads IBM Plex Sans from Google Fonts, so a
+      # rare network failure there fails this step: re-run the job.
+      - run: npm run build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_GOOGLE_SIGNIN: "on" # as release.sh builds it
+          NEXT_TELEMETRY_DISABLED: "1"

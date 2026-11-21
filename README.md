@@ -106,7 +106,7 @@ npm run db-init      # migrations + seed
 npm run dev
 ```
 
-**Checks** (run before every merge; nothing runs them automatically yet):
+**Checks** (GitHub Actions runs all of them, plus the frontend build, on every push: `.github/workflows/ci.yml`; `deploy/release.sh` won't ship a commit that hasn't passed):
 
 ```bash
 cd backend && npm run typecheck && npm test        # 323 unit tests, no database, ~3 s

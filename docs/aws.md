@@ -443,10 +443,13 @@ and each container gets only the values it lists. Plain settings that are not se
 
 ### A deploy, start to finish
 
-One command on the laptop, from the repo root, on a committed tree:
-`./deploy/release.sh`. It prints each step:
+One command on the laptop, from the repo root, on a committed tree that is **pushed and
+green in CI**: `./deploy/release.sh`. It prints each step:
 
-1. The account check (§2); it stops on any other account.
+1. The account check (§2); it stops on any other account. Then the CI check: it asks
+   GitHub (`gh run list --commit`) for this commit's run of `.github/workflows/ci.yml`
+   and stops if there is none, it is still running, or it failed. `SKIP_CI_CHECK=1` skips
+   it in an emergency (GitHub down, a fix that can't wait); run the checks by hand first.
 2. Builds both images for `linux/arm64`, tagged with the commit's short hash.
 3. Pushes them to ECR.
 4. Runs `/opt/trellis/deploy.sh <tag>` on the server through Session Manager (no SSH).
@@ -476,8 +479,11 @@ release, start requiring it in the next).
 **Where this falls short of production practice:**
 
 - The deploy is run by hand, and there is a few seconds of downtime while containers
-  restart. The next step is GitHub Actions building and deploying on every merge, signing
-  in to AWS with OIDC (no stored keys).
+  restart. Since 21 Nov 2026 CI (GitHub Actions) tests every push and the release refuses
+  an untested commit, but the deploy itself is not automated. The next step is GitHub
+  Actions building and deploying on every merge, signing in to AWS with OIDC (no stored
+  keys). It waits on arm64 runners: the images are arm64, GitHub's arm64 runners for
+  private repos may need a paid plan, and building Next.js under emulation is slow.
 - The resources are created by hand in the console (§9), not from code. The next step is
   Terraform, so the whole setup can be rebuilt in a new account with one command. Until
   then, **every resource is written down in the table in §9**.

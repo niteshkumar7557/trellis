@@ -1169,8 +1169,10 @@ Vitest plus supertest, in two commands.
   checks the request we send and the `ai_calls` row each outcome leaves.
 - **Counts on 21 Nov 2026:** `npm test` 323 tests in 33 files (about 3 seconds);
   `npm run test:integration` 90 tests in 13 files (about 20 seconds), all passing.
-- **What isn't tested automatically:** nothing runs the tests for you (there is no CI, and
-  `deploy/release.sh` doesn't run them), the frontend has no test runner (its pure map
+- **CI (21 Nov 2026):** GitHub Actions runs both suites, the typecheck and the build on
+  every push (`.github/workflows/ci.yml`), and `deploy/release.sh` refuses a commit CI
+  hasn't passed.
+- **What isn't tested automatically:** the frontend has no test runner (its pure map
   layout code is tested from here, `test/map-layout.test.ts`), there are no browser
   end-to-end tests, and coverage isn't measured. Run both suites before every merge.
 
@@ -1375,6 +1377,7 @@ Update this table at the start of each planning session from `git log` and merge
 | Redis redesign and removing the roadmap.sh credit | **closed without being built** (owner, 15 Nov 2026); Redis still credits roadmap.sh | — |
 | Docs and comments brought up to date with the code; `docs/README.md`, `docs/codebase.md`, `docs/testing.md` added; a stale integration test fixed | done; no behaviour changed, so no release needed | `main`, 17 Nov 2026 (committed directly, on the owner's request) |
 | No graph database: the API reads the graph from `shared/data` in memory (§2); the driver, seed, drift check, health field, `graph_unavailable`, env variables and compose services removed | done; live | `main`, 21 Nov 2026 (merge commit of `chore/drop-graph-database`) |
+| CI: GitHub Actions runs every check on every push (`.github/workflows/ci.yml`); `release.sh` refuses a commit CI hasn't passed | done | branch `ci/github-actions`, 21 Nov 2026 |
 
 **Test counts now (run 21 Nov 2026):** `npm test` 323 in 33 files, `npm run
 test:integration` 90 in 13 files, all passing. The graph's tests moved from the
@@ -1423,8 +1426,8 @@ a choice to make, not a bug:
   limits").
 - **No request logging** (§8 "Logging and health"): `pino` and `X-Request-Id` were planned
   and not built.
-- **Nothing runs the tests automatically:** no CI, and `deploy/release.sh` doesn't run
-  them. GitHub Actions is listed under "Later" in `docs/tech-stack.md`.
+- ~~Nothing runs the tests automatically.~~ Fixed 21 Nov 2026: GitHub Actions CI on every
+  push, and the release checks it (`docs/testing.md` §1).
 - **No frontend tests** beyond the map layout, and no browser end-to-end tests.
 - `users.role` is still a column but nothing reads it (the token no longer carries it,
   and there are no admin routes). Harmless; drop it in a later migration if it stays

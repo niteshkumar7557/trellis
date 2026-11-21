@@ -424,7 +424,8 @@ npm run typecheck
 Unit tests fake the repos with `vi.mock` and drive small Express apps with supertest; the
 integration tests use the real app and Postgres, including race tests (20 AI
 reservations at once, a double-clicked Save). Bedrock is always faked. A golden test pins
-what the sample student is told. **Nothing runs the tests automatically** (no CI), and the
+what the sample student is told. GitHub Actions runs every check on every push
+(`.github/workflows/ci.yml`), and `deploy/release.sh` won't ship a commit that failed. The
 frontend has no test runner. Everything about it: `docs/testing.md`.
 
 ## 13. Running locally
@@ -503,8 +504,8 @@ cd ../frontend && npm install && npm run dev       # http://localhost:3000
 
 The current list, kept in one place: `docs/backend-design.md` §11 "Known gaps" (and §12
 open questions). In short, on 17 Nov 2026: the AI now costs about $0.003 a message rather
-than $0.002, so students reach basic mode sooner; there's no request logging; nothing runs
-the tests automatically; the frontend has no tests; no refresh-token rotation and no email
+than $0.002, so students reach basic mode sooner; there's no request logging (since 21 Nov,
+CI runs the tests on every push); the frontend has no tests; no refresh-token rotation and no email
 verification (both written down as choices in §4).
 
 ## 18. Glossary

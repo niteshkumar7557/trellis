@@ -29,13 +29,14 @@ choice are in those files.
 | Images | Amazon ECR, built on the laptop by `deploy/release.sh` |
 | Secrets | AWS Systems Manager Parameter Store, written into the server's env file at deploy |
 | Backups | Nightly `pg_dump` to Amazon S3, kept 14 days (a systemd timer on the server) |
+| CI | GitHub Actions (`.github/workflows/ci.yml`), every check on every push; `deploy/release.sh` refuses a commit it hasn't passed. Chosen over AWS CodeBuild (spends the free-plan credits), Jenkins (a Java server that needs ~4 GB of RAM for a small team) and GitLab CI or CircleCI (another account for code already on GitHub) |
 
 ## Later (not v1)
 
 | Part | Choice |
 |---|---|
 | Email (password reset codes, then reminders) | Amazon SES |
-| CI / CD | GitHub Actions, signing in to AWS with OIDC. Today nothing runs the tests automatically |
+| CD (automatic deploys) | GitHub Actions building the arm64 images and deploying, signing in to AWS with OIDC. Waits on arm64 runners for private repos |
 | Request logging | `pino` / `pino-http` with an `X-Request-Id` per request |
 | Frontend and end-to-end tests | Vitest for `frontend/lib`; Playwright for the browser |
 | Infrastructure as code | Terraform |
