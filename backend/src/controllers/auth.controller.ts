@@ -71,18 +71,45 @@ export function clearRefreshCookie(res: Response) {
   res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions(), maxAge: undefined });
 }
 
-/** Makes a refresh token, stores its hash, and puts the token itself in the cookie. */
-async function startSession(res: Response, userId: number) {
-  const token = newRandomToken();
-  await saveRefreshToken(userId, hashToken(token));
-  res.cookie(REFRESH_COOKIE, token, refreshCookieOptions());
-  return signAccessToken(userId);
+// ------------------------------------------------------------------ mobile mode
+
+/**
+ * The Android app (docs/mobile.md §4) can't keep a cookie: it's a native app sending plain
+ * HTTP requests, not a browser. It sends this header, and then the refresh token travels in
+ * the JSON body instead, both ways. The app keeps it in the phone's secure storage.
+ *
+ * Why a header and not separate /mobile routes: one switch, and every handler stays one
+ * handler. Why it's safe: a page on another site can't send a custom header without a CORS
+ * preflight, which this API never approves, so no browser can be tricked into mobile mode;
+ * and a reply to another origin can't be read anyway.
+ */
+export function isMobile(req: Request): boolean {
+  return req.get("X-Trellis-Client") === "mobile";
 }
 
-async function sendSignedIn(res: Response, userId: number, status: number) {
-  const accessToken = await startSession(res, userId);
+/** Where this request keeps its refresh token: the body in mobile mode, else the cookie. */
+function refreshTokenFrom(req: Request): string | null {
+  const token: unknown = isMobile(req) ? req.body?.refreshToken : req.cookies?.[REFRESH_COOKIE];
+  return typeof token === "string" ? token : null;
+}
+
+/**
+ * Makes a refresh token and stores its hash. A browser gets the token in the cookie; the
+ * app gets it back to put in the body of the reply (and no cookie it couldn't use).
+ */
+async function startSession(req: Request, res: Response, userId: number) {
+  const token = newRandomToken();
+  await saveRefreshToken(userId, hashToken(token));
+  const accessToken = signAccessToken(userId);
+  if (isMobile(req)) return { accessToken, refreshToken: token };
+  res.cookie(REFRESH_COOKIE, token, refreshCookieOptions());
+  return { accessToken };
+}
+
+async function sendSignedIn(req: Request, res: Response, userId: number, status: number) {
+  const tokens = await startSession(req, res, userId);
   const student = await getStudent(userId);
-  res.status(status).json({ accessToken, student });
+  res.status(status).json({ ...tokens, student });
 }
 
 // ------------------------------------------------------------------ the handlers
@@ -98,7 +125,7 @@ export async function register(req: Request, res: Response) {
   if (userId === null) {
     throw new HttpError(409, "email_taken", "An account with this email already exists. Log in instead.");
   }
-  await sendSignedIn(res, userId, 201);
+  await sendSignedIn(req, res, userId, 201);
 }
 
 /**
@@ -121,17 +148,27 @@ export async function login(req: Request, res: Response) {
   if (!user || !user.hashed_password || !ok) {
     throw new HttpError(401, "invalid_credentials", "That email and password don't match.");
   }
-  await sendSignedIn(res, user.id, 200);
+  await sendSignedIn(req, res, user.id, 200);
 }
 
-/** POST /api/auth/refresh (the cookie) → 200 {accessToken} */
+/**
+ * POST /api/auth/refresh (the cookie) → 200 {accessToken}
+ * In mobile mode: {refreshToken} in the body → 200 {accessToken, refreshToken}
+ */
 export async function refresh(req: Request, res: Response) {
-  const token: unknown = req.cookies?.[REFRESH_COOKIE];
-  const userId = typeof token === "string" ? await useRefreshToken(hashToken(token)) : null;
+  const token = refreshTokenFrom(req);
+  const userId = token !== null ? await useRefreshToken(hashToken(token)) : null;
   if (userId === null) {
-    // A dead cookie is no use to the browser; remove it so it stops being sent.
-    clearRefreshCookie(res);
+    // A dead cookie is no use to the browser; remove it so it stops being sent. (The app
+    // has no cookie: on a 401 it deletes its own stored copy.)
+    if (!isMobile(req)) clearRefreshCookie(res);
     throw new HttpError(401, "unauthorized", "Please sign in again.");
+  }
+  if (isMobile(req)) {
+    // The same token back, so the app's code is the same shape as login's answer. There's
+    // no rotation in v1, for the app as for the browser (backend-design.md §4).
+    res.json({ accessToken: signAccessToken(userId), refreshToken: token });
+    return;
   }
   // The stored expiry was just extended; send the cookie again so the browser's copy is
   // extended too. Same token: there is no rotation in v1 (backend-design.md §4 says why).
@@ -139,11 +176,14 @@ export async function refresh(req: Request, res: Response) {
   res.json({ accessToken: signAccessToken(userId) });
 }
 
-/** POST /api/auth/logout (the cookie) → 204. Works even when already signed out. */
+/**
+ * POST /api/auth/logout (the cookie, or {refreshToken} in mobile mode) → 204.
+ * Works even when already signed out.
+ */
 export async function logout(req: Request, res: Response) {
-  const token: unknown = req.cookies?.[REFRESH_COOKIE];
-  if (typeof token === "string") await deleteRefreshToken(hashToken(token));
-  clearRefreshCookie(res);
+  const token = refreshTokenFrom(req);
+  if (token !== null) await deleteRefreshToken(hashToken(token));
+  if (!isMobile(req)) clearRefreshCookie(res);
   res.sendStatus(204);
 }
 
@@ -251,7 +291,7 @@ export async function googleCallback(req: Request, res: Response) {
     return res.redirect(`${config.public_url}/auth/desktop?code=${code}`);
   }
 
-  await startSession(res, userId);
+  await startSession(req, res, userId);
   // The frontend's /auth/done page turns the new refresh cookie into an access token.
   res.redirect(`${config.public_url}/auth/done`);
 }
@@ -273,6 +313,9 @@ export const DesktopExchangeBody = z.object({
  * The desktop app's last step of Google sign-in: it swaps the one-time code from the
  * trellis:// link, plus the verifier only it knows, for a session. The answer is the same
  * as login's, and the refresh cookie lands in the app's own cookie store.
+ *
+ * The Android app uses this same exchange to finish Google sign-in (docs/mobile.md §4), in
+ * mobile mode, so its refresh token comes back in the body instead.
  */
 export async function desktopExchange(req: Request, res: Response) {
   const { code, verifier } = req.body as z.infer<typeof DesktopExchangeBody>;
@@ -280,5 +323,5 @@ export async function desktopExchange(req: Request, res: Response) {
   if (userId === null) {
     throw new HttpError(400, "handoff_invalid", "This sign-in has expired or was already used. Try signing in again.");
   }
-  await sendSignedIn(res, userId, 200);
+  await sendSignedIn(req, res, userId, 200);
 }

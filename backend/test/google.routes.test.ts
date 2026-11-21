@@ -8,18 +8,18 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { errorHandler, notFound } from "../src/middlewares/error.middleware.js";
 import { saveRefreshToken } from "../src/repos/auth.repo.js";
-import { createHandoff } from "../src/repos/desktop-handoffs.repo.js";
+import { createHandoff, useHandoff } from "../src/repos/desktop-handoffs.repo.js";
 import { signInWithGoogle } from "../src/repos/users.repo.js";
 import authRoutes from "../src/routes/auth.routes.js";
 import { googleEnabled, googleProfile, googleSignInUrl } from "../src/utils/google.js";
-import { hashToken } from "../src/utils/tokens.js";
+import { hashToken, pkceChallenge, verifyAccessToken } from "../src/utils/tokens.js";
 
 vi.mock("../src/utils/google.js", () => ({
   googleEnabled: vi.fn(),
   googleSignInUrl: vi.fn((state: string) => `https://accounts.google.test/auth?state=${state}`),
   googleProfile: vi.fn(),
 }));
-vi.mock("../src/repos/users.repo.js", () => ({ signInWithGoogle: vi.fn() }));
+vi.mock("../src/repos/users.repo.js", () => ({ signInWithGoogle: vi.fn(), getStudent: vi.fn() }));
 vi.mock("../src/repos/auth.repo.js", () => ({ saveRefreshToken: vi.fn() }));
 vi.mock("../src/repos/desktop-handoffs.repo.js", () => ({ createHandoff: vi.fn(), useHandoff: vi.fn() }));
 
@@ -159,5 +159,24 @@ describe("POST /api/auth/desktop/exchange", () => {
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe("invalid_request");
     }
+  });
+});
+
+// The Android app finishes Google sign-in with the same exchange, in mobile mode
+// (docs/mobile.md §4): the refresh token comes back in the body, and no cookie is set.
+describe("POST /api/auth/desktop/exchange in mobile mode", () => {
+  it("answers the refresh token in the body and sets no cookie", async () => {
+    vi.mocked(useHandoff).mockResolvedValue(5);
+    const verifier = "v".repeat(43);
+    const res = await request(app)
+      .post("/api/auth/desktop/exchange")
+      .set("X-Trellis-Client", "mobile")
+      .send({ code: "a".repeat(64), verifier });
+    expect(res.status).toBe(200);
+    expect(useHandoff).toHaveBeenCalledWith(hashToken("a".repeat(64)), pkceChallenge(verifier));
+    expect(verifyAccessToken(res.body.accessToken)).toBe(5);
+    expect(res.body.refreshToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(saveRefreshToken).toHaveBeenCalledWith(5, hashToken(res.body.refreshToken));
+    expect(cookies(res).some((c) => c.startsWith("refresh_token="))).toBe(false);
   });
 });

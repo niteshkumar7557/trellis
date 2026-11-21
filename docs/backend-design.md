@@ -548,6 +548,7 @@ they are choices, not surprises.
 | GET | `/api/auth/google` | → redirects to Google. `?desktop=<challenge>`: started by the desktop app (see "The desktop app" below) |
 | GET | `/api/auth/google/callback` | Google sends the browser back here → sets the refresh cookie → redirects to `/auth/done`. For the desktop app: no cookie; a one-time code → redirects to `/auth/desktop?code=…` |
 | POST | `/api/auth/desktop/exchange` | `{code, verifier}` → `{accessToken, student}` + refresh cookie, like login; `400 handoff_invalid` for a used, expired or unproven code. Rate-limited like login |
+| (all of the above) | with `X-Trellis-Client: mobile` | **Mobile mode**, for the Android app (see "The Android app" below): register, login and the desktop exchange answer `{accessToken, refreshToken, student}` and set no cookie; refresh takes `{refreshToken}` and answers `{accessToken, refreshToken}`; logout takes `{refreshToken}` |
 | POST | `/api/auth/reset-password` | `{token, password}` → `204`. Signs out every device. It does not sign this browser in: the student logs in with the new password, which proves it works |
 | GET | `/api/me` | → `Student` `{id, name, email, joinedAt, hasPassword, goals[]}` |
 | PATCH | `/api/me` | `{name}` → `Student`. The email cannot be changed in v1 (no way to verify the new one) |
@@ -614,6 +615,31 @@ RFC 8252 ("OAuth for native apps") with PKCE:
 - **Clean-up:** each new code deletes codes more than a day past expiry; there's no
   scheduled job. The export leaves the table out (codes are spent in seconds), and
   deleting an account cascades to it.
+
+### The Android app: mobile mode (21 Nov 2026)
+
+The Android app (`docs/mobile.md` §4) is a native app, not a browser, so it can't use the
+refresh cookie. With the request header `X-Trellis-Client: mobile`, the auth routes keep
+the refresh token in the JSON body instead, both ways (the table above). Everything else
+is the same: the same `refresh_tokens` table, only the hash stored, the same 60-day
+sliding expiry, no rotation. The app keeps the token in the phone's secure storage
+(Android Keystore) and the access token in memory, the split the site uses.
+
+- **Why a header, not `/api/auth/mobile/*` routes:** one switch (`isMobile(req)` in
+  `auth.controller.ts`) and every handler stays one handler. A `client` field in each body
+  would touch every schema, and refresh has no body for the browser.
+- **Why it's safe:** no browser can be tricked into mobile mode. A cross-site request
+  with a custom header needs a CORS preflight, and this API approves none; and a reply to
+  another origin can't be read anyway. In mobile mode, refresh and logout look only at the
+  body (a cookie is ignored), and act only on a token the caller already holds.
+- **CloudFront** forwards every header on `/api/*` (`aws.md`, the `/api/*` behaviour), so
+  the header reaches the API.
+- **Google:** the app reuses the desktop hand-off unchanged (Chrome Custom Tabs instead
+  of Safari, the same `/auth/desktop` page and `trellis://auth?code=…` link) and calls
+  `/api/auth/desktop/exchange` in mobile mode.
+- **Short of production:** a stolen phone token is a 60-day session until logout, as a
+  stolen cookie is. Rotating refresh tokens (each use returns a new one and retires the
+  old) would limit that; v1 doesn't rotate for either client.
 
 ### Forgotten passwords
 
