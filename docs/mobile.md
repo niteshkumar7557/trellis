@@ -430,11 +430,20 @@ keytool -genkeypair -storetype PKCS12 -keystore ~/.trellis/trellis-android.keyst
   -alias trellis -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Trellis, O=Trellis"
 ```
 
-- It lives in `~/.trellis/` (permissions 700/600), its passwords in
-  `~/.gradle/gradle.properties` as `TRELLIS_UPLOAD_STORE_FILE`, `…_KEY_ALIAS`,
-  `…_STORE_PASSWORD`, `…_KEY_PASSWORD`. **Neither is in the repo**, and `*.keystore` is
-  git-ignored.
-- **Back both up** (a password manager, an encrypted drive). Lost, no update can ever be
+- **Where it lives (owner, 21 Nov 2026): `mobile/.env`**, which holds the keystore as
+  base64 text (`TRELLIS_UPLOAD_KEYSTORE_BASE64`) and `TRELLIS_UPLOAD_KEY_ALIAS`,
+  `…_STORE_PASSWORD`, `…_KEY_PASSWORD`. It's **git-ignored** (`mobile/.gitignore`: Expo's
+  template ignored only `.env*.local`, because Expo expects `.env` to be committed), with
+  owner-only permissions. The names never start with `EXPO_PUBLIC_`: Expo copies those
+  into the app bundle, where anyone can read them.
+- `npm run apk` (`scripts/apk.sh`) reads `.env`, writes the keystore to a temporary file
+  that's deleted when the build ends, and hands the values to Gradle as
+  `ORG_GRADLE_PROJECT_TRELLIS_UPLOAD_*` environment variables (Gradle reads those as
+  project properties; a `-P` on the command line would show the passwords in the process
+  list). Without `.env` the script stops.
+- The original keystore is also kept in `~/.trellis/` (permissions 700/600).
+- **Why `.env` isn't a backup:** it's on the same disk as `~/.trellis/`. **Keep a copy off
+  this Mac** (a password manager, an encrypted drive). Lost, no update can ever be
   installed over 1.0.0: every student would have to uninstall (losing nothing, since the
   record is on the server, but still).
 - The certificate says "CN=Trellis, O=Trellis", not a person's name: anyone can read it
@@ -509,6 +518,7 @@ a push, and the keystore must never leave the Mac.
 | 21 Nov 2026 | Block biometric and install-referrer permissions | Least privilege: libraries add them, Trellis uses neither |
 | 21 Nov 2026 | JDK 17 from Homebrew's formula | Gradle's tested JDK; the cask needed a sudo password |
 | 21 Nov 2026 | Releases in a public `trellis-android` repo; an update check, not OTA (owner) | Free, like desktop |
+| 21 Nov 2026 | The signing key in `mobile/.env`, git-ignored, read by `apk.sh` (owner); removed from `~/.gradle/gradle.properties` | One place for the key, next to the app. `.gitignore` gained `.env` first; the keystore goes to a temporary file per build; the values reach Gradle through environment variables, not the command line |
 
 ---
 

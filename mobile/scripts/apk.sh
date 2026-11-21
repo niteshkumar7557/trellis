@@ -19,6 +19,30 @@ if [ "$VERSION" != "$CONFIG_VERSION" ]; then
   exit 1
 fi
 
+# The release signing key, from mobile/.env (git-ignored; docs/mobile.md §9). The keystore
+# is stored there as base64 text, so it's written to a temporary file for this build only
+# and deleted when the script ends, however it ends. Gradle reads ORG_GRADLE_PROJECT_<name>
+# environment variables as project properties, which is what
+# plugins/with-release-signing.js looks for; nothing secret goes on a command line, where
+# other programs could see it in the process list.
+if [ ! -f .env ]; then
+  echo "mobile/.env is missing: it holds the release signing key (docs/mobile.md §9)." >&2
+  exit 1
+fi
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+KEYSTORE=$(mktemp -t trellis-keystore)
+trap 'rm -f "$KEYSTORE"' EXIT
+chmod 600 "$KEYSTORE"
+printf '%s' "$TRELLIS_UPLOAD_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+export ORG_GRADLE_PROJECT_TRELLIS_UPLOAD_STORE_FILE="$KEYSTORE"
+export ORG_GRADLE_PROJECT_TRELLIS_UPLOAD_KEY_ALIAS="$TRELLIS_UPLOAD_KEY_ALIAS"
+export ORG_GRADLE_PROJECT_TRELLIS_UPLOAD_STORE_PASSWORD="$TRELLIS_UPLOAD_STORE_PASSWORD"
+export ORG_GRADLE_PROJECT_TRELLIS_UPLOAD_KEY_PASSWORD="$TRELLIS_UPLOAD_KEY_PASSWORD"
+unset TRELLIS_UPLOAD_KEYSTORE_BASE64 TRELLIS_UPLOAD_STORE_PASSWORD TRELLIS_UPLOAD_KEY_PASSWORD
+
 npm run icons
 npx expo prebuild --platform android --clean --no-install
 (cd android && ./gradlew assembleRelease --console=plain)
