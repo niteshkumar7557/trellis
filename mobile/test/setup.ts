@@ -4,3 +4,7 @@
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
+
+// The safe-area library asks the phone how big the status and navigation bars are; its fake
+// answers with fixed sizes.
+jest.mock("react-native-safe-area-context", () => require("react-native-safe-area-context/jest/mock").default);
