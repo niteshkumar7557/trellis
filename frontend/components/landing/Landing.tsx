@@ -21,6 +21,7 @@ import { Logo } from "@/components/brand/Logo";
 import { BRAND } from "@/components/brand/brand";
 import { MiniMap } from "@/components/map/MiniMap";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
+import { MAC_APP_URL, useIsDesktopApp } from "@/lib/desktop";
 import { useStore } from "@/lib/store";
 import { bigTopicsOf, fromRoadmapSh, namesOf, SOURCE, subjectNames, subjects } from "@shared/data";
 import { display } from "./fonts";
@@ -295,6 +296,7 @@ function Start() {
 
 function Footer() {
   const signedIn = useStore().mode === "live";
+  const inApp = useIsDesktopApp();
   return (
     <footer className={styles.footer}>
       <div className={styles.footCols}>
@@ -314,6 +316,11 @@ function Footer() {
               <Link href="/login">Log in</Link>
               <Link href="/signup">Start your map</Link>
             </>
+          )}
+          {!inApp && (
+            <a href={MAC_APP_URL} target="_blank" rel="noreferrer">
+              Mac app (Apple Silicon)
+            </a>
           )}
         </div>
         <div>

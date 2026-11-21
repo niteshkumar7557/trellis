@@ -309,6 +309,18 @@
   color: var(--stuck);
 }
 
+/* The demo note's two links (Log in, Start your own map): the group is pushed right as one,
+   so the auto margin each link gets from ".bar a" (below) doesn't split them apart; ".bar
+   .barLinks a" is more specific, so it wins whatever the order. */
+.barLinks {
+  display: flex;
+  gap: 16px;
+  margin-left: auto;
+}
+.bar .barLinks a {
+  margin-left: 0;
+}
+
 .bar a,
 .bar button {
   margin-left: auto;

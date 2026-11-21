@@ -222,7 +222,12 @@ function StatusBars() {
       {mode === "demo" && (
         <div className={styles.bar}>
           <span>You&rsquo;re looking at a sample student. Changes stay in this browser.</span>
-          <Link href="/signup">Start your own map</Link>
+          {/* Both ways in. Log in matters most in the Mac app, which has no landing page
+              to find it on (docs/desktop.md). */}
+          <span className={styles.barLinks}>
+            <Link href="/login">Log in</Link>
+            <Link href="/signup">Start your own map</Link>
+          </span>
         </div>
       )}
     </>
