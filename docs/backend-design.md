@@ -257,6 +257,15 @@ CREATE TABLE password_resets (
   used_at    TIMESTAMPTZ,                   -- set once; a used link never works again
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- The desktop app's Google sign-in hand-off (migration 0020, 21 Nov 2026; docs/desktop.md §5).
+CREATE TABLE desktop_handoffs (
+  code_hash  TEXT PRIMARY KEY,               -- SHA-256 of the one-time code
+  user_id    INT  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  challenge  TEXT NOT NULL,                  -- the app's PKCE challenge
+  expires_at TIMESTAMPTZ NOT NULL,           -- two minutes after it is made
+  used_at    TIMESTAMPTZ                     -- set once; a used code never works again
+);
 ```
 
 - **Why a `google_sub` column and not an identities table:** a separate table is the
@@ -536,8 +545,9 @@ they are choices, not surprises.
 | POST | `/api/auth/login` | `{email, password}` → the same |
 | POST | `/api/auth/refresh` | refresh cookie → `{accessToken}` |
 | POST | `/api/auth/logout` | → `204`. Deletes the stored token and clears the cookie |
-| GET | `/api/auth/google` | → redirects to Google |
-| GET | `/api/auth/google/callback` | Google sends the browser back here → sets the refresh cookie → redirects to `/auth/done` |
+| GET | `/api/auth/google` | → redirects to Google. `?desktop=<challenge>`: started by the desktop app (see "The desktop app" below) |
+| GET | `/api/auth/google/callback` | Google sends the browser back here → sets the refresh cookie → redirects to `/auth/done`. For the desktop app: no cookie; a one-time code → redirects to `/auth/desktop?code=…` |
+| POST | `/api/auth/desktop/exchange` | `{code, verifier}` → `{accessToken, student}` + refresh cookie, like login; `400 handoff_invalid` for a used, expired or unproven code. Rate-limited like login |
 | POST | `/api/auth/reset-password` | `{token, password}` → `204`. Signs out every device. It does not sign this browser in: the student logs in with the new password, which proves it works |
 | GET | `/api/me` | → `Student` `{id, name, email, joinedAt, hasPassword, goals[]}` |
 | PATCH | `/api/me` | `{name}` → `Student`. The email cannot be changed in v1 (no way to verify the new one) |
@@ -574,6 +584,36 @@ The server-side "authorization code" flow, with the official `google-auth-librar
   redirect URIs `https://trellis.niteshkumar.xyz/api/auth/google/callback` and
   `http://localhost:3000/api/auth/google/callback`. It gives `GOOGLE_CLIENT_ID` and
   `GOOGLE_CLIENT_SECRET`.
+
+#### The desktop app (21 Nov 2026)
+
+The Mac app (`desktop/`, `docs/desktop.md`) can't sign in to Google inside its own window
+(Google blocks embedded browsers, and the app could read the password). It opens Google
+in the student's own browser instead, which raises a problem: the callback would sign in
+**that browser**, not the app. So the browser hands the sign-in to the app, following
+RFC 8252 ("OAuth for native apps") with PKCE:
+
+1. The app makes a random `verifier`, keeps it in memory, and opens
+   `/api/auth/google?desktop=<challenge>` where `challenge = base64url(SHA-256(verifier))`.
+   The server keeps the challenge in a second 10-minute cookie (`google_desktop`) next to
+   `state`, then goes to Google as usual.
+2. The callback runs steps 2 to 4 above unchanged. Then, because the desktop cookie is
+   there, it starts **no** session: it stores a one-time code (`desktop_handoffs`: the hash,
+   the account, the challenge, two minutes) and redirects to `/auth/desktop?code=…`. That
+   page opens `trellis://auth?code=…`, and macOS hands the link to the app.
+3. The app posts `{code, verifier}` to `/api/auth/desktop/exchange` with its own cookie
+   store. One `UPDATE … RETURNING` checks the code is unused, unexpired and that
+   `SHA-256(verifier)` is the stored challenge, and marks it used, so two exchanges at
+   once can't both win. The answer is login's, and the refresh cookie lands in the app.
+
+- **Why the verifier:** on macOS any app can register `trellis://`. An app that grabbed
+  the link gets the code but not the verifier, so the code is useless to it. A wrong
+  verifier leaves the code unused, so trying it can't spoil the real sign-in.
+- **Why not put a refresh token in the link:** anyone who intercepts it gets a 60-day
+  session. A two-minute, single-use code bound to the app's verifier is worth nothing.
+- **Clean-up:** each new code deletes codes more than a day past expiry; there's no
+  scheduled job. The export leaves the table out (codes are spent in seconds), and
+  deleting an account cascades to it.
 
 ### Forgotten passwords
 

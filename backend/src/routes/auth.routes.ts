@@ -1,8 +1,10 @@
 import express from "express";
 import {
+  DesktopExchangeBody,
   LoginBody,
   RegisterBody,
   ResetPasswordBody,
+  desktopExchange,
   googleCallback,
   googleStart,
   login,
@@ -27,6 +29,9 @@ authRoutes.post("/reset-password", resetLimiter, validateBody(ResetPasswordBody)
 // one-time code that only Google can produce.
 authRoutes.get("/google", loginLimiter, googleStart);
 authRoutes.get("/google/callback", googleCallback);
+// The desktop app's half of Google sign-in (docs/desktop.md §5). Login's limiter: a
+// stream of guessed codes is a sign-in attempt like any other.
+authRoutes.post("/desktop/exchange", loginLimiter, validateBody(DesktopExchangeBody), desktopExchange);
 // Not limited: it only ever removes a session.
 authRoutes.post("/logout", logout);
 

@@ -1,0 +1,41 @@
+<!doctype html>
+<!--
+  Shown when the site can't be reached (no network, DNS, the server is down).
+  It's a local file inside the app, so it works with no connection at all.
+
+  The colours are copied from frontend/app/globals.css (--ground, --text, --muted, --primary and
+  --on-primary) because CSS variables from the site can't reach a local file.
+  If those tokens change, change them here too. The font is IBM Plex Sans when the Mac has
+  it installed, else the system font: the web font comes from the network, which is the
+  thing that's missing.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+    <title>Can't reach Trellis</title>
+    <style>
+      :root { color-scheme: light dark; --ground: #f2f4f0; --ink: #151714; --muted: #565b54; --btn: #151714; --btn-ink: #ffffff; }
+      @media (prefers-color-scheme: dark) { :root { --ground: #0b0c0b; --ink: #f1f2f0; --muted: #b3b7b1; --btn: #f1f2f0; --btn-ink: #111311; } }
+      html, body { height: 100%; margin: 0; }
+      body { display: grid; place-items: center; background: var(--ground); color: var(--ink);
+             font: 15px/1.5 "IBM Plex Sans", system-ui, -apple-system, sans-serif; -webkit-user-select: none; }
+      main { max-width: 26rem; padding: 2rem; text-align: center; }
+      h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 .5rem; }
+      p { color: var(--muted); margin: 0 0 1.5rem; }
+      button { font: inherit; font-weight: 500; padding: .55rem 1.25rem; border: 0; border-radius: 8px;
+               background: var(--btn); color: var(--btn-ink); cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Can't reach Trellis</h1>
+      <p>Check your internet connection. Your map and everything you've saved are safe on the server.</p>
+      <button id="retry" autofocus>Try again</button>
+    </main>
+    <script>
+      // trellisDesktop comes from the preload (src/preload/index.ts).
+      document.getElementById("retry").addEventListener("click", () => window.trellisDesktop.retry());
+    </script>
+  </body>
+</html>

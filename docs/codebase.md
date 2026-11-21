@@ -79,6 +79,10 @@ trellis/
 │   │   └── types/            adds req.userId to Express
 │   ├── test/                 Vitest unit tests; test/integration/ uses the real Postgres
 │   └── tools/subject.ts      `npm run subject`: print a subject as Trellis works it out
+├── desktop/                  the Mac app (Electron): the live site in a locked-down window (docs/desktop.md)
+│   ├── src/main/             the main process: window, menu, tray, reminder, updates, deep links, sign-in
+│   ├── src/preload/          the small bridge the page may use
+│   └── test/                 Vitest (pure logic), Playwright (the real app)
 ├── deploy/                   production: docker-compose.yml, Caddyfile, release/deploy/backup scripts
 ├── docker-compose.dev.yml    the development database: Postgres (:5050)
 └── team-tasks/, notes.txt    the owner's private notes (git-ignored)
@@ -333,6 +337,7 @@ content: §2 "Where content lives" (there is no graph database since 21 Nov 2026
 | A protected request | `requireAuth` checks the JWT's signature (no database lookup) and sets `req.userId` | `middlewares/auth.middleware.ts` |
 | Staying signed in | On a 401 or a page load the frontend calls `POST /api/auth/refresh`, which checks the cookie's hash and slides its expiry | `frontend/lib/api.ts` |
 | Google | Server-side OAuth code flow with a `state` cookie; the ID token is verified; the account is found by Google id, linked by verified email (removing a password nobody proved), or created | `utils/google.ts`, `signInWithGoogle` in `users.repo.ts` |
+| Google from the desktop app | Google opens in the student's browser; the callback stores a two-minute one-time code instead of a session, `/auth/desktop` passes it to the app by `trellis://`, and the app swaps it plus its PKCE verifier for a session (`POST /api/auth/desktop/exchange`) | `googleStart`/`googleCallback`/`desktopExchange` in `auth.controller.ts`, `repos/desktop-handoffs.repo.ts`; `docs/desktop.md` §5 |
 | Forgotten password | No email yet: the admin runs `npm run reset-link -- email` and replies with a one-hour, one-use link; using it sets the password and signs out every device | `db/reset-link.ts`, `usePasswordReset` |
 | Delete the account | `DELETE /api/me` asks for the password again (403, not 401, when wrong) | `controllers/me.controller.ts` |
 | Rate limits | 10 per 15 minutes per IP on login, register, reset and delete; 60 on refresh; `trust proxy` = 2 in production so the IP is the visitor's | `middlewares/rate-limit.middleware.ts` |
