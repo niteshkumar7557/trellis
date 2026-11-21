@@ -1,4 +1,4 @@
-// The app's few settings, in one JSON file in the app's data folder
+// The app's settings (today only the window's position), in one JSON file in the app's data folder
 // (~/Library/Application Support/Trellis/settings.json once packaged).
 //
 // Why not the `electron-store` package: it does this plus schemas, migrations and
@@ -20,15 +20,14 @@ export interface Bounds {
 export interface Settings {
   /** Where the window was when it last closed; none on first launch. */
   bounds?: Bounds;
-  /** The daily study reminder (docs/desktop.md §7). Off until the student turns it on. */
-  reminder: { on: boolean; time: string /* "HH:MM", 24-hour, local time */ };
 }
 
-export const DEFAULT_SETTINGS: Settings = { reminder: { on: false, time: "19:00" } };
+// (1.0.0 also kept a daily reminder here; 1.0.1 removed the reminder, and an old file's
+// "reminder" field is simply ignored by loadSettings.)
+export const DEFAULT_SETTINGS: Settings = {};
 
 const FILE = "settings.json";
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
-export const isTime = (v: unknown): v is string => typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 
 /**
  * Read the settings. Never throws: a missing, broken or hand-edited file gives the
@@ -47,9 +46,6 @@ export function loadSettings(dir: string): Settings {
   const b = r.bounds;
   if (b && isNum(b.x) && isNum(b.y) && isNum(b.width) && isNum(b.height)) {
     s.bounds = { x: b.x, y: b.y, width: b.width, height: b.height };
-  }
-  if (r.reminder && typeof r.reminder.on === "boolean" && isTime(r.reminder.time)) {
-    s.reminder = { on: r.reminder.on, time: r.reminder.time };
   }
   return s;
 }

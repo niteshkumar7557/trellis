@@ -12,7 +12,6 @@ import { isAllowedUrl, isExternalSafe } from "./security";
 import { buildMenu } from "./menu";
 import type { AppActions } from "./menu-template";
 import { registerShortcut, unregisterShortcuts } from "./shortcut";
-import { startReminder } from "./reminder";
 import { createTray } from "./tray";
 import { checkForUpdates, startUpdateChecks } from "./updates";
 import { createMainWindow, isTrustedSender, openSearch, retry, setGoogleStartHandler, showPath, showWindow } from "./window";
@@ -89,7 +88,6 @@ if (!app.requestSingleInstanceLock()) {
     buildMenu(actions);
     createTray(actions);
     registerShortcut(actions.openSearch);
-    startReminder(() => showPath("/map"));
     startUpdateChecks();
   });
 
