@@ -49,8 +49,9 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 ## Where things stand (21 Nov 2026)
 
-- **Android app (21 Nov 2026): built on branch `feature/mobile`, not merged, released or
-  published yet.** `mobile/` is a React Native 0.88 + Expo SDK 58 app with native screens
+- **Android app (21 Nov 2026): merged into `main` with a merge commit (`d7e48b6`), backend
+  released, 1.0.0 published at https://github.com/niteshkumar7557/trellis-android (linked
+  from the landing footer and Settings); checked on the owner's Android 17 phone.** `mobile/` is a React Native 0.88 + Expo SDK 58 app with native screens
   that run `shared/` unchanged and call the API (screens in `mobile/src/app`, Expo Router,
   protected routes). The design system is rebuilt natively; `test/tokens.test.ts` fails if
   its colours differ from `globals.css`. Backend change (approved): `X-Trellis-Client:
@@ -58,8 +59,9 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   in `expo-secure-store`); Google reuses the desktop hand-off through Chrome Custom Tabs.
   Built locally into a self-signed arm64 `.apk` (`npm run apk`; JDK 17 from Homebrew; the
   keystore is `~/.trellis/trellis-android.keystore`, passwords in `~/.gradle/gradle.properties`,
-  **never in the repo, back it up**). Releases go to a public `trellis-android` repo (not
-  created yet). **Publish the APK only after the backend release.** No reminders or
+  **never in the repo, back it up**). Releases go to the public `trellis-android` repo
+  (`gh release create v<version> …`, docs/mobile.md §9). **An APK must never need an API
+  the live site doesn't have yet: release the backend first.** No reminders or
   notifications (design.md §14). Counts: backend `npm test` 338, `npm run test:integration`
   99; mobile `npm test` 70. Everything is in `docs/mobile.md`.
 - **Desktop app (21 Nov 2026): merged into `main` with merge commits and released; pushed.
@@ -192,7 +194,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
     with the dev databases up).
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
   topic difficulty and the small fixes went into `main` as one squashed commit each, on the
-  owner's request; ML, the graph-database removal and CI (21 Nov) went in with merge commits; the 17 Nov docs update was committed
+  owner's request; ML, the graph-database removal, CI, the desktop app and the Android app (21 Nov) went in with merge commits; the 17 Nov docs update was committed
   straight to `main` on the owner's request (a one-off). `backend-design.md` §0 now says
   "the owner's call each time". Ask which for the next one.
 - **CI (21 Nov 2026, on `main`):** GitHub Actions, `.github/workflows/ci.yml`: on every push and pull
