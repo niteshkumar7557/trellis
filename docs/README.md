@@ -21,6 +21,7 @@ https://trellis.niteshkumar.xyz).
      action**)
    - a new subject → [`subject-blueprint.md`](subject-blueprint.md)
    - the Mac app → [`desktop.md`](desktop.md)
+   - the Android app → [`mobile.md`](mobile.md)
 4. [`../CLAUDE.md`](../CLAUDE.md): the owner's rules for every coding session and "where
    things stand". It's written for AI coding sessions, but it's the shortest summary of the
    rules and the current state.
@@ -43,6 +44,7 @@ https://trellis.niteshkumar.xyz).
 | How do I run, write or debug a test? | `testing.md` |
 | What tools and versions are used? | `tech-stack.md` |
 | How does the Mac app work, and how is it built and signed? | `desktop.md` |
+| How does the Android app work, and how is it built and signed? | `mobile.md` |
 | Where does it run, how is it released, how are backups made? | `aws.md` §4, §6, §7, §9 |
 | How do I add a subject? | `subject-blueprint.md`; one record per subject in `subjects/` |
 | What's known to be missing or weak? | `backend-design.md` §11 "Known gaps" and §12; `testing.md` §12 |
@@ -61,6 +63,7 @@ https://trellis.niteshkumar.xyz).
 | `aws.md` | Hosting: the account check, the free plan, the server, CloudFront, Bedrock, deploy, secrets, backups, every resource id |
 | `tech-stack.md` | The tools in one table |
 | `desktop.md` | The Mac app (Electron): its security model, Google sign-in by deep link with PKCE, menu, tray, notifications, shortcut, update check, signing, building, testing, decisions |
+| `mobile.md` | The Android app (React Native + Expo): native screens on `shared/`, the mobile sign-in mode, the design system rebuilt natively, phone features, building, signing, testing, decisions |
 | `subject-blueprint.md` | The procedure for adding a subject from official sources, with review gates |
 | `subjects/react-native.md`, `subjects/mongodb.md` | The design record of each subject built with the blueprint: sources, inventory, decisions, review findings |
 

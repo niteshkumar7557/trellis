@@ -8,6 +8,7 @@ import ui from "@/components/ui/ui.module.css";
 import { goalById, subjectById } from "@shared/data";
 import { ApiError, api } from "@/lib/api";
 import { MAC_APP_URL, useIsDesktopApp } from "@/lib/desktop";
+import { ANDROID_APP_URL } from "@/lib/android";
 import { useStore } from "@/lib/store";
 import { useTheme, type ThemePref } from "@/lib/theme";
 import { NEARLY, backAt, basicReason, resetClock, resetWeekday } from "@/lib/usage";
@@ -212,6 +213,31 @@ export default function SettingsPage() {
               <a href={MAC_APP_URL} target="_blank" rel="noreferrer" className={ui.btn}>
                 <Icon name="download" />
                 Download for Mac
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {!inApp && (
+        <section className={styles.section}>
+          <div className={styles.label}>
+            <h2>Android app</h2>
+            <p>Trellis as a phone app, for Android.</p>
+          </div>
+          <div className={styles.panel}>
+            <p className={styles.prose}>
+              The same map, helper and check-ins, made for a phone: swipe to sort, share a prompt to any app. You sign in
+              with the same account.
+            </p>
+            <p className={styles.prose}>
+              It isn&rsquo;t in the Play Store: download the file, and allow your browser to install apps when Android
+              asks. The download page shows how.
+            </p>
+            <div className={styles.panelFoot}>
+              <a href={ANDROID_APP_URL} target="_blank" rel="noreferrer" className={ui.btn}>
+                <Icon name="download" />
+                Download for Android
               </a>
             </div>
           </div>

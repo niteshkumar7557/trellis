@@ -88,6 +88,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
   }, []);
 
+  // Stable, so the toast's 5-second timer (which depends on it) isn't restarted by every
+  // change to the record (found in review).
+  const clearError = useCallback(() => setError(null), []);
+
   const signedOut = useCallback(() => {
     dispatch({ type: "clear" });
     setMode("signed-out");
@@ -219,12 +223,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       goal: goalId ? (goalById.get(goalId) ?? null) : null,
       today: new Date().toISOString().slice(0, 10),
       error,
-      clearError: () => setError(null),
+      clearError,
       fail,
       dispatch,
       act,
     };
-  }, [record, mode, error, act, fail]);
+  }, [record, mode, error, act, fail, clearError]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

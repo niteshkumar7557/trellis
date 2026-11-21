@@ -80,6 +80,10 @@ trellis/
 │   ├── test/                 Vitest unit tests; test/integration/ uses the real Postgres
 │   └── tools/subject.ts      `npm run subject`: print a subject as Trellis works it out
 ├── desktop/                  the Mac app (Electron): the live site in a locked-down window (docs/desktop.md)
+├── mobile/                   the Android app (React Native + Expo): native screens on shared/ (docs/mobile.md)
+│   ├── src/app/              the screens (Expo Router: one file per screen)
+│   ├── src/lib/, src/store/  the API client, secure session, Google, the record
+│   └── test/                 Jest + React Native Testing Library
 │   ├── src/main/             the main process: window, menu, tray, updates, deep links, sign-in
 │   ├── src/preload/          the small bridge the page may use
 │   └── test/                 Vitest (pure logic), Playwright (the real app)
@@ -418,12 +422,12 @@ the topic sheet's Stuck button (app/(app)/map/page.tsx)
 
 ## 12. Tests, in brief
 
-Backend only, with Vitest and supertest:
+The backend, with Vitest and supertest:
 
 ```bash
 cd backend
-npm test                  # 323 unit tests in 33 files, no database, ~3 s
-npm run test:integration  # 90 tests in 13 files against the dev Postgres, ~20 s
+npm test                  # 338 unit tests in 33 files, no database, ~3 s
+npm run test:integration  # 99 tests in 14 files against the dev Postgres, ~20 s
 npm run typecheck
 ```
 
@@ -432,7 +436,9 @@ integration tests use the real app and Postgres, including race tests (20 AI
 reservations at once, a double-clicked Save). Bedrock is always faked. A golden test pins
 what the sample student is told. GitHub Actions runs every check on every push
 (`.github/workflows/ci.yml`), and `deploy/release.sh` won't ship a commit that failed. The
-frontend has no test runner. Everything about it: `docs/testing.md`.
+frontend has no test runner. The desktop app has its own (`docs/desktop.md` §10); the
+Android app runs Jest with React Native Testing Library (`cd mobile && npm test`,
+`docs/mobile.md` §9). Everything about the backend's: `docs/testing.md`.
 
 ## 13. Running locally
 

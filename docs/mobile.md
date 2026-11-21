@@ -7,7 +7,10 @@ the same domain code as the site (`shared/`) and talks to the same API.
 It's a graded university elective (21 Nov 2026). The owner must explain every decision in a
 viva, so every choice below names the alternatives and the trade-off.
 
-Status: **design, waiting for the owner's approval (21 Nov 2026).** Branch `feature/mobile`.
+Status: **built on branch `feature/mobile` (21 Nov 2026)**: every screen, the backend's
+mobile mode, the signed `release/Trellis-1.0.0-arm64.apk` (31 MB). Checked on the Android 17
+emulator (sign-up, Start, the swipe sort, the map, the topic sheet) and by 70 tests. Not yet
+merged, released or published; §11 says what's left.
 
 ---
 
@@ -209,18 +212,28 @@ App                                Chrome Custom Tab                    Backend
 
 ## 5. Screens
 
-Paths are Expo Router files in `mobile/app/`.
+Paths are Expo Router files in `mobile/src/app/` (Expo SDK 58's convention: screens in
+`src/app`, everything else beside them in `src/`).
+
+**Which screens exist** depends on the store's mode, with Expo Router's *protected routes*
+(`Stack.Protected` in `src/app/_layout.tsx`): signed out, only Log in and Sign up; offline,
+only "Can't reach Trellis"; signed in, the app. A screen whose guard turns false is removed,
+so logging out in Settings lands on Log in by itself, and no screen checks "am I signed in?".
 
 | Screen | File | What it shows |
 |---|---|---|
-| Log in / Sign up | `(auth)/login.tsx`, `signup.tsx` | Email and password, Continue with Google. "Forgot password?" explains the admin reset (as on the web) |
-| Start | `start/index.tsx` | Pick a subject and a goal; "Learning something else?" saves a request |
-| The sort | `start/sort.tsx` | One card per big topic: I know it / Shaky / New; the "I already know React" shortcut |
-| **Map** (tab) | `(tabs)/map.tsx` | Subject and goal; the Stuck and Next cards; done / to learn / you can skip; **Your route** (big topics in order, opening into subtopics) and **Not needed for this goal**. Search at the top |
-| **Topic** (sheet) | `topic/[id].tsx` | Status, difficulty, Can skip / Don't skip with the reason, summary, the prompt (Copy, ChatGPT, Claude, Share), How did it go? (Got it / Partly / Stuck, through the helper), It needs / It unlocks with a small drawing, "may be why" when stuck, your notes, Look inside now |
-| **Helper** (tab) | `(tabs)/helper.tsx` | The thread for the current subject; confirm cards with Save, then Undo; "how did it go?"; suggestion chips; older messages on scroll |
-| **Check-ins** (tab) | `(tabs)/check-ins.tsx` | Every update and note; edit or delete |
-| **Settings** (tab) | `(tabs)/settings.tsx` | Name, theme, AI usage (percent and reset time), export, log out, delete account, the app's version and Check for updates |
+| (the gate) | `index.tsx` | Not a screen: "/" exists in every mode and sends you on: Log in, "Can't reach Trellis", Start or the map |
+| Log in / Sign up | `login.tsx`, `signup.tsx` (the form: `src/auth/AuthForm.tsx`) | Email and password, Continue with Google. "Forgot password?" explains the admin reset (as on the web) |
+| Can't reach Trellis | `offline.tsx` | A session is stored but the server can't be reached: Try again (never Log in) |
+| Start | `(app)/start/index.tsx` | Pick a subject and a goal; "Learning something else?" saves a request |
+| The sort | `(app)/start/sort.tsx` | One card per big topic: I know it / Shaky / New, by swiping the card or tapping; the "I already know React" shortcut |
+| **Map** (tab) | `(app)/(tabs)/map.tsx` | Subject and goal; the Stuck and Next cards; done / to learn / you can skip; **Your route** (big topics in order, opening into subtopics) and **Not needed for this goal**. Search at the top |
+| Switch | `(app)/switch.tsx` | A sheet from the map's header: the subjects you've started (or Add a subject) and the goal |
+| Search | `(app)/search.tsx` | Every topic in every subject, by name or keyword |
+| **Topic** (sheet) | `(app)/topic/[id].tsx` | Status, difficulty, Can skip / Don't skip with the reason, summary, the prompt (Copy, ChatGPT, Claude, Share), How did it go? (Got it / Partly / Stuck, through the helper), It needs / It unlocks with a small drawing, "may be why" when stuck, your notes, Look inside now |
+| **Helper** (tab) | `(app)/(tabs)/helper.tsx` | The thread for the current subject; confirm cards with Save, then Undo; "how did it go?"; suggestion chips; older messages on scroll |
+| **Check-ins** (tab) | `(app)/(tabs)/check-ins.tsx` | Every update and note by day; tap to edit, swipe left to delete |
+| **Settings** (tab) | `(app)/(tabs)/settings.tsx` | Name, theme, AI usage (percent and reset time), export, log out, delete account, the app's version and Check for updates |
 
 The web's **sidebar** (Map, Check-ins, Settings) becomes a **bottom tab bar**, the phone's
 convention; the **helper**, which sits in the map's right-hand panel on the web, gets its
@@ -292,15 +305,16 @@ Each of these is a real phone feature, and none breaks `design.md` §14:
 | Feature | What the student gets | How |
 |---|---|---|
 | **Topic as a bottom sheet** | The topic slides up over the map, half or full height, dragged down to close | Expo Router `formSheet` presentation (`react-native-screens`) |
-| **Haptics** | A light tap on Save, Undo and the status buttons; a warning buzz on Delete | `expo-haptics` |
+| **Haptics** | A light tap on Save, Undo, a sorted card and Copy; a selection tick on choices; a warning buzz before a delete | `expo-haptics` |
 | **Pull to refresh** | Pull the map or check-ins down to reload the record | `RefreshControl` |
 | **Share a prompt** | Send the prompt to any app (WhatsApp, Notes, an AI app), not just copy it | React Native's `Share` |
 | **Open in the AI app** | ChatGPT and Claude open in their Android apps if installed, else the browser | `Linking` with the existing `chatGptUrl` / `claudeUrl` |
-| **Swipe to delete a check-in** | Swipe left on a check-in to delete, with Undo in a toast | `react-native-gesture-handler` |
+| **Swipe the sort's cards** | Throw a card left (I know it), up (Shaky) or right (New to me), the directions the web's card flies; the buttons do the same | Gesture Handler `Pan` + Reanimated on the UI thread |
+| **Swipe to delete a check-in** | Swipe left, then confirm. (No Undo: the API can't recreate a check-in, since only a saved proposal makes one) | `ReanimatedSwipeable` |
 | **Predictive back** | Android 17's back gesture previews the screen underneath | `react-native-screens`, enabled in `app.config.ts` |
 | **Edge to edge** | The frame colour runs under the status and navigation bars, as Android 15+ expects | `react-native-safe-area-context` |
 | **Skeletons** | Grey shapes while the record loads, as on the web (`Skeleton.tsx`) | a small component |
-| **App shortcuts** | Long-press the launcher icon: Map, Helper | Android app shortcuts in `app.config.ts`, opening `trellis://` links |
+| **App shortcuts** | Long-press the launcher icon: Map, Helper | `plugins/with-shortcuts.js` writes `res/xml/shortcuts.xml` and two vector drawables (XML, not bitmaps) opening `trellis://map` and `trellis://helper` |
 
 ---
 
@@ -308,69 +322,163 @@ Each of these is a real phone feature, and none breaks `design.md` §14:
 
 ```
 mobile/
-  package.json            scripts and dependencies (Expo SDK 58, React Native 0.88)
-  app.config.ts           name, package id, scheme "trellis", icons, plugins, version
-  metro.config.js         lets Metro read ../shared
-  tsconfig.json           strict; "@shared/*" → "../shared/*", as in the other apps
-  app/                    Expo Router screens (§5)
+  package.json            scripts; Jest's settings
+  app.config.ts           name, package id, scheme "trellis", icons, splash, permissions, plugins, VERSION
+  metro.config.js         lets Metro read ../shared, the brand mark and frontend/lib/usage.ts
+  tsconfig.json           strict; "@shared/*" → ../shared, "@/*" → ./src
+  plugins/
+    with-release-signing.js  release builds signed with our key (or the build fails); arm64 only
+    with-shortcuts.js        the launcher shortcuts
+  scripts/
+    icons.ts              SVG mark → launcher, adaptive and splash PNGs (assets/generated/)
+    apk.sh                `npm run apk`: icons, prebuild, Gradle, the signed APK in release/
   src/
-    theme/                tokens.ts, the theme provider, type sizes
-    ui/                   Button, Pill, StatusMark, Difficulty, Segmented, Card, Icon, Skeleton…
+    app/                  the screens (§5): _layout.tsx (providers, guards), index.tsx (the gate),
+                          login, signup, offline, auth, (app)/ (tabs, start, topic, switch, search)
+    theme/                tokens.ts (= globals.css), theme.tsx (light/dark), type.ts (sizes, fonts)
+    ui/                   Text, Button, Field, Frame, Row, Tag, Choice, Segmented, Status,
+                          Difficulty, Icon, Mark, TopBar, Toast
     lib/
-      config.ts           the API's address (the live site; a LAN address in development)
-      api.ts              fetch + the access token in memory + refresh once on 401
-      session.ts          the refresh token in secure storage
-      pkce.ts             verifier and challenge                 (pure, unit-tested)
-      google.ts           Google sign-in through Custom Tabs
-      store.tsx           the record, act.* actions               (reducer unit-tested)
-      updates.ts          the GitHub release check                (pure parts unit-tested)
-  scripts/icons.ts        SVG mark → launcher icon PNGs
-  test/                   jest-expo + React Native Testing Library
+      config.ts           the API's address (the live site; EXPO_PUBLIC_API_URL in development)
+      api.ts              fetch + the access token in memory + one shared refresh on a 401
+      session.ts          the refresh token in expo-secure-store
+      auth.ts             signIn, restoreSession ("signed-in" | "signed-out" | "offline"), signOut
+      pkce.ts, google.ts  Google sign-in through Custom Tabs
+      updates.ts          the GitHub release check
+    store/                reducer.ts (pure) and store.tsx (the provider, act.*)
+    auth/ start/ map/ topic/ helper/   the pieces of each screen
+    console.d.ts          console.assert's standard type (shared/ needs it)
+  test/                   Jest (jest-expo) + React Native Testing Library; setup.ts fakes native modules
 ```
 
-Generated and git-ignored: `android/` (from prebuild), `assets/generated/` (icons), build
-output.
+Generated and git-ignored: `android/` (from prebuild), `assets/generated/` (icons),
+`release/` (the APK).
 
 **How `shared/` gets in:** Metro is told to watch `../shared` (`watchFolders`), and the
 `@shared/*` path from `tsconfig.json` resolves there, the same alias the frontend and
-backend use. `shared/` imports nothing outside itself, so it runs on Hermes unchanged.
+backend use. `shared/` imports nothing outside itself, so it runs on Hermes unchanged. Two
+details found while building: Babel adds helper imports to `../shared`'s files, so Metro and
+Jest are told to look in `mobile/node_modules` for them; and React Native's types narrow
+`console.assert` to booleans, which `src/console.d.ts` widens back (`shared/` stays unedited).
 
 ---
 
 ## 9. Building, testing, releasing
 
-**Tools on the Mac (all free):** Node, Android Studio's SDK (platform 37, Android 17, is
-installed), and a JDK that Gradle accepts. The Mac has only JDK 25; the build will use
-the JDK bundled with Android Studio, or JDK 17 from Homebrew if Gradle needs it.
-`adb` comes from the SDK's `platform-tools` (add it to `PATH`). The phone needs
-**Developer options → USB debugging**.
+### The tools (all free; set up on the owner's Mac on 21 Nov 2026)
 
-| Command (in `mobile/`) | What it does |
+| Tool | Why | How it was installed |
+|---|---|---|
+| Node 24+ | Expo's CLI, Metro, Jest; runs `scripts/icons.ts` directly | already there (26) |
+| **JDK 17** | Gradle and the Android Gradle plugin; the Mac's default Java is 25 | `brew install openjdk@17` (the `zulu@17` cask needs a sudo password; the formula doesn't) |
+| Android SDK: platform 37 (Android 17), build-tools 37, **NDK 27.1.12297006** | compiling the app and React Native's C++ core; the versions React Native 0.88 asks for (`node_modules/react-native/gradle/libs.versions.toml`) | Android Studio had platform 37; the NDK folder was a broken partial download (no `source.properties`), so it was deleted and reinstalled with `sdkmanager`, which comes with `brew install --cask android-commandlinetools` |
+| `adb` | install on the phone or emulator, read logs | in the SDK's `platform-tools` |
+
+`scripts/apk.sh` sets `ANDROID_HOME` and `JAVA_HOME` itself. For other commands:
+
+```bash
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+export PATH=$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH
+```
+
+### Commands (in `mobile/`)
+
+| Command | What it does |
 |---|---|
-| `npm start` | Metro, for a development build already on the phone |
-| `npx expo run:android` | Generate `android/`, build a debug app and install it on the phone over USB |
-| `npm run typecheck` | `tsc` with no output |
-| `npm test` | jest-expo: pure logic, the reducer, components, the token check |
-| `npm run apk` | Icons, prebuild, `./gradlew assembleRelease`: a signed, arm64 `.apk` |
+| `npm install` | Dependencies. Add new ones with `npx expo install <pkg>`, which picks the version that matches SDK 58 |
+| `npm run typecheck` | `tsc` on the app, then on the tests (which alone get Node's types) |
+| `npm test` | Jest: tokens = `globals.css`, `shared/` runs, the UI pieces, the API client and session, PKCE, the Google link, the reducer, the routes (signed out → Log in), the map, the helper's requests, the update check, the signing plugin |
+| `npm run android` | `expo run:android`: generate `android/`, build a debug app, install it on the phone or emulator |
+| `npm start` | Metro, for a debug app already installed |
+| `npm run icons` | The PNGs from the SVG mark |
+| `npm run apk` | The signed release: `release/Trellis-<version>-arm64.apk` |
 
-**Signing:** Android installs only signed APKs. A **keystore** made once with `keytool`
-(free) signs every release. It lives **outside the repo** (with its passwords in
-`~/.gradle/gradle.properties`) and **must be backed up**: a phone refuses an update signed
-by a different key, so losing it means every student must uninstall and reinstall.
+**Running against the local backend** (dev Postgres up, `cd backend && npm run dev`):
+the app needs the Mac's address. On the emulator that's `10.0.2.2`; on a phone, the Mac's
+Wi-Fi address (`ipconfig getifaddr en0`):
 
-**arm64 only:** one APK for 64-bit ARM phones (nearly every phone since 2019), about half
-the size of a universal one. Same reasoning as the desktop app's Apple Silicon-only build.
+```bash
+EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api npx expo start --dev-client
+```
 
-**Installing:** students download the `.apk` from the release page and allow "Install
-unknown apps" for their browser once. Google is starting to require developer verification
-for installed apps in some countries; whether that reaches the owner's classmates is
-checked before the release (§11).
+Google sign-in can't be tried this way (the callback returns to `localhost:3000`, which a
+phone can't reach); try it against the live site after the backend release.
 
-**Releasing a version:** raise `version` (and `versionCode`) in `app.config.ts`; `npm run
-apk`; `gh release create v<version> <apk> --repo niteshkumar7557/trellis-android`.
+**Seen while testing (21 Nov 2026), so nobody is surprised:**
 
-**CI:** a `mobile` job in `.github/workflows/ci.yml` runs `typecheck` and `npm test`. The
-APK is built on the owner's Mac.
+- The **debug** app asks "Allow Trellis to find… nearby devices?". That's Android 17's new
+  local-network permission, triggered by talking to Metro on the Mac. The release app
+  talks only to the internet and doesn't ask (checked on the release build). Android 17
+  still lists `ACCESS_LOCAL_NETWORK` for the installed app although our manifest doesn't
+  declare it; it appears to add it itself for apps targeting the previous SDK (36). That's
+  an inference from the logs, not a documented fact.
+- The emulator crashed twice with "bad color buffer handle" using the Mac's GPU, then hung
+  on a crash-report dialog at the next start. `-gpu swiftshader_indirect` (software
+  drawing) was stable; clear `/tmp/android-$USER/emu-crash-*.db` and the AVD's `*.lock`
+  files if it refuses to start.
+
+### Signing
+
+Android installs only signed APKs, and installs an update only if it's signed with the
+**same key**. The key is a keystore made once (21 Nov 2026) with `keytool`:
+
+```bash
+keytool -genkeypair -storetype PKCS12 -keystore ~/.trellis/trellis-android.keystore \
+  -alias trellis -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Trellis, O=Trellis"
+```
+
+- It lives in `~/.trellis/` (permissions 700/600), its passwords in
+  `~/.gradle/gradle.properties` as `TRELLIS_UPLOAD_STORE_FILE`, `…_KEY_ALIAS`,
+  `…_STORE_PASSWORD`, `…_KEY_PASSWORD`. **Neither is in the repo**, and `*.keystore` is
+  git-ignored.
+- **Back both up** (a password manager, an encrypted drive). Lost, no update can ever be
+  installed over 1.0.0: every student would have to uninstall (losing nothing, since the
+  record is on the server, but still).
+- The certificate says "CN=Trellis, O=Trellis", not a person's name: anyone can read it
+  out of the APK.
+- `plugins/with-release-signing.js` points release builds at it, and makes a release build
+  **fail** without it. As generated, React Native signs releases with the public debug key.
+- Its SHA-256: `c266b478…f80a05c2` (`apksigner verify --print-certs`).
+
+**Short of production:** Play Store apps use *Play App Signing* (Google keeps the real key,
+the developer an upload key that can be reset). At $0 with no Play listing, our one key is
+both.
+
+### The APK
+
+- **arm64-v8a only** (`reactNativeArchitectures` in the plugin): every phone sold in years
+  is 64-bit ARM. 31 MB; the all-architectures debug build was 250 MB (debug builds also
+  carry the developer tools).
+- **Permissions:** internet and vibration. Biometrics (from `expo-secure-store`'s optional
+  fingerprint lock) and the Play install referrer (from `expo-application`) are blocked
+  in `app.config.ts`, since Trellis uses neither.
+- `minSdk 24` (Android 7), `targetSdk 36`, compiled against SDK 37: Expo SDK 58's defaults.
+- Minify (R8) is off: it can strip code React Native libraries load by reflection, and
+  the size win isn't worth that risk for a first release.
+
+**Installing:** students download the `.apk` from the release page, open it, and allow
+"Install unknown apps" for their browser once. **Developer verification** (checked 21 Nov
+2026): Google's verification for installed apps starts 30 Sep 2026 in Brazil, Indonesia,
+Singapore and Thailand and goes global "in 2027 and beyond"; no source names India in the
+first wave. Installs over USB with `adb` stay exempt, and there's a free student/hobbyist
+account for up to 20 devices with no ID or fee: the route when it reaches India.
+
+### Releasing a version
+
+1. The backend first, when it changed (mobile mode shipped with 1.0.0): the normal
+   release (CLAUDE.md "Releasing"). **The APK must never reach students before the API it
+   needs**: 1.0.0's sign-in needs mobile mode on the live site.
+2. Raise `VERSION` and `VERSION_CODE` in `app.config.ts` and `version` in `package.json`
+   (`apk.sh` stops if the two versions differ).
+3. `npm run apk`, then install it on the phone and go through §12's checklist.
+4. `gh release create v<version> release/Trellis-<version>-arm64.apk --repo
+   niteshkumar7557/trellis-android --title "Trellis <version>" --notes "…"`. Running
+   copies see it from Settings → Check for updates.
+
+**CI:** the `mobile` job in `.github/workflows/ci.yml` runs `typecheck` and `npm test` on
+every push. The APK is built on the Mac: a Gradle build on a runner costs ~10 free minutes
+a push, and the keystore must never leave the Mac.
 
 ---
 
@@ -387,8 +495,17 @@ APK is built on the owner's Mac.
 | 21 Nov 2026 | `X-Trellis-Client: mobile` returns the refresh token in the body | Approved backend change; one switch, no copied routes |
 | 21 Nov 2026 | Google through Custom Tabs + the desktop hand-off | Reuses tested code; no migration |
 | 21 Nov 2026 | Refresh token in `expo-secure-store`, access token in memory | Keystore-encrypted; same split as the web |
+| 21 Nov 2026 | Offline is its own state, never "signed out" | Only a 401 from refresh deletes the token; a tunnel shouldn't sign anyone out |
 | 21 Nov 2026 | Signed-in only; no reminders or notifications | `design.md` §14 |
-| 21 Nov 2026 | arm64 APK, self-made keystore | Smaller; $0 |
+| 21 Nov 2026 | Screens in `src/app` (not `app/`) | Expo SDK 58's convention, found in its docs while building |
+| 21 Nov 2026 | Protected routes plus a root `index.tsx` gate outside the guards | Found on the emulator: with "/" only inside the signed-in group, a signed-out start redirected forever. Pinned by `test/routes.test.tsx` |
+| 21 Nov 2026 | The helper's requests as plain functions given `post` and `dispatch` | Testable with fakes; the hook only wires them |
+| 21 Nov 2026 | Import `frontend/lib/usage.ts` and the brand mark rather than copy them | The AI-allowance words and the mark stay one definition |
+| 21 Nov 2026 | Swipe-to-delete confirms; no Undo | The API can't recreate a check-in (only a saved proposal creates one) |
+| 21 Nov 2026 | Added a Switch sheet and a Search screen | The web's goal dropdown and sidebar subjects have no room on a phone |
+| 21 Nov 2026 | arm64 APK, self-made keystore, release fails without it | Smaller; $0; never a debug-signed release |
+| 21 Nov 2026 | Block biometric and install-referrer permissions | Least privilege: libraries add them, Trellis uses neither |
+| 21 Nov 2026 | JDK 17 from Homebrew's formula | Gradle's tested JDK; the cask needed a sudo password |
 | 21 Nov 2026 | Releases in a public `trellis-android` repo; an update check, not OTA (owner) | Free, like desktop |
 
 ---
@@ -397,13 +514,42 @@ APK is built on the owner's Mac.
 
 | Step | State |
 |---|---|
-| 0. Design approved | waiting |
-| 1. Backend mobile mode + tests | |
-| 2. `mobile/` set up; `shared/` running; a debug build on the phone | |
-| 3. API client, secure session, Log in, Sign up, Google | |
-| 4. Store, Start, the sort | |
-| 5. Map and Topic | |
-| 6. Helper | |
-| 7. Check-ins and Settings | |
-| 8. Icons, signing, release APK on the phone, update check | |
-| 9. CI, docs, merge (owner's choice of how), backend release, `trellis-android` release | |
+| 0. Design approved | done (owner, 21 Nov 2026) |
+| 1. Backend mobile mode + tests | done: unit 338, integration 99 |
+| 2. `mobile/` set up; `shared/` running; a debug build | done |
+| 3. API client, secure session, Log in, Sign up, Google | done (Google not yet tried end to end: needs the backend release) |
+| 4. Store, Start, the sort | done; checked on the emulator |
+| 5. Map and Topic | done; checked on the emulator |
+| 6. Helper | done (unit-tested; the conversation itself not yet tried on a device) |
+| 7. Check-ins and Settings | done (unit-tested; not yet tried on a device) |
+| 8. Icons, signing, release APK, update check | done: `Trellis-1.0.0-arm64.apk`, installed and opened on the emulator |
+| 9. CI, docs | done |
+| Left | the owner's phone (USB debugging) for §12's checklist; merge (owner's choice of how); the backend release; create `trellis-android` and publish v1.0.0 **after** the backend release |
+
+---
+
+## 12. Checking a build on the phone
+
+Before publishing, on the owner's Android 17 phone with the release APK:
+
+1. Install (`adb install release/Trellis-<v>-arm64.apk`, or open the file); it opens on Log in.
+2. Sign up with email; Start; sort with swipes and buttons; the map appears.
+3. Open a topic: the sheet, Copy, Share, ChatGPT and Claude (the app opens if installed).
+4. Got it on a topic → the helper asks one question → the confirm card → Save → Undo.
+5. Type a message to the helper; check-ins: edit one, swipe one away.
+6. Settings: theme (light, dark), export (the share sheet), Check for updates.
+7. Log out → Log in; kill the app and reopen: still signed in. Airplane mode → reopen:
+   "Can't reach Trellis", and Try again works once back online.
+8. Continue with Google (needs the backend release): Chrome opens, Google, back in the app.
+9. Long-press the icon: Map and Helper shortcuts.
+
+**Known limits** (honest, for the viva):
+
+- Updates are manual (download and install); no Play Store, no over-the-air updates.
+- The first install needs "Install unknown apps" allowed for the browser.
+- A stolen phone's token is a 60-day session until logout, as a stolen cookie is (no
+  refresh-token rotation in v1, for either client).
+- The helper's thread scrolls a plain list; very long threads load 50 at a time with
+  "Show earlier messages".
+- Google sign-in may need the "Open Trellis" button on `/auth/desktop` if Chrome doesn't
+  follow the page's automatic jump to `trellis://`.

@@ -6,7 +6,7 @@
 import { kids, shortcutsOf, subjectById, topicById } from "@shared/data";
 import { needsOf, summarise, unsortedAreas } from "@shared/graph";
 import type { ClaimKind } from "@shared/types";
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SwipeCard, type SwipeCardHandle } from "@/start/SwipeCard";
@@ -52,10 +52,10 @@ export default function Sort() {
   const done = deck.length > 0 && index >= deck.length;
   const shown = Math.min(index, deck.length);
 
-  if (!goal) {
-    router.replace("/start");
-    return null;
-  }
+  // No goal to sort for: go back to Start. A <Redirect> rather than router.replace() here,
+  // because navigating while React is drawing is a side effect it warns about (found in
+  // review; test/routes-live.test.tsx).
+  if (!goal) return <Redirect href="/start" />;
 
   const count = (k: ClaimKind) => answers.filter((a) => a === k).length;
   const finish = async () => {

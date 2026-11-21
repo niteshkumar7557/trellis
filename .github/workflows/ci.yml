@@ -152,3 +152,24 @@ jobs:
         working-directory: desktop
       - run: npm test
         working-directory: desktop
+
+  mobile:
+    name: Android app (typecheck, unit tests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # The checks that need no phone and no Android SDK (docs/mobile.md §9). The APK is
+    # built on the owner's Mac: a Gradle build on a runner takes ~10 minutes of the free
+    # allowance per push, and signing needs the keystore, which must never leave the Mac.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+        working-directory: mobile
+      - run: npm run typecheck
+        working-directory: mobile
+      - run: npm test
+        working-directory: mobile

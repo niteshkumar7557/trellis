@@ -22,6 +22,7 @@ import { BRAND } from "@/components/brand/brand";
 import { MiniMap } from "@/components/map/MiniMap";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { MAC_APP_URL, useIsDesktopApp } from "@/lib/desktop";
+import { ANDROID_APP_URL } from "@/lib/android";
 import { useStore } from "@/lib/store";
 import { bigTopicsOf, fromRoadmapSh, namesOf, SOURCE, subjectNames, subjects } from "@shared/data";
 import { display } from "./fonts";
@@ -320,6 +321,11 @@ function Footer() {
           {!inApp && (
             <a href={MAC_APP_URL} target="_blank" rel="noreferrer">
               Mac app (Apple Silicon)
+            </a>
+          )}
+          {!inApp && (
+            <a href={ANDROID_APP_URL} target="_blank" rel="noreferrer">
+              Android app
             </a>
           )}
         </div>
