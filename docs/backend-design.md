@@ -1377,7 +1377,7 @@ Update this table at the start of each planning session from `git log` and merge
 | Redis redesign and removing the roadmap.sh credit | **closed without being built** (owner, 15 Nov 2026); Redis still credits roadmap.sh | — |
 | Docs and comments brought up to date with the code; `docs/README.md`, `docs/codebase.md`, `docs/testing.md` added; a stale integration test fixed | done; no behaviour changed, so no release needed | `main`, 17 Nov 2026 (committed directly, on the owner's request) |
 | No graph database: the API reads the graph from `shared/data` in memory (§2); the driver, seed, drift check, health field, `graph_unavailable`, env variables and compose services removed | done; live | `main`, 21 Nov 2026 (merge commit of `chore/drop-graph-database`) |
-| CI: GitHub Actions runs every check on every push (`.github/workflows/ci.yml`); `release.sh` refuses a commit CI hasn't passed | done | branch `ci/github-actions`, 21 Nov 2026 |
+| CI: GitHub Actions runs every check on every push (`.github/workflows/ci.yml`); `release.sh` refuses a commit CI hasn't passed | done; first run green | `main`, 21 Nov 2026 (merge commit of `ci/github-actions`) |
 
 **Test counts now (run 21 Nov 2026):** `npm test` 323 in 33 files, `npm run
 test:integration` 90 in 13 files, all passing. The graph's tests moved from the

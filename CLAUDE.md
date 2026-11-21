@@ -49,7 +49,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 ## Where things stand (21 Nov 2026)
 
 - **No graph database (21 Nov 2026): merged into `main` with a merge commit (branch
-  `chore/drop-graph-database`, deleted) and released the same day; not pushed to GitHub.** The owner removed it: it took a 768 MB share of the 2 GB server and
+  `chore/drop-graph-database`, deleted) and released the same day; pushed.** The owner removed it: it took a 768 MB share of the 2 GB server and
   nothing a student sees needed it. The API now reads the topic graph from `shared/data`
   in memory (`backend/src/repos/graph.repo.ts`): the three content routes keep their URLs
   and answers and can no longer answer 503; `/api/health` is `{ postgres }` only; there is
@@ -165,10 +165,10 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
     with the dev databases up).
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
   topic difficulty and the small fixes went into `main` as one squashed commit each, on the
-  owner's request; ML and the graph-database removal (21 Nov) went in with a merge commit; the 17 Nov docs update was committed
+  owner's request; ML, the graph-database removal and CI (21 Nov) went in with merge commits; the 17 Nov docs update was committed
   straight to `main` on the owner's request (a one-off). `backend-design.md` §0 now says
   "the owner's call each time". Ask which for the next one.
-- **CI (21 Nov 2026):** GitHub Actions, `.github/workflows/ci.yml`: on every push and pull
+- **CI (21 Nov 2026, on `main`):** GitHub Actions, `.github/workflows/ci.yml`: on every push and pull
   request it runs the backend typecheck, unit tests and build, the integration tests on a
   `postgres:18` service container, and the frontend's `tsc`, eslint, `lint:shared` and
   `next build`. `release.sh` asks `gh` whether CI passed for `HEAD` and stops if not, so
@@ -182,8 +182,8 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   15 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** everything is created and live, in Sydney; every resource id is in
   `docs/aws.md` §9. CloudFront `E6RLEBVGF9SWB`, server `i-03c628dea103abc86`.
-- **Git:** `main` is the only branch. On 21 Nov it is ahead of GitHub by the
-  graph-database removal (merge commit, released, not pushed).
+- **Git:** `main` is the only branch and matches GitHub (21 Nov 2026: the graph-database
+  removal and CI both went in with merge commits and were pushed).
   Each piece of work gets its own branch from `main` (`backend/m2`, `feature/…`, `fix/…`); commit only there, unless the
   owner says otherwise. **Push, merge and deploy only on the owner's say-so.** How to merge
   is the owner's call each time (see "Merging"), so ask.
