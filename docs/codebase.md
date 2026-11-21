@@ -3,8 +3,8 @@
 > **Read this first.** It explains the whole codebase at the level you need to find your
 > way: what each folder is for, how a request flows, how the main features work, and where
 > to make common changes. It doesn't repeat the deep docs; each section ends with where to
-> go for the details. Checked against the code on **17 Nov 2026** (production runs
-> `bf1c0fc`).
+> go for the details. Checked against the code on **17 Nov 2026**, and on 21 Nov for the graph database's
+> removal (production runs the merge of `chore/drop-graph-database`, released 21 Nov 2026).
 
 ## Contents
 

@@ -48,8 +48,8 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 ## Where things stand (21 Nov 2026)
 
-- **No graph database (21 Nov 2026), on branch `chore/drop-graph-database`, not merged,
-  pushed or released.** The owner removed it: it took a 768 MB share of the 2 GB server and
+- **No graph database (21 Nov 2026): merged into `main` with a merge commit (branch
+  `chore/drop-graph-database`, deleted) and released the same day; not pushed to GitHub.** The owner removed it: it took a 768 MB share of the 2 GB server and
   nothing a student sees needed it. The API now reads the topic graph from `shared/data`
   in memory (`backend/src/repos/graph.repo.ts`): the three content routes keep their URLs
   and answers and can no longer answer 503; `/api/health` is `{ postgres }` only; there is
@@ -72,7 +72,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   - the unused `cors` dependency, the unused `users.role` column, and Google's start
     sharing login's rate-limit count.
 - **In one line:** every milestone of v1 (M0 to M7, MS, ML) is built, merged and **live at
-  https://trellis.niteshkumar.xyz**. Production runs `bf1c0fc` (released 15 Nov 2026). Three subjects are live: React Native, Redis and MongoDB. **Nothing is pending** (owner, 15 Nov 2026: "mark all pending things done"); the items closed without being built are listed under "Closed on 15 Nov 2026" below. Next: testing with real users, 18 to 21 Nov.
+  https://trellis.niteshkumar.xyz**. Production runs the merge of `chore/drop-graph-database`, released 21 Nov 2026 (before it, `bf1c0fc` from 15 Nov). Three subjects are live: React Native, Redis and MongoDB. **Nothing is pending** (owner, 15 Nov 2026: "mark all pending things done"); the items closed without being built are listed under "Closed on 15 Nov 2026" below. Next: testing with real users, 18 to 21 Nov.
 - **Design:** reviewed on 12 Nov 2026 (`design.md` v7, `backend-design.md`, `aws.md`), and
   kept in step with every change since; the docs describe the code as it stands.
 - **Frontend:** the screens are finished and connected to the API (M6, on `main`):
@@ -165,7 +165,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
     with the dev databases up).
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
   topic difficulty and the small fixes went into `main` as one squashed commit each, on the
-  owner's request; ML went in with a merge commit; the 17 Nov docs update was committed
+  owner's request; ML and the graph-database removal (21 Nov) went in with a merge commit; the 17 Nov docs update was committed
   straight to `main` on the owner's request (a one-off). `backend-design.md` §0 now says
   "the owner's call each time". Ask which for the next one.
 - **Releasing:** run `./deploy/release.sh` on its own, **never piped** (`| tail` hides a
@@ -176,8 +176,8 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   15 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** everything is created and live, in Sydney; every resource id is in
   `docs/aws.md` §9. CloudFront `E6RLEBVGF9SWB`, server `i-03c628dea103abc86`.
-- **Git:** `main` matches GitHub (the 17 Nov docs commit was pushed). On 21 Nov
-  `chore/drop-graph-database` holds the graph-database removal, waiting for the owner.
+- **Git:** `main` is the only branch. On 21 Nov it is ahead of GitHub by the
+  graph-database removal (merge commit, released, not pushed).
   Each piece of work gets its own branch from `main` (`backend/m2`, `feature/…`, `fix/…`); commit only there, unless the
   owner says otherwise. **Push, merge and deploy only on the owner's say-so.** How to merge
   is the owner's call each time (see "Merging"), so ask.

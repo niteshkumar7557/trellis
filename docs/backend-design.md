@@ -8,7 +8,7 @@ Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` 
 runs) and `docs/frontend.md` (the screens and the data contract).
 
 **Status (21 Nov 2026):** every task in §10 is done, on `main` and live (production runs
-`bf1c0fc`); nothing is pending (§11). **The helper reads typed messages with GLM 5 on
+the merge of `chore/drop-graph-database`, released 21 Nov 2026); nothing is pending (§11). **The helper reads typed messages with GLM 5 on
 Bedrock in Sydney**, tried against the real service (§5 "The first real call"). **Trellis
 is live at https://trellis.niteshkumar.xyz** (since 14 Nov 2026). Everything runs in
 Sydney (the free plan allows EC2 nowhere else, `docs/aws.md` §3) behind CloudFront, which
@@ -17,7 +17,7 @@ serves the pages from New Delhi (§4). A release is `./deploy/release.sh` (`docs
 On 17 Nov 2026 the docs and code comments were brought up to date with the code (this
 commit changed no behaviour; one stale integration test was fixed). **On 21 Nov 2026 the
 graph database was removed** (§2 "No graph database"): the API reads the topic graph from
-`shared/data` in memory. It is on a branch, not yet released. What a check on that
+`shared/data` in memory. It went into `main` with a merge commit and was released the same day. What a check on that
 day found is in §11 "Known gaps". New to the codebase? Start with `docs/README.md`.
 
 **AWS on this machine:** the `trellis` profile exists (`aws login --profile trellis`,
@@ -1374,7 +1374,7 @@ Update this table at the start of each planning session from `git log` and merge
 | Loading skeleton, map lines in curved lanes, landing fixes | done; live | `main`, 15 Nov 2026 (squashed, `05d37de` and `bf1c0fc`) |
 | Redis redesign and removing the roadmap.sh credit | **closed without being built** (owner, 15 Nov 2026); Redis still credits roadmap.sh | — |
 | Docs and comments brought up to date with the code; `docs/README.md`, `docs/codebase.md`, `docs/testing.md` added; a stale integration test fixed | done; no behaviour changed, so no release needed | `main`, 17 Nov 2026 (committed directly, on the owner's request) |
-| No graph database: the API reads the graph from `shared/data` in memory (§2); the driver, seed, drift check, health field, `graph_unavailable`, env variables and compose services removed | done; tested; **not merged or released** | branch `chore/drop-graph-database`, 21 Nov 2026 |
+| No graph database: the API reads the graph from `shared/data` in memory (§2); the driver, seed, drift check, health field, `graph_unavailable`, env variables and compose services removed | done; live | `main`, 21 Nov 2026 (merge commit of `chore/drop-graph-database`) |
 
 **Test counts now (run 21 Nov 2026):** `npm test` 323 in 33 files, `npm run
 test:integration` 90 in 13 files, all passing. The graph's tests moved from the

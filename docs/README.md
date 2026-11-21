@@ -3,7 +3,7 @@
 Every doc in this folder, what question it answers, and the order to read them in. Each
 doc makes sense on its own; this page only tells you which one to open.
 
-Last checked against the code: **17 Nov 2026** (production runs `bf1c0fc`, live at
+Last checked against the code: **17 Nov 2026** (production runs the merge of `chore/drop-graph-database`, released 21 Nov 2026, live at
 https://trellis.niteshkumar.xyz).
 
 ## If you are new: read in this order
