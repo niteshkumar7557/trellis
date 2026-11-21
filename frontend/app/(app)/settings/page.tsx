@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import ui from "@/components/ui/ui.module.css";
 import { goalById, subjectById } from "@shared/data";
 import { ApiError, api } from "@/lib/api";
+import { MAC_APP_URL, useIsDesktopApp } from "@/lib/desktop";
 import { useStore } from "@/lib/store";
 import { useTheme, type ThemePref } from "@/lib/theme";
 import { NEARLY, backAt, basicReason, resetClock, resetWeekday } from "@/lib/usage";
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   const notes = experiences.length;
   const goals = Object.entries(goalIds).filter(([, g]) => g);
   const live = mode === "live";
+  const inApp = useIsDesktopApp();
   // Deleting a password account asks for the password again (backend-design.md §4).
   const needsPassword = live && student.hasPassword;
 
@@ -190,6 +192,31 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      {!inApp && (
+        <section className={styles.section}>
+          <div className={styles.label}>
+            <h2>Mac app</h2>
+            <p>Trellis in its own window, for Macs with Apple Silicon.</p>
+          </div>
+          <div className={styles.panel}>
+            <p className={styles.prose}>
+              Control-Option-T opens Trellis with search from any app, and it has its own menu and menu-bar icon. Your
+              map and record are the same as here.
+            </p>
+            <p className={styles.prose}>
+              The first time you open it, macOS asks you to confirm it in System Settings, Privacy &amp; Security, because
+              the app isn&rsquo;t notarized by Apple. The download page shows how.
+            </p>
+            <div className={styles.panelFoot}>
+              <a href={MAC_APP_URL} target="_blank" rel="noreferrer" className={ui.btn}>
+                <Icon name="download" />
+                Download for Mac
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className={styles.section}>
         <div className={styles.label}>

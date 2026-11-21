@@ -18,7 +18,10 @@ export function siteOrigin(): string {
   return PRODUCTION_ORIGIN;
 }
 
-/** The first page: a signed-in student's map, or the demo map with "Sign in" when signed out. */
+/**
+ * Where Retry goes when it has no failed page to go back to. The very first page is chosen
+ * by start-path.ts (the map when signed in, Log in when not).
+ */
 export const START_PATH = "/map";
 
 /** Page background while the site loads, so a dark Mac doesn't flash white. From app/globals.css --ground. */

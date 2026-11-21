@@ -2,7 +2,7 @@
 // prove the page can't do what docs/desktop.md §4 says it can't.
 
 import { _electron as electron, expect, test, type ElectronApplication } from "@playwright/test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -67,7 +67,7 @@ test("the window can't be taken to another site, and no pop-up window opens", as
   await page.evaluate(() => window.open("https://example.org/"));
   await page.waitForTimeout(500);
 
-  expect(page.url()).toBe(`${siteUrl}/map`);
+  expect(page.url()).toBe(`${siteUrl}/login`); // still the first page (signed out → Log in)
   expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
   expect(await app.evaluate(() => (globalThis as any).opened)).toEqual(["https://example.com/", "https://example.org/"]);
   await app.close();
@@ -152,32 +152,31 @@ test("Check for Updates… always answers, even when GitHub can't be asked", asy
   await app.close();
 });
 
-test("the daily reminder fires a notification, and clicking it opens the map", async () => {
-  // A data folder whose settings already have the reminder on.
+test("the first page is Log in when signed out, and your map once you have a session", async () => {
   const userData = mkdtempSync(join(tmpdir(), "trellis-e2e-"));
-  writeFileSync(join(userData, "settings.json"), JSON.stringify({ reminder: { on: true, time: "19:00" } }));
-  // TRELLIS_REMINDER_TEST: fire 10 seconds after start instead of at 19:00 (dev only).
-  const app = await launch(siteUrl, { userData, env: { TRELLIS_REMINDER_TEST: "1" } });
-  const page = await app.firstWindow();
-  await expect(page).toHaveTitle("Fake Trellis");
-  await page.evaluate(() => history.replaceState(null, "", "/somewhere-else"));
 
-  // Catch notifications instead of showing them. (Electron's exports are read-only, so the
-  // class can't be swapped; its prototype's show() can.) The real Notification is built.
-  await app.evaluate(({ Notification }) => {
-    (globalThis as any).notes = [];
-    Notification.prototype.show = function (this: Electron.Notification) {
-      (globalThis as any).notes.push(this);
-    };
-  });
+  // First launch, nobody signed in: Log in, not the sample student.
+  let app = await launch(siteUrl, { userData });
+  let page = await app.firstWindow();
+  await expect(page).toHaveURL(`${siteUrl}/login`);
 
-  await expect.poll(() => app.evaluate(() => (globalThis as any).notes.length), { timeout: 15_000 }).toBe(1);
-  const note = await app.evaluate(() => {
-    const n = (globalThis as any).notes[0] as Electron.Notification;
-    return { title: n.title, body: n.body };
-  });
-  expect(note).toEqual({ title: "Time to study", body: "Your map is waiting." });
-  await app.evaluate(() => (globalThis as any).notes[0].emit("click")); // as if the student clicked it
+  // Sign in, as far as the app can tell: the site's 60-day session cookie, saved to disk.
+  await app.evaluate(async ({ session }, site) => {
+    await session.defaultSession.cookies.set({
+      url: `${site}/api/auth`,
+      name: "refresh_token",
+      value: "x",
+      path: "/api/auth",
+      httpOnly: true,
+      expirationDate: Date.now() / 1000 + 3600,
+    });
+    await session.defaultSession.cookies.flushStore();
+  }, siteUrl);
+  await app.close();
+
+  // Next launch with the same data folder (a returning student): straight to the map.
+  app = await launch(siteUrl, { userData });
+  page = await app.firstWindow();
   await expect(page).toHaveURL(`${siteUrl}/map`);
   await app.close();
 });

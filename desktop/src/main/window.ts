@@ -4,11 +4,12 @@
 // no Electron, its own sandboxed process. Everything it may ask main for goes through the
 // preload (src/preload/index.ts), and main checks who's asking (isTrustedSender).
 
-import { app, BrowserWindow, nativeTheme, screen, shell, type IpcMainEvent } from "electron";
+import { app, BrowserWindow, nativeTheme, screen, session, shell, type IpcMainEvent } from "electron";
 import { join } from "node:path";
 import { BACKGROUND, siteOrigin, START_PATH } from "./config";
 import { isAllowedUrl, isExternalSafe } from "./security";
 import { loadSettings, saveSettings, type Bounds } from "./settings";
+import { startPathFor } from "./start-path";
 
 let win: BrowserWindow | null = null;
 /** True once the student really quits (⌘Q, the tray's Quit); until then closing only hides. */
@@ -128,8 +129,8 @@ export function createMainWindow(): BrowserWindow {
   });
 
   // ---- Closing hides, quitting quits (the Mac convention: the app stays in the Dock and
-  // the menu bar, the reminder keeps working, and reopening is instant with the page as it
-  // was). The bounds are saved either way.
+  // the menu bar, ⌃⌥T keeps working, and reopening is instant with the page as it was).
+  // The bounds are saved either way.
   w.on("close", (event) => {
     const dir = app.getPath("userData");
     saveSettings(dir, { ...loadSettings(dir), bounds: w.getNormalBounds() });
@@ -140,8 +141,20 @@ export function createMainWindow(): BrowserWindow {
   });
   w.on("closed", () => (win = null));
 
-  w.loadURL(siteOrigin() + START_PATH);
+  void firstPath().then((path) => w.loadURL(siteOrigin() + path));
   return w;
+}
+
+/**
+ * Signed in? The site keeps its 60-day session in a refresh_token cookie (Path=/api/auth);
+ * if the window's cookie store has one, open the map, otherwise Log in. The cookie is
+ * HttpOnly, which hides it from the page's JavaScript but not from main, which owns the store.
+ * An expired session still opens the map, where the site falls back to the sample student
+ * with a Log in link, exactly as in a browser.
+ */
+async function firstPath(): Promise<string> {
+  const cookies = await session.defaultSession.cookies.get({ url: `${siteOrigin()}/api/auth`, name: "refresh_token" });
+  return startPathFor(cookies.length > 0);
 }
 
 /** The offline page's Retry: try the page that failed again (or the start page). */
