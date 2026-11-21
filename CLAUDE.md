@@ -17,6 +17,7 @@ juniors first.
    - `docs/backend-design.md`: the backend design with its reasons, the **rules for coding
      sessions (§0)**, the build plan (§10) and the **progress table (§11)**.
    - `docs/aws.md`: hosting. **§2 is the account check to run before any AWS action.**
+   - `docs/mobile.md`: **the Android app** (React Native + Expo): screens, sign-in, signing, building.
    - `docs/frontend.md`: how the frontend is built; the data contract; **§13 the product
      changes agreed but not built yet**.
    - `README.md` (public overview; keep in step) and `docs/tech-stack.md`.
@@ -48,6 +49,19 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 ## Where things stand (21 Nov 2026)
 
+- **Android app (21 Nov 2026): built on branch `feature/mobile`, not merged, released or
+  published yet.** `mobile/` is a React Native 0.88 + Expo SDK 58 app with native screens
+  that run `shared/` unchanged and call the API (screens in `mobile/src/app`, Expo Router,
+  protected routes). The design system is rebuilt natively; `test/tokens.test.ts` fails if
+  its colours differ from `globals.css`. Backend change (approved): `X-Trellis-Client:
+  mobile` makes the auth routes keep the refresh token in the JSON body (the app stores it
+  in `expo-secure-store`); Google reuses the desktop hand-off through Chrome Custom Tabs.
+  Built locally into a self-signed arm64 `.apk` (`npm run apk`; JDK 17 from Homebrew; the
+  keystore is `~/.trellis/trellis-android.keystore`, passwords in `~/.gradle/gradle.properties`,
+  **never in the repo, back it up**). Releases go to a public `trellis-android` repo (not
+  created yet). **Publish the APK only after the backend release.** No reminders or
+  notifications (design.md §14). Counts: backend `npm test` 338, `npm run test:integration`
+  99; mobile `npm test` 70. Everything is in `docs/mobile.md`.
 - **Desktop app (21 Nov 2026): merged into `main` with merge commits and released; pushed.
   Current version 1.0.2.** `desktop/` is an Electron Mac app (Apple Silicon, ad-hoc signed,
   no notarization: $0) that loads the live site in a locked-down window, with a menu,

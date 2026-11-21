@@ -80,6 +80,10 @@ trellis/
 │   ├── test/                 Vitest unit tests; test/integration/ uses the real Postgres
 │   └── tools/subject.ts      `npm run subject`: print a subject as Trellis works it out
 ├── desktop/                  the Mac app (Electron): the live site in a locked-down window (docs/desktop.md)
+├── mobile/                   the Android app (React Native + Expo): native screens on shared/ (docs/mobile.md)
+│   ├── src/app/              the screens (Expo Router: one file per screen)
+│   ├── src/lib/, src/store/  the API client, secure session, Google, the record
+│   └── test/                 Jest + React Native Testing Library
 │   ├── src/main/             the main process: window, menu, tray, updates, deep links, sign-in
 │   ├── src/preload/          the small bridge the page may use
 │   └── test/                 Vitest (pure logic), Playwright (the real app)
@@ -338,6 +342,7 @@ content: §2 "Where content lives" (there is no graph database since 21 Nov 2026
 | Staying signed in | On a 401 or a page load the frontend calls `POST /api/auth/refresh`, which checks the cookie's hash and slides its expiry | `frontend/lib/api.ts` |
 | Google | Server-side OAuth code flow with a `state` cookie; the ID token is verified; the account is found by Google id, linked by verified email (removing a password nobody proved), or created | `utils/google.ts`, `signInWithGoogle` in `users.repo.ts` |
 | Google from the desktop app | Google opens in the student's browser; the callback stores a two-minute one-time code instead of a session, `/auth/desktop` passes it to the app by `trellis://`, and the app swaps it plus its PKCE verifier for a session (`POST /api/auth/desktop/exchange`) | `googleStart`/`googleCallback`/`desktopExchange` in `auth.controller.ts`, `repos/desktop-handoffs.repo.ts`; `docs/desktop.md` §5 |
+| The Android app | Sends `X-Trellis-Client: mobile`: the refresh token travels in the JSON body instead of a cookie (the app keeps it in secure storage); Google reuses the desktop hand-off | `isMobile` in `auth.controller.ts`; `docs/mobile.md` §4 |
 | Forgotten password | No email yet: the admin runs `npm run reset-link -- email` and replies with a one-hour, one-use link; using it sets the password and signs out every device | `db/reset-link.ts`, `usePasswordReset` |
 | Delete the account | `DELETE /api/me` asks for the password again (403, not 401, when wrong) | `controllers/me.controller.ts` |
 | Rate limits | 10 per 15 minutes per IP on login, register, reset and delete; 60 on refresh; `trust proxy` = 2 in production so the IP is the visitor's | `middlewares/rate-limit.middleware.ts` |
@@ -417,12 +422,12 @@ the topic sheet's Stuck button (app/(app)/map/page.tsx)
 
 ## 12. Tests, in brief
 
-Backend only, with Vitest and supertest:
+The backend, with Vitest and supertest:
 
 ```bash
 cd backend
-npm test                  # 323 unit tests in 33 files, no database, ~3 s
-npm run test:integration  # 90 tests in 13 files against the dev Postgres, ~20 s
+npm test                  # 338 unit tests in 33 files, no database, ~3 s
+npm run test:integration  # 99 tests in 14 files against the dev Postgres, ~20 s
 npm run typecheck
 ```
 
@@ -431,7 +436,9 @@ integration tests use the real app and Postgres, including race tests (20 AI
 reservations at once, a double-clicked Save). Bedrock is always faked. A golden test pins
 what the sample student is told. GitHub Actions runs every check on every push
 (`.github/workflows/ci.yml`), and `deploy/release.sh` won't ship a commit that failed. The
-frontend has no test runner. Everything about it: `docs/testing.md`.
+frontend has no test runner. The desktop app has its own (`docs/desktop.md` §10); the
+Android app runs Jest with React Native Testing Library (`cd mobile && npm test`,
+`docs/mobile.md` §9). Everything about the backend's: `docs/testing.md`.
 
 ## 13. Running locally
 

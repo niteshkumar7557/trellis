@@ -211,3 +211,79 @@ describe("POST /api/auth/reset-password", () => {
     expect(usePasswordReset).not.toHaveBeenCalled();
   });
 });
+
+// ------------------------------------------------------------------ mobile mode (docs/mobile.md §4)
+// The Android app can't keep a cookie, so with `X-Trellis-Client: mobile` the refresh token
+// travels in the JSON body instead, both ways. Without the header nothing changes (above).
+
+const MOBILE = { "X-Trellis-Client": "mobile" };
+
+describe("mobile mode", () => {
+  it("login answers the refresh token in the body and sets no cookie", async () => {
+    vi.mocked(findLoginByEmail).mockResolvedValue({ id: 5, hashed_password: adaHash });
+    const res = await request(app).post("/api/auth/login").set(MOBILE).send({ email: "ada@example.com", password: "correct horse" });
+    expect(res.status).toBe(200);
+    expect(res.body.refreshToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(verifyAccessToken(res.body.accessToken)).toBe(5);
+    expect(res.body.student).toEqual(STUDENT);
+    expect(refreshCookie(res)).toBe("");
+    // Only the hash is stored, exactly as for a cookie.
+    expect(saveRefreshToken).toHaveBeenCalledWith(5, hashToken(res.body.refreshToken));
+  });
+
+  it("register answers the refresh token in the body and sets no cookie", async () => {
+    vi.mocked(createPasswordUser).mockResolvedValue(5);
+    const res = await request(app).post("/api/auth/register").set(MOBILE).send({ name: "Ada", email: "ada@example.com", password: "correct horse" });
+    expect(res.status).toBe(201);
+    expect(res.body.refreshToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(refreshCookie(res)).toBe("");
+  });
+
+  it("refresh reads the token from the body and answers both tokens", async () => {
+    vi.mocked(useRefreshToken).mockResolvedValue(5);
+    const res = await request(app).post("/api/auth/refresh").set(MOBILE).send({ refreshToken: "abc" });
+    expect(res.status).toBe(200);
+    expect(useRefreshToken).toHaveBeenCalledWith(hashToken("abc"));
+    expect(verifyAccessToken(res.body.accessToken)).toBe(5);
+    expect(res.body.refreshToken).toBe("abc");
+    expect(refreshCookie(res)).toBe("");
+  });
+
+  it("refresh ignores a cookie in mobile mode: only the body counts", async () => {
+    const res = await request(app).post("/api/auth/refresh").set(MOBILE).set("Cookie", "refresh_token=abc");
+    expect(res.status).toBe(401);
+    expect(useRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it("refresh answers 401, never 500, with no body or a token that isn't a string", async () => {
+    const none = await request(app).post("/api/auth/refresh").set(MOBILE);
+    expect(none.status).toBe(401);
+    expect(none.body.error.code).toBe("unauthorized");
+    const odd = await request(app).post("/api/auth/refresh").set(MOBILE).send({ refreshToken: 42 });
+    expect(odd.status).toBe(401);
+    expect(useRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it("refresh with a dead token answers 401 and sets no cookie", async () => {
+    vi.mocked(useRefreshToken).mockResolvedValue(null);
+    const res = await request(app).post("/api/auth/refresh").set(MOBILE).send({ refreshToken: "old" });
+    expect(res.status).toBe(401);
+    expect(refreshCookie(res)).toBe("");
+  });
+
+  it("logout deletes the token from the body", async () => {
+    const res = await request(app).post("/api/auth/logout").set(MOBILE).send({ refreshToken: "abc" });
+    expect(res.status).toBe(204);
+    expect(deleteRefreshToken).toHaveBeenCalledWith(hashToken("abc"));
+  });
+
+  it("only the exact header value switches it on", async () => {
+    vi.mocked(findLoginByEmail).mockResolvedValue({ id: 5, hashed_password: adaHash });
+    const res = await request(app)
+      .post("/api/auth/login")
+      .set("X-Trellis-Client", "web")
+      .send({ email: "ada@example.com", password: "correct horse" });
+    expect(res.body.refreshToken).toBeUndefined();
+    expect(refreshCookie(res)).toMatch(/^refresh_token=/);
+  });
+});

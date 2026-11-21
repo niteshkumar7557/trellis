@@ -16,7 +16,7 @@ choice are in those files.
 | Database | PostgreSQL 18 (`pg`), plain SQL migrations (`backend/src/db/migrations/`) |
 | Topic graph | No database: the files in `shared/data`, held in memory by the API (`backend/src/repos/graph.repo.ts`) |
 | Validation | zod 4 (request bodies, and the AI model's replies) |
-| Testing | Vitest + supertest (backend); Vitest + Playwright for the desktop app; the frontend has no test runner |
+| Testing | Vitest + supertest (backend); Vitest + Playwright for the desktop app; Jest (`jest-expo`) + React Native Testing Library for the Android app; the frontend has no test runner |
 | Auth | JWT access tokens (`jsonwebtoken`, HS256, 15 minutes) + database-backed refresh tokens in an httpOnly cookie (60 days, sliding), bcrypt (cost 12) |
 | Sign-in with Google | OAuth 2 authorization code flow on the server, `google-auth-library` |
 | AI | **GLM 5 on Amazon Bedrock** in Sydney (`@aws-sdk/client-bedrock-runtime`, the Converse API with structured output), one call per typed helper message; the rule-based reader is the fallback |
@@ -30,6 +30,7 @@ choice are in those files.
 | Secrets | AWS Systems Manager Parameter Store, written into the server's env file at deploy |
 | Backups | Nightly `pg_dump` to Amazon S3, kept 14 days (a systemd timer on the server) |
 | Desktop app (21 Nov 2026) | **Electron 45** (macOS, Apple Silicon) loading the live site; TypeScript compiled by `tsc`; packaged by **electron-builder 26** into an ad-hoc-signed `.dmg` with Electron Fuses; icons rendered from the SVG mark by `@resvg/resvg-js` and `iconutil`; Vitest and Playwright (`_electron`) for tests. Electron is what the elective asks for (the nearest alternative would be Tauri: Rust, and the system WebView instead of one fixed Chromium); electron-builder was chosen over Electron Forge (more plugins for the same result). See `docs/desktop.md` |
+| Android app (21 Nov 2026) | **React Native 0.88** with **Expo SDK 58**: Expo Router (file routes in `src/app`), `react-native-svg` for every picture, Reanimated + Gesture Handler (the sort's swipe, swipe-to-delete), `expo-secure-store` (the refresh token, Android Keystore), `expo-web-browser` (Google in Chrome Custom Tabs). Built locally: `expo prebuild` + Gradle into a self-signed arm64 `.apk` (JDK 17, Android SDK 37). Tests: Jest (`jest-expo`) + React Native Testing Library. Expo over the bare React Native CLI (prebuild generates the Android project; maintained native modules); local Gradle over EAS Build (no account, $0, offline). See `docs/mobile.md` |
 | CI | GitHub Actions (`.github/workflows/ci.yml`), every check on every push; `deploy/release.sh` refuses a commit it hasn't passed. Chosen over AWS CodeBuild (spends the free-plan credits), Jenkins (a Java server that needs ~4 GB of RAM for a small team) and GitLab CI or CircleCI (another account for code already on GitHub) |
 
 ## Later (not v1)

@@ -125,3 +125,33 @@ describe("the sign-in cycle", () => {
     expect(res.status).toBe(401);
   });
 });
+
+// The Android app's cycle (docs/mobile.md §4): the same table and the same rules, with the
+// refresh token in the body instead of a cookie.
+describe("the sign-in cycle in mobile mode", () => {
+  const MOBILE = { "X-Trellis-Client": "mobile" };
+  const email = `phone${DOMAIN}`;
+  let refreshToken = "";
+
+  it("registers with the token in the body, storing only its hash, and no cookie", async () => {
+    const res = await request(app).post("/api/auth/register").set(MOBILE).send({ name: "Phone", email, password: "correct horse" });
+    expect(res.status).toBe(201);
+    expect(res.headers["set-cookie"]).toBeUndefined();
+    refreshToken = res.body.refreshToken;
+    const { rows } = await pool.query("SELECT 1 FROM refresh_tokens WHERE token_hash = $1", [hashToken(refreshToken)]);
+    expect(rows).toHaveLength(1);
+  });
+
+  it("refreshes from the body", async () => {
+    const res = await request(app).post("/api/auth/refresh").set(MOBILE).send({ refreshToken });
+    expect(res.status).toBe(200);
+    expect(res.body.refreshToken).toBe(refreshToken);
+    const me = await request(app).get("/api/me").set("Authorization", `Bearer ${res.body.accessToken}`);
+    expect(me.body.email).toBe(email);
+  });
+
+  it("logs out from the body, and the token stops working", async () => {
+    expect((await request(app).post("/api/auth/logout").set(MOBILE).send({ refreshToken })).status).toBe(204);
+    expect((await request(app).post("/api/auth/refresh").set(MOBILE).send({ refreshToken })).status).toBe(401);
+  });
+});

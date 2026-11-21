@@ -1,0 +1,98 @@
+// Every colour of the design system, light and dark, copied from frontend/app/globals.css
+// (docs/mobile.md §6). React Native has no CSS, so screens take colours from here via
+// useTheme(), never as hex in a component. test/tokens.test.ts reads globals.css and fails
+// if anything here differs: change a colour THERE first, then here.
+//
+// What the groups mean is written in globals.css; in short: ground is the frame, surface
+// the sheet, raised the wells; the status colours are the only colour on app screens;
+// easy/medium/hard are LeetCode's, for difficulty only.
+
+const light = {
+  ground: "#f2f4f0",
+  surface: "#ffffff",
+  raised: "#f5f7f3",
+  active: "#e7eae4",
+  border: "#e3e6df",
+  rule: "#eef0eb",
+  control: "#c9cec4",
+  text: "#151714",
+  muted: "#565b54",
+  faint: "#6a6f67",
+  primary: "#151714",
+  onPrimary: "#ffffff",
+  accent: "#2b6a3f",
+  done: "#2b6a3f",
+  doneBg: "#e2f0e5",
+  doneInk: "#143a20",
+  learning: "#2f6db5",
+  learningBg: "#e5eef9",
+  learningInk: "#173b66",
+  stuck: "#c4242a",
+  stuckBg: "#ffecea",
+  stuckInk: "#831c1e",
+  shaky: "#a26a0a",
+  shakyBg: "#fbf0d9",
+  shakyInk: "#5f3e05",
+  know: "#151714",
+  easy: "#00af9b",
+  easyInk: "#007a6c",
+  medium: "#ffb800",
+  mediumInk: "#8f6200",
+  hard: "#ff2d55",
+  hardInk: "#d70f3e",
+  edge: "#b9beb4",
+  edgeSoft: "#d3d7cf",
+  platePaper: "#eef0e9",
+  plateInk: "#1d211c",
+  plateLeaf: "#b6d3bb",
+  plateFruit: "#2b6a3f",
+  plateWire: "#a3a99e",
+  platePost: "#6d7268",
+};
+
+const dark: typeof light = {
+  ground: "#0b0c0b",
+  surface: "#141614",
+  raised: "#1a1c1a",
+  active: "#252825",
+  border: "#262926",
+  rule: "#1f221f",
+  control: "#40443f",
+  text: "#f1f2f0",
+  muted: "#b3b7b1",
+  faint: "#959a93",
+  primary: "#f1f2f0",
+  onPrimary: "#111311",
+  accent: "#63b77e",
+  done: "#63b77e",
+  doneBg: "#1a2b1f",
+  doneInk: "#8fd3a5",
+  learning: "#6fa4e4",
+  learningBg: "#18243a",
+  learningInk: "#a6c8f2",
+  stuck: "#ee6b72",
+  stuckBg: "#33191c",
+  stuckInk: "#f7a5aa",
+  shaky: "#d9a64c",
+  shakyBg: "#2f2512",
+  shakyInk: "#ecc983",
+  know: "#f1f2f0",
+  easy: "#00b8a3",
+  easyInk: "#00b8a3",
+  medium: "#ffc01e",
+  mediumInk: "#ffc01e",
+  hard: "#ff375f",
+  hardInk: "#ff375f",
+  edge: "#4b4f4a",
+  edgeSoft: "#343733",
+  platePaper: "#181b17",
+  plateInk: "#dde2da",
+  plateLeaf: "#3a5a41",
+  plateFruit: "#63b77e",
+  plateWire: "#4d524b",
+  platePost: "#7d8279",
+};
+
+export type Tokens = typeof light;
+export type TokenName = keyof Tokens;
+export const tokens = { light, dark };

@@ -65,6 +65,7 @@ New to the code? Start with [`docs/README.md`](docs/README.md) (the reading orde
 | [`docs/frontend.md`](docs/frontend.md) | How the frontend is built and how to change it; the data contract the backend must serve |
 | [`docs/tech-stack.md`](docs/tech-stack.md) | The tools: in use, later, dropped |
 | [`docs/desktop.md`](docs/desktop.md) | The Mac app (Electron): the secure window, Google sign-in through the browser, the desktop features, signing, building and testing |
+| [`docs/mobile.md`](docs/mobile.md) | The Android app (React Native + Expo): native screens on `shared/`, sign-in with the refresh token in secure storage, the design system rebuilt natively, signing and building the `.apk` |
 | [`docs/subject-blueprint.md`](docs/subject-blueprint.md) | How to add a subject: official sources, a staged path with review gates |
 | [`docs/subjects/`](docs/subjects/) | One design record per subject built with the blueprint (React Native, MongoDB) |
 
@@ -138,6 +139,8 @@ backend/
   test/                Vitest unit tests; test/integration/ against the real Postgres
 desktop/               the Mac app (Electron, Apple Silicon): the live site in a locked-down window,
                        with a menu, tray, ⌃⌥T and Google sign-in by trellis://; docs/desktop.md
+mobile/                the Android app (React Native + Expo SDK 58): native screens that run
+                       shared/ and call the API; an arm64 .apk built locally; docs/mobile.md
 deploy/                production: Docker Compose, Caddy, the release, deploy and backup scripts
 docs/                  start at docs/README.md
 ```
