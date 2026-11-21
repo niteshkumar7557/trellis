@@ -1,0 +1,17 @@
+{
+  // One config for the main process and the preload. CommonJS because Electron's
+  // sandboxed preload can only `require`, not `import` (docs/desktop.md §9).
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}
