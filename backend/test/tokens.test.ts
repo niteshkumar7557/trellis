@@ -6,7 +6,7 @@ import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { currentUserId, requireAuth } from "../src/middlewares/auth.middleware.js";
 import { errorHandler } from "../src/middlewares/error.middleware.js";
-import { hashToken, newRandomToken, signAccessToken, verifyAccessToken } from "../src/utils/tokens.js";
+import { hashToken, newRandomToken, pkceChallenge, signAccessToken, verifyAccessToken } from "../src/utils/tokens.js";
 import { TEST_JWT_SECRET } from "./auth-token.js";
 
 describe("access tokens", () => {
@@ -73,5 +73,13 @@ describe("requireAuth", () => {
     const res = await request(app).get("/forgot-the-guard");
     expect(res.status).toBe(500);
     quiet.mockRestore();
+  });
+});
+
+describe("pkceChallenge (the desktop app's sign-in, docs/desktop.md §5)", () => {
+  it("matches RFC 7636's own worked example (Appendix B)", () => {
+    // The desktop app's test (desktop/test/pkce.test.ts) checks the same pair, so both
+    // sides agree with the standard, not just with each other.
+    expect(pkceChallenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).toBe("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
   });
 });

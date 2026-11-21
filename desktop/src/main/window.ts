@@ -21,6 +21,20 @@ const OFFLINE_PAGE = join(__dirname, "..", "offline.html");
 
 export const getMainWindow = () => win;
 
+/** Set by index.ts to auth.ts's startGoogleSignIn (passed in to avoid a circular import). */
+let onGoogleStart: () => void = () => {};
+export function setGoogleStartHandler(handler: () => void): void {
+  onGoogleStart = handler;
+}
+function isGoogleStart(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.origin === siteOrigin() && u.pathname === "/api/auth/google";
+  } catch {
+    return false;
+  }
+}
+
 /** Bring the window forward (creating it again if needed) and open a page of the site. */
 export function showPath(path: string): void {
   const w = win ?? createMainWindow();
@@ -83,7 +97,16 @@ export function createMainWindow(): BrowserWindow {
     event.preventDefault();
     if (isExternalSafe(url)) shell.openExternal(url);
   };
-  w.webContents.on("will-navigate", (event) => keepOnSite(event, event.url));
+  w.webContents.on("will-navigate", (event) => {
+    // "Continue with Google" is a plain link to /api/auth/google. In the app it must run
+    // in the student's own browser instead (docs/desktop.md §5), so it's caught here.
+    if (isGoogleStart(event.url)) {
+      event.preventDefault();
+      onGoogleStart();
+      return;
+    }
+    keepOnSite(event, event.url);
+  });
   w.webContents.on("will-redirect", (event) => {
     if (event.isMainFrame) keepOnSite(event, event.url);
   });

@@ -5,7 +5,9 @@
 // `whenReady`, or it's lost.
 
 import { app, ipcMain, session, shell } from "electron";
+import { finishGoogleSignIn, startGoogleSignIn } from "./auth";
 import { siteOrigin } from "./config";
+import { createLinkQueue } from "./deeplink";
 import { isAllowedUrl, isExternalSafe } from "./security";
 import { buildMenu } from "./menu";
 import type { AppActions } from "./menu-template";
@@ -13,7 +15,7 @@ import { registerShortcut, unregisterShortcuts } from "./shortcut";
 import { startReminder } from "./reminder";
 import { createTray } from "./tray";
 import { checkForUpdates, startUpdateChecks } from "./updates";
-import { createMainWindow, isTrustedSender, openSearch, retry, showPath, showWindow } from "./window";
+import { createMainWindow, isTrustedSender, openSearch, retry, setGoogleStartHandler, showPath, showWindow } from "./window";
 
 /** Everything the menu bar, the tray and the shortcut can do, in one place. */
 const actions: AppActions = {
@@ -34,6 +36,18 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on("second-instance", () => showWindow());
+
+  // ---- trellis:// links (docs/desktop.md §7). macOS delivers them as "open-url", and when
+  // a link is what launched the app it arrives BEFORE "ready". So the listener is attached
+  // here, at the top, and links wait in a queue until there's a window to act on.
+  const links = createLinkQueue((link) => {
+    if (link.kind === "auth") void finishGoogleSignIn(link.code);
+    else showPath(link.path);
+  });
+  app.on("open-url", (event, url) => {
+    event.preventDefault(); // "we handled it"
+    links.push(url);
+  });
 
   // ---- Every web page the app ever creates gets the same hard limits, even ones this
   // code doesn't create directly. Electron's checklist: "disable or limit navigation",
@@ -62,7 +76,16 @@ if (!app.requestSingleInstanceLock()) {
       if (isTrustedSender(event)) retry();
     });
 
+    // Ask macOS to send trellis:// links to this app. The packaged app also declares the
+    // scheme in Info.plist (electron-builder's "protocols"), which is what macOS reads.
+    // Never from source: there the running program is the generic Electron binary in
+    // node_modules, and registering it would hijack trellis:// links on the developer's
+    // Mac. The tests deliver links by emitting "open-url" themselves.
+    if (app.isPackaged) app.setAsDefaultProtocolClient("trellis");
+    setGoogleStartHandler(startGoogleSignIn);
+
     createMainWindow();
+    links.ready();
     buildMenu(actions);
     createTray(actions);
     registerShortcut(actions.openSearch);
