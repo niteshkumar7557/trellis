@@ -7,15 +7,17 @@ turned down, so you can change it later knowing what you are trading.
 Read it with `docs/design.md` (the product, the source of truth), `docs/aws.md` (where it
 runs) and `docs/frontend.md` (the screens and the data contract).
 
-**Status (17 Nov 2026):** every task in §10 is done, on `main` and live (production runs
-`bf1c0fc`); nothing is pending (§11). **The helper reads typed messages with GLM 5 on
+**Status (21 Nov 2026):** every task in §10 is done, on `main` and live (production runs
+the merge of `chore/drop-graph-database`, released 21 Nov 2026); nothing is pending (§11). **The helper reads typed messages with GLM 5 on
 Bedrock in Sydney**, tried against the real service (§5 "The first real call"). **Trellis
 is live at https://trellis.niteshkumar.xyz** (since 14 Nov 2026). Everything runs in
 Sydney (the free plan allows EC2 nowhere else, `docs/aws.md` §3) behind CloudFront, which
 serves the pages from New Delhi (§4). A release is `./deploy/release.sh` (`docs/aws.md` §6).
 
 On 17 Nov 2026 the docs and code comments were brought up to date with the code (this
-commit changed no behaviour; one stale integration test was fixed). What a check on that
+commit changed no behaviour; one stale integration test was fixed). **On 21 Nov 2026 the
+graph database was removed** (§2 "No graph database"): the API reads the topic graph from
+`shared/data` in memory. It went into `main` with a merge commit and was released the same day. What a check on that
 day found is in §11 "Known gaps". New to the codebase? Start with `docs/README.md`.
 
 **AWS on this machine:** the `trellis` profile exists (`aws login --profile trellis`,
@@ -44,7 +46,7 @@ model · 4 API and auth · 5 The helper · 6 Prompts · 7 Derived logic · 8 Cro
    up to date.
 2. Take the next tasks from §10, in order, and build each with its tests:
    `npm run typecheck`, `npm test` and `npm run test:integration` stay green against the
-   real databases. Update the docs that change.
+   real Postgres. Update the docs that change.
 3. Each piece of work is built on its own branch from `main` (`backend/m2`,
    `feature/…`, `fix/…`), and the branch is deleted after it merges. **How it goes into
    `main` is the owner's call each time:** the rule was a merge commit (so every commit
@@ -114,13 +116,14 @@ adding subjects.
             │ Express API│ │  Next.js   │
             │ (backend/) │ │ (frontend/)│
             └┬────┬────┬─┘ └────────────┘
-             │    │    │
-     ┌───────▼┐ ┌─▼────┴┐      ┌──────────────────────────┐
-     │Postgres│ │ Neo4j │      │ Amazon Bedrock (GLM 5)   │
-     │ record │ │ graph │      │ called by the API only   │
-     └────────┘ └───────┘      └──────────────────────────┘
+             │         │
+     ┌───────▼┐      ┌─▼────────────────────────┐
+     │Postgres│      │ Amazon Bedrock (GLM 5)   │
+     │ record │      │ called by the API only   │
+     └────────┘      └──────────────────────────┘
 
-  All five boxes below CloudFront are containers on ONE server (Docker Compose). Bedrock is an AWS service
+  The topic graph is not a box: the API reads it from shared/data, in memory.
+  All four boxes below CloudFront are containers on ONE server (Docker Compose). Bedrock is an AWS service
   the API calls over the network. shared/ is compiled into both the API and the frontend.
 ```
 
@@ -172,54 +175,32 @@ shared/
 
 - **Source of truth:** the reviewed TypeScript files in `shared/data/`. Changes are
   reviewed like code, and the checks in `shared/data/index.ts` must pass.
-- **Neo4j holds a copy of the graph**, seeded from those files by `npm run seed:graph`.
-  The seed is idempotent (`MERGE`) and deletes nodes that are no longer in the files:
+- **The API reads the graph from those files, in memory** (`src/repos/graph.repo.ts`).
+  Nothing copies it into a database, so there is no seed to run and nothing to keep in
+  step: a content change ships with the release that carries the files.
+- **The three content routes** answer from it: `GET /api/subjects`,
+  `GET /api/subjects/:id/graph` and `GET /api/topics/:id/path-to/:targetId` (a
+  breadth-first search down the "needs" links; ties go to the chain whose topics come
+  first in the files, so the answer never changes between runs).
+- **Topic ids** in a request are checked against `shared/data` (`topicById`).
 
-  ```
-  (:Subject {id, name, shortName, blurb, position})
-  (:Topic {id, name, summary, minutes, optional, difficulty, big, keywords, mistakes, position})-[:OF]->(:Subject)
-  (:Topic)-[:IN]->(:Topic)                 subtopic in its big topic
-  (:Topic)-[:NEEDS {position}]->(:Topic)   from dependent to prerequisite
-  (:Topic)-[:HELPS {position}]->(:Topic)
-  (:Goal {id, name, blurb, position})-[:FOR]->(:Subject)
-  (:Goal)-[:TARGETS {position}]->(:Topic)
-  position: where it sits in the file. A database keeps no order; the map depends on it.
-  ```
-- **Where Neo4j does real work:**
-  - `GET /api/subjects` and `GET /api/subjects/:id/graph` read from it with Cypher.
-  - `GET /api/topics/:id/path-to/:targetId` is a variable-length `NEEDS` path query.
-  - Neo4j Browser (port 7474, dev only) shows the whole subject as a live graph.
+### No graph database (changed 21 Nov 2026)
 
-### Neo4j is not allowed to take the site down (changed 12 Nov 2026)
+Until 21 Nov 2026 a copy of the graph lived in a graph database, seeded from the files on
+every release, with a check that the copy still matched them and a `503` on the three
+content routes while it was down. The owner removed it: it held a 768 MB share of the
+2 GB server and was its biggest user of memory, while nothing a student sees depended on
+it (the frontend and `shared/graph.ts` always read the files).
 
-**Built in M2.6.** Before it, the API refused to start unless Neo4j was up and matched
-the files. Now:
-
-- The API starts whether or not Neo4j is reachable. It logs the problem and carries on.
-- The three Neo4j endpoints above answer `503 graph_unavailable` while it is down, or
-  while its contents do not match the files ("drift").
-- Everything else works, because it never needed Neo4j: `shared/graph.ts` computes from
-  the files in `shared/data`.
-- A topic id is checked against `shared/data` (`topicById`), not against the Neo4j
-  snapshot.
-- `GET /api/health` reports both databases, and only Postgres decides whether it is healthy.
-- **How the API knows** (`src/middlewares/graph.middleware.ts`): `checkGraph()` in
-  `graph.repo.ts` answers `ok`, `down` or `drift`. The answer is remembered for 30 seconds,
-  so a Neo4j that comes back, or gets reseeded, is noticed without a restart. A Neo4j query
-  that fails mid-request with `ServiceUnavailable` also answers 503 (not 500) and forgets
-  the remembered state. The driver gives up after 3 seconds instead of its default 30.
-
-**Why:** nothing a student sees depends on Neo4j, so an outage there should cost two
-endpoints, not the whole product. It also removes the deploy trap where a content change
-needs "seed, then restart" in exactly the right order.
-
-**Alternatives:** keep it required at start (rejected: an outage for no user benefit);
-remove Neo4j from production (rejected by the owner: it is kept for the course and for
-v2 ideas such as concepts shared across subjects).
-
-**Honest note, kept for the record:** at this size Postgres tables could hold the graph.
-Keep all Cypher in `src/repos/` (`graph.repo.ts`, `paths.repo.ts`) and
-`src/db/graph-seed.ts`, so nothing else in the backend knows which database holds it.
+- **Why in memory:** under 500 topics fit in well under a megabyte; every read is a
+  lookup, and the one real graph query (the path) is a few lines of breadth-first search.
+  The site has one database to run, back up and reason about.
+- **Alternative:** Postgres tables for the graph. Rejected: it would be a second copy of
+  the files with its own seed and drift problem, for data that only changes with a
+  release.
+- **The trade-off:** the graph cannot change without a release, and a query language
+  for graphs is gone. If students ever edit the graph (not in v1), it needs a database
+  again; the repo's functions would become async and the controllers would `await` them.
 
 ### The AI
 
@@ -500,7 +481,6 @@ Every error leaves the server in one shape:
 | 413 | `too_large` | Body over 100 KB |
 | 429 | `rate_limited`, `daily_limit` | Too many requests |
 | 500 | `internal` | A bug or an outage on our side |
-| 503 | `graph_unavailable` | Neo4j is down or out of date; only the three graph routes |
 
 A row that belongs to another student answers **404, not 403**, so the API never confirms
 that an id exists.
@@ -628,8 +608,8 @@ change touches one place. See `docs/aws.md` §8.
 | GET | `/api/topics/:topicId/path-to/:targetId` | `Topic[]`: the prerequisite chain, in learning order | yes |
 | GET | `/api/instructions` | `Instruction[]`, so the frontend can assemble prompts locally | yes |
 
-The first three read Neo4j and answer `503 graph_unavailable` when it is down. The
-frontend imports the topic files directly, so it does not depend on them.
+The first three answer from `shared/data` in memory (§2 "Where content lives"). The
+frontend imports the topic files directly, so it does not call them.
 
 ### The student's record
 
@@ -1095,7 +1075,6 @@ start and **throws on a missing or bad value**.
 | `JWT_SECRET` | 32+ random characters | Required. `openssl rand -hex 32` |
 | `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_DAYS` | `15m`, `60` | |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | | Google sign-in is off when they are empty |
-| `NEO4J_URL`, `NEO4J_USER`, `NEO4J_PASSWORD` | `bolt://neo4j:7687` | The site runs without Neo4j (§2) |
 | `AI_PROVIDER` | `bedrock` or `off` | `off` in development and tests: the rules read everything, and no AWS is needed |
 | `BEDROCK_REGION`, `READER_MODEL` | `ap-southeast-2`, `zai.glm-5` | |
 | `READER_PRICE_IN_PER_M`, `READER_PRICE_OUT_PER_M` | `1.03`, `3.30` | Dollars per million tokens, for `cost_usd` (Sydney's prices; change them with the region) |
@@ -1150,8 +1129,7 @@ deploy (`docs/aws.md` §6). Secrets are never committed and never baked into an 
 **What exists (checked 17 Nov 2026):**
 
 - The API logs with plain `console.log` / `console.warn` / `console.error` to stdout. What
-  it writes: the start-up lines (Postgres connected, the Neo4j state, which AI reader is
-  on), Neo4j state **changes** (`graph.middleware.ts` logs only when the state changes),
+  it writes: the start-up lines (Postgres connected, which AI reader is on),
   Bedrock failures as a short code (`bedrock.ts`), warm-up results, a failed Google
   exchange, and every unexpected error with its stack (`error.middleware.ts`, before it
   answers `500 internal`).
@@ -1162,8 +1140,8 @@ deploy (`docs/aws.md` §6). Secrets are never committed and never baked into an 
 - **Never logged:** message text, passwords, tokens, cookies, email addresses. (The one
   exception by design: `npm run reset-link` prints the address it made a link for, on the
   server, for the admin.)
-- `GET /api/health` → `{ postgres: "ok", neo4j: "ok" | "down" | "drift" }`. It answers `200`
-  when Postgres is reachable and `503` when it is not. Neo4j never changes the status.
+- `GET /api/health` → `{ postgres: "ok" | "down" }`. It answers `200` when Postgres is
+  reachable and `503` when it is not.
 
 **Planned and not built: request logging.** The design was `pino` writing one JSON line
 per request (time, request id, method, path, status, duration, user id) and an
@@ -1183,14 +1161,14 @@ Vitest plus supertest, in two commands.
 
 - `npm test` needs no database and takes seconds: pure functions, and routes with the repo
   replaced by a fake (`vi.mock`).
-- `npm run test:integration` runs `test/integration/` against the real dev databases, and
-  fails if they are down rather than skipping.
+- `npm run test:integration` runs `test/integration/` against the real dev Postgres, and
+  fails if it is down rather than skipping.
 - Bedrock is always mocked in tests (`vi.mock("@aws-sdk/client-bedrock-runtime")`). The
   reader's tests (`test/reader.test.ts`) feed fixed model outputs (good, malformed, wrong
   shape, made-up topic ids, cut off, a timeout) and check the fallback; `test/bedrock.test.ts`
   checks the request we send and the `ai_calls` row each outcome leaves.
-- **Counts on 17 Nov 2026:** `npm test` 329 tests in 34 files (about 3 seconds);
-  `npm run test:integration` 112 tests in 16 files (about 25 seconds), all passing.
+- **Counts on 21 Nov 2026:** `npm test` 323 tests in 33 files (about 3 seconds);
+  `npm run test:integration` 90 tests in 13 files (about 20 seconds), all passing.
 - **What isn't tested automatically:** nothing runs the tests for you (there is no CI, and
   `deploy/release.sh` doesn't run them), the frontend has no test runner (its pure map
   layout code is tested from here, `test/map-layout.test.ts`), there are no browser
@@ -1213,13 +1191,13 @@ backend/src/
   config/                 the one place that reads process.env
   routes/                 one file per area: which URL goes to which controller
   controllers/            read the request, call repos and shared/, send the reply
-  repos/                  every SQL and Cypher statement lives here, nowhere else
+  repos/                  every SQL statement lives here, nowhere else; graph.repo.ts reads shared/data
   middlewares/            auth, validation, errors, rate limits
   ai/                     bedrock.ts (the client; reserve, call, settle), reader.ts (message →
                           Reading, the warm-up), limits.ts (the money rules, pure functions)
-  db/                     the Postgres pool and transactions (index.ts), the Neo4j driver,
+  db/                     the Postgres pool and transactions (index.ts),
                           migrations, seeds, and the admin scripts (reset-link.ts, ai-spend.ts)
-  utils/                  small helpers (tokens, google, HttpError, health, graph drift, row ids)
+  utils/                  small helpers (tokens, google, HttpError, health, row ids)
   types/express.d.ts      adds req.userId to Express's Request
 backend/test/             unit tests; test/integration/ the real-database ones (docs/testing.md)
 backend/tools/subject.ts  `npm run subject`: a subject's curriculum as Trellis works it out
@@ -1276,7 +1254,7 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 **then M6.3** (Google sign-in).
 
 **M0: Foundations** ✅ (merged into `main`, 7 Nov 2026)
-**M1: Content (Neo4j)** ✅ (merged into `main`, 12 Nov 2026)
+**M1: Content** ✅ (merged into `main`, 12 Nov 2026; served from a graph database until 21 Nov 2026, from memory since)
 
 **M2: Accounts and the student's record** ✅ (merged into `main`, 13 Nov 2026)
 - M2.1 Migration 0007. Auth moves to `/api/auth/*`: the error shape, zod bodies, one
@@ -1287,8 +1265,8 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - M2.3 Migration 0008 plus `PUT /api/goals/:subjectId`.
 - M2.4 Migration 0009 plus `POST /api/claims`.
 - M2.5 Migrations 0010 and 0011 plus `POST /api/opened` and `POST /api/subject-requests`.
-- M2.6 The API starts without Neo4j; the graph routes answer 503; `/api/health` reports both;
-  topic ids are checked against `shared/data`.
+- M2.6 The API starts without the graph database; the graph routes answer 503; topic ids are
+  checked against `shared/data`. (The database was removed on 21 Nov 2026, §2.)
 
 **M3: Check-ins, experiences, prompts taken** ✅ (merged into `main`, 13 Nov 2026)
 - M3.1 Migrations 0012, 0014 and 0015 plus `GET/PATCH/DELETE /api/check-ins`.
@@ -1330,8 +1308,9 @@ Each line is one task, built in order, each with its tests. The dates are the pl
 - ML.3 The frontend: the sidebar's meter, both limits in Settings, the basic-mode notice.
 
 **M7: Deploy** (the steps are in `docs/aws.md` §9; everything in Sydney, behind CloudFront)
-- M7.1 ✅ The production compose file (`deploy/`): Caddy, Postgres, Neo4j with memory
-  caps, the API, Next, one-shot `migrate` and `seed-graph` services, the deploy scripts.
+- M7.1 ✅ The production compose file (`deploy/`): Caddy, Postgres with a memory cap,
+  the API, Next, a one-shot `migrate` service, the deploy scripts. (A graph database and its
+  seed service were in it until 21 Nov 2026.)
   pgAdmin removed. `TRUST_PROXY_HOPS`. Run locally end to end (14 Nov 2026).
 - M7.2 ✅ The AWS resources: server, role, DNS, backup bucket, budgets, ECR, the certificate
   and the CloudFront distribution (14 Nov 2026; ids in `docs/aws.md` §9).
@@ -1348,9 +1327,9 @@ Update this table at the start of each planning session from `git log` and merge
 | M0.1 Move the domain code into `shared/` | done | `main`, 7 Nov 2026 |
 | M0.2 tsup, Vitest, zod, error handler, Docker from the root | done | `main`, 7 Nov 2026 |
 | M0.3 Golden test + data checks test | done | `main`, 7 Nov 2026 |
-| M0.4 Migrations 0005–0006, empty seed, Neo4j + AI config | done | `main`, 7 Nov 2026 |
-| M1.1 Neo4j in compose, driver, config, boot check | done | `main`, 12 Nov 2026 |
-| M1.2 `npm run seed:graph` | done | `main`, 12 Nov 2026 |
+| M0.4 Migrations 0005–0006, empty seed, graph database + AI config | done | `main`, 7 Nov 2026 |
+| M1.1 The graph database in compose, driver, config, boot check (removed 21 Nov 2026) | done | `main`, 12 Nov 2026 |
+| M1.2 The graph seed (removed 21 Nov 2026) | done | `main`, 12 Nov 2026 |
 | M1.3 Graph repo, snapshot, content routes | done | `main`, 12 Nov 2026 |
 | M1.4 Migration 0013, instructions seed, `GET /api/instructions` | done | `main`, 12 Nov 2026 |
 | M1.5 `GET /api/topics/:id/path-to/:targetId` | done | `main`, 12 Nov 2026 |
@@ -1360,7 +1339,7 @@ Update this table at the start of each planning session from `git log` and merge
 | M2.3 Migration 0008, `PUT /api/goals/:subjectId` | done | `main`, 13 Nov 2026 |
 | M2.4 Migration 0009, `POST /api/claims` | done | `main`, 13 Nov 2026 |
 | M2.5 Migrations 0010, 0011, `POST /api/opened`, `POST /api/subject-requests` | done | `main`, 13 Nov 2026 |
-| M2.6 The API runs without Neo4j; `/api/health` | done | `main`, 13 Nov 2026 |
+| M2.6 The API runs without the graph database; `/api/health` | done | `main`, 13 Nov 2026 |
 | M3.1 Migrations 0012, 0014, 0015, `GET/PATCH/DELETE /api/check-ins` | done | `main`, 13 Nov 2026 |
 | M3.2 Migration 0016, `PATCH/DELETE /api/experiences` | done | `main`, 13 Nov 2026 |
 | M3.3 Migration 0017, `POST /api/prompt-takes` | done | `main`, 13 Nov 2026 |
@@ -1380,13 +1359,13 @@ Update this table at the start of each planning session from `git log` and merge
 | M5.3 The daily message limit (the budget is in M5.2) | done | `main`, 14 Nov 2026 (squashed) |
 | M5 against the real Bedrock (§5 "The first real call"), Bedrock moved to Sydney | done | `main`, 14 Nov 2026 (squashed) |
 | M7.1 The production compose file, Caddy behind CloudFront, the deploy scripts, `TRUST_PROXY_HOPS` | done | `main`, 14 Nov 2026 (squashed) |
-| M7.2 The AWS resources (`docs/aws.md` §9), CloudFront; first release; Neo4j's limits fixed | done; **live at https://trellis.niteshkumar.xyz** | `main`, 14 Nov 2026 (squashed) |
+| M7.2 The AWS resources (`docs/aws.md` §9), CloudFront; first release; the graph database's limits fixed | done; **live at https://trellis.niteshkumar.xyz** | `main`, 14 Nov 2026 (squashed) |
 | M7.3 Nightly backup, restore test, smoke test | done (Google sign-in to be tried by the owner in a browser) | `main`, 14 Nov 2026 (squashed) |
 | ML.1 Migration 0019, the money rules, reserve and settle under a lock | done; live | `main`, 14 Nov 2026 (merge commit `6159270`) |
 | ML.2 `GET /api/usage`, `usage` on state and helper replies, `npm run ai:spend` | done; live | `main`, 14 Nov 2026 (merge commit `6159270`) |
 | ML.3 The sidebar meter, Settings "AI usage", the chat's basic-mode notice | done; checked in a browser against the real API with Bedrock unreachable; live | `main`, 14 Nov 2026 (merge commit `6159270`) |
 | Landing page and brand assets (frontend only) | done; live | `main`, 14 Nov 2026 (squashed, `253c556`) |
-| Topic difficulty: `Topic.difficulty`, stored in Neo4j and returned with every topic; no "what felt easy?" after an easy topic | done; live | `main`, 14 Nov 2026 (squashed, `d67de24`) |
+| Topic difficulty: `Topic.difficulty`, returned with every topic; no "what felt easy?" after an easy topic | done; live | `main`, 14 Nov 2026 (squashed, `d67de24`) |
 | Helper suggestion chips (`suggestionsFor`), "Nothing to add" read as declining, three map and chat fixes | done; live | `main`, 14 Nov 2026 (squashed, `2e9ebc7`) |
 | Map rendering review: worked-out big-topic links, dagre frames, upright arrows, path switch | done; live | `main`, 14 Nov 2026 (squashed, `8084a53`) |
 | The subject blueprint, `npm run subject`, one line per subject | done; live | `main`, 14 Nov 2026 (squashed, `73b62c6`) |
@@ -1395,9 +1374,13 @@ Update this table at the start of each planning session from `git log` and merge
 | Loading skeleton, map lines in curved lanes, landing fixes | done; live | `main`, 15 Nov 2026 (squashed, `05d37de` and `bf1c0fc`) |
 | Redis redesign and removing the roadmap.sh credit | **closed without being built** (owner, 15 Nov 2026); Redis still credits roadmap.sh | — |
 | Docs and comments brought up to date with the code; `docs/README.md`, `docs/codebase.md`, `docs/testing.md` added; a stale integration test fixed | done; no behaviour changed, so no release needed | `main`, 17 Nov 2026 (committed directly, on the owner's request) |
+| No graph database: the API reads the graph from `shared/data` in memory (§2); the driver, seed, drift check, health field, `graph_unavailable`, env variables and compose services removed | done; live | `main`, 21 Nov 2026 (merge commit of `chore/drop-graph-database`) |
 
-**Test counts now (run 17 Nov 2026):** `npm test` 329 in 34 files, all passing.
-`npm run test:integration` 112 in 16 files, all passing after one fix: `state.test.ts`
+**Test counts now (run 21 Nov 2026):** `npm test` 323 in 33 files, `npm run
+test:integration` 90 in 13 files, all passing. The graph's tests moved from the
+integration suite to the unit suite, since they need no database now, and the tests of
+the seed, the drift check and the outage handling went with the code. On 17 Nov: 329 in
+34 files and 112 in 16, all passing after one fix: `state.test.ts`
 still expected only React Native and Redis in `moreMessages`, and failed once MongoDB
 existed (15 Nov), which nobody saw because the suite hadn't been run since ML. Its
 expectation is now built from the subject list. Earlier counts: 300 and 112 (14 Nov,
@@ -1468,5 +1451,5 @@ Nothing blocks the testing with real users (18 to 21 Nov). To settle when reache
   first days (§5).
 - ~~The exact structured-output request for GLM 5.~~ Settled 14 Nov 2026 from the Bedrock
   page; it is in §5.
-- **Memory on the 2 GB server.** If Neo4j does not fit beside everything else, it moves to
-  development only (`docs/aws.md` §4).
+- ~~Memory on the 2 GB server.~~ Settled 21 Nov 2026: the graph database, the biggest user,
+  was removed (§2 "No graph database").

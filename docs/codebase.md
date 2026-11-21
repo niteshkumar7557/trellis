@@ -3,8 +3,8 @@
 > **Read this first.** It explains the whole codebase at the level you need to find your
 > way: what each folder is for, how a request flows, how the main features work, and where
 > to make common changes. It doesn't repeat the deep docs; each section ends with where to
-> go for the details. Checked against the code on **17 Nov 2026** (production runs
-> `bf1c0fc`).
+> go for the details. Checked against the code on **17 Nov 2026**, and on 21 Nov for the graph database's
+> removal (production runs the merge of `chore/drop-graph-database`, released 21 Nov 2026).
 
 ## Contents
 
@@ -15,7 +15,7 @@
 5. `shared/`: the domain code both apps run
 6. The frontend (`frontend/`)
 7. The backend (`backend/`)
-8. The data: Postgres, Neo4j and the content files
+8. The data: Postgres and the content files
 9. Sign-in, in brief
 10. The helper and the AI, in brief
 11. Two requests traced end to end
@@ -71,16 +71,16 @@ trellis/
 │   │   ├── config/           the one place that reads process.env
 │   │   ├── routes/           URL → middleware → handler, one file per area
 │   │   ├── controllers/      the handlers, one file per area
-│   │   ├── repos/            every SQL and Cypher statement, one file per area
-│   │   ├── middlewares/      auth, validation, errors, rate limits, Neo4j state
+│   │   ├── repos/            every SQL statement, one file per area (graph.repo.ts reads shared/data)
+│   │   ├── middlewares/      auth, validation, errors, rate limits
 │   │   ├── ai/               the Bedrock call, the model reader, the money rules
 │   │   ├── db/               pools, migrations, seeds, admin scripts
 │   │   ├── utils/            tokens, Google, HttpError, health, …
 │   │   └── types/            adds req.userId to Express
-│   ├── test/                 Vitest unit tests; test/integration/ uses real databases
+│   ├── test/                 Vitest unit tests; test/integration/ uses the real Postgres
 │   └── tools/subject.ts      `npm run subject`: print a subject as Trellis works it out
 ├── deploy/                   production: docker-compose.yml, Caddyfile, release/deploy/backup scripts
-├── docker-compose.dev.yml    development databases: Postgres (:5050) and Neo4j (:7687, UI :7474)
+├── docker-compose.dev.yml    the development database: Postgres (:5050)
 └── team-tasks/, notes.txt    the owner's private notes (git-ignored)
 ```
 
@@ -103,11 +103,13 @@ the frontend compiles it as source (`experimental.externalDir` in `next.config.t
    ├── /api/*  → api   (Express, backend/)
    └── the rest → web  (Next.js, frontend/)
                   │
-        ┌─────────┼──────────────┬───────────────────────────┐
-     Postgres   Neo4j        Amazon Bedrock (GLM 5)       S3 (nightly backups)
-     accounts,  the topic    called only by the API,      kept 14 days
-     records    graph (copy) once per typed message
+        ┌─────────┼──────────────────────────┐
+     Postgres   Amazon Bedrock (GLM 5)       S3 (nightly backups)
+     accounts,  called only by the API,      kept 14 days
+     records    once per typed message
 ```
+
+The topic graph has no box: the API reads it from `shared/data`, in memory.
 
 **In development** there's no CloudFront or Caddy. You run Next on :3000 and Express on
 :8000; Next's `rewrites()` (`frontend/next.config.ts`) forwards `/api/*` to Express, so the
@@ -260,8 +262,8 @@ Inside a route: `requireAuth` (if signed-in only) → a rate limiter (where ther
 | Prompts | `POST /api/prompt-takes`, `GET /api/instructions` | |
 | The helper | `GET/POST /api/helper/:subjectId/messages`, `POST /api/helper/proposals/:id/save` / `cancel` / `undo` | §10 below |
 | AI allowance | `GET /api/usage` | Percentages only |
-| Content (Neo4j) | `GET /api/subjects`, `/api/subjects/:id/graph`, `/api/topics/:id/path-to/:targetId` | `503 graph_unavailable` while Neo4j is down; nothing else needs Neo4j |
-| Health | `GET /api/health` | 200 when Postgres is up; reports Neo4j alongside |
+| Content | `GET /api/subjects`, `/api/subjects/:id/graph`, `/api/topics/:id/path-to/:targetId` | Read from `shared/data` in memory (`src/repos/graph.repo.ts`); the frontend doesn't call them |
+| Health | `GET /api/health` | 200 when Postgres is up, 503 when it isn't |
 
 Every route, with bodies and answers: `docs/backend-design.md` §4.
 
@@ -283,17 +285,15 @@ Every route, with bodies and answers: `docs/backend-design.md` §4.
 - **Config:** `src/config/index.ts` is the only file that reads `process.env`; it throws at
   boot on a missing or bad value (`JWT_SECRET` must be 32+ characters). Every variable is in
   `backend/example.env`.
-- **Start-up** (`src/index.ts`): Postgres must be reachable or the server stops; Neo4j is
-  checked and logged but optional; with `AI_PROVIDER=bedrock` the Bedrock warm-up starts.
+- **Start-up** (`src/index.ts`): Postgres must be reachable or the server stops; with `AI_PROVIDER=bedrock` the Bedrock warm-up starts.
 
-## 8. The data: Postgres, Neo4j and the content files
+## 8. The data: Postgres and the content files
 
-**Three places, three jobs:**
+**Two places, two jobs:**
 
 | Where | Holds | Source of truth? |
 |---|---|---|
 | `shared/data/*.ts` | The content: subjects, topics, links, goals, prompt instructions | **Yes.** Reviewed like code |
-| Neo4j | A **copy** of the graph, seeded from those files (`npm run seed:graph`), for the three content routes and the Neo4j Browser | No; the site works without it |
 | Postgres | Accounts and every student's record | Yes |
 
 **Postgres tables** (migrations `backend/src/db/migrations/0001` to `0019`; the files are
@@ -321,8 +321,8 @@ Every student table has `ON DELETE CASCADE` from `users`, so deleting an account
 whole record in one statement. The two exceptions keep a row without its owner on purpose
 (`ON DELETE SET NULL`): `ai_calls` (the money was spent) and `subject_requests`.
 
-Details, with every column and why: `docs/backend-design.md` §3. Neo4j's model: §2 "Where
-content lives".
+Details, with every column and why: `docs/backend-design.md` §3. How the API reads the
+content: §2 "Where content lives" (there is no graph database since 21 Nov 2026).
 
 ## 9. Sign-in, in brief
 
@@ -416,13 +416,13 @@ Backend only, with Vitest and supertest:
 
 ```bash
 cd backend
-npm test                  # 329 unit tests in 34 files, no database, ~3 s
-npm run test:integration  # 112 tests in 16 files against the dev Postgres and Neo4j, ~25 s
+npm test                  # 323 unit tests in 33 files, no database, ~3 s
+npm run test:integration  # 90 tests in 13 files against the dev Postgres, ~20 s
 npm run typecheck
 ```
 
 Unit tests fake the repos with `vi.mock` and drive small Express apps with supertest; the
-integration tests use the real app and databases, including race tests (20 AI
+integration tests use the real app and Postgres, including race tests (20 AI
 reservations at once, a double-clicked Save). Bedrock is always faked. A golden test pins
 what the sample student is told. **Nothing runs the tests automatically** (no CI), and the
 frontend has no test runner. Everything about it: `docs/testing.md`.
@@ -430,14 +430,13 @@ frontend has no test runner. Everything about it: `docs/testing.md`.
 ## 13. Running locally
 
 ```bash
-# 1. the databases (from the repo root)
-docker compose -f docker-compose.dev.yml up -d     # Postgres on :5050, Neo4j on :7687 (UI :7474)
+# 1. the database (from the repo root)
+docker compose -f docker-compose.dev.yml up -d     # Postgres on :5050
 
 # 2. the backend
 cp backend/example.env backend/.env                # then set JWT_SECRET (openssl rand -hex 32)
 cd backend && npm install
 npm run db-init                                    # migrations + seed (prompt instructions)
-npm run seed:graph                                 # the topic graph into Neo4j
 npm run dev                                        # http://localhost:8000
 
 # 3. the frontend
@@ -496,7 +495,7 @@ cd ../frontend && npm install && npm run dev       # http://localhost:3000
 | Change what the AI is told, or its schema | `backend/src/ai/reader.ts` (`instructionsFor`, `READING_SCHEMA`, `ModelReading`, `checkReading`); a new schema needs a long first compile on Bedrock (`backend-design.md` §5) |
 | Change an AI limit or price | `AI_*` / `READER_PRICE_*` in the env (Parameter Store in production), then a release |
 | Change a prompt's wording | `shared/data/instructions.ts` (then `npm run db-init` locally; a release re-seeds) or `shared/prompt.ts` |
-| Edit a subject's topics | `shared/data/<subject>.ts`; `npm test` (the data checks and map layout tests) and `npm run subject -- <id>`; a release re-seeds Neo4j |
+| Edit a subject's topics | `shared/data/<subject>.ts`; `npm test` (the data checks and map layout tests) and `npm run subject -- <id>`; a release ships it |
 | Add a subject | `docs/subject-blueprint.md`: one file, one line in `shared/data/index.ts`, its id in `SubjectId` |
 | Change a screen | `docs/frontend.md` §4 and §5 say which file |
 
@@ -528,4 +527,3 @@ verification (both written down as choices in §4).
 | **basic mode** | The rules read the messages because the AI is off, failing or at a limit |
 | **prompt take** | The student copied a prompt or opened it in ChatGPT or Claude |
 | **live / demo** | Signed in with a real record / signed out on the sample student |
-| **drift** | Neo4j's copy of the graph no longer matches `shared/data` |

@@ -18,8 +18,7 @@ export async function putGoal(req: Request<{ subjectId: string }>, res: Response
   const { subjectId } = req.params;
   const { goalId } = req.body as z.infer<typeof PutGoalBody>;
 
-  // Checked against shared/data, the same files the frontend and shared/graph.ts use, so
-  // it works whether or not Neo4j is up.
+  // Checked against shared/data, the same files the frontend and shared/graph.ts use.
   if (!subjectById.has(subjectId as SubjectId)) {
     throw new HttpError(404, "not_found", "No such subject.");
   }

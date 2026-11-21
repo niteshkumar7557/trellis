@@ -73,7 +73,7 @@ New to the code? Start with [`docs/README.md`](docs/README.md) (the reading orde
 |---|---|
 | Frontend | Next.js 16, Tailwind 4, GSAP. The map is laid out with dagre and drawn in SVG. |
 | Backend | Node.js, Express |
-| Data | Postgres for accounts and every student's record; Neo4j for the topic graph |
+| Data | Postgres for accounts and every student's record; the topic graph is TypeScript files in `shared/data`, which the API reads in memory |
 | AI | Only in the helper chat: GLM 5 on Amazon Bedrock reads each typed message when it is turned on (`AI_PROVIDER=bedrock`), within spending limits (each account's for the day and the week, shown to the student as a percentage; the whole site's for the day); a rule-based reader is the fallback and the default |
 | Infra | AWS (Sydney, the free plan's region) behind CloudFront, which caches pages near India: one EC2 server running Docker Compose behind Caddy (`deploy/`); backups in S3 |
 
@@ -94,7 +94,7 @@ FlatList. Redis starts from zero, so you can try the start flow. **Settings → 
 
 ```bash
 cp backend/example.env backend/.env   # then set JWT_SECRET: openssl rand -hex 32
-docker compose -f docker-compose.dev.yml up -d   # Postgres on localhost:5050, Neo4j on 7687 (browser UI on 7474)
+docker compose -f docker-compose.dev.yml up -d   # Postgres on localhost:5050
 ```
 
 **Backend:**
@@ -103,15 +103,14 @@ docker compose -f docker-compose.dev.yml up -d   # Postgres on localhost:5050, N
 cd backend
 npm install
 npm run db-init      # migrations + seed
-npm run seed:graph   # copies the topic graph into Neo4j
 npm run dev
 ```
 
 **Checks** (run before every merge; nothing runs them automatically yet):
 
 ```bash
-cd backend && npm run typecheck && npm test        # 329 unit tests, no database, ~3 s
-npm run test:integration                            # 112 tests against the dev databases
+cd backend && npm run typecheck && npm test        # 323 unit tests, no database, ~3 s
+npm run test:integration                            # 90 tests against the dev Postgres
 cd ../frontend && npx tsc --noEmit && npx eslint . && npm run lint:shared
 ```
 
@@ -135,7 +134,7 @@ shared/                domain code the frontend and backend both run (imported a
   prompt.ts            the three-part prompt: known topics, experiences, instructions
 backend/
   src/                 Express API: accounts, each student's record, the helper, the AI and its limits
-  test/                Vitest unit tests; test/integration/ against the real databases
+  test/                Vitest unit tests; test/integration/ against the real Postgres
 deploy/                production: Docker Compose, Caddy, the release, deploy and backup scripts
 docs/                  start at docs/README.md
 ```

@@ -69,35 +69,6 @@ services:
     mem_limit: 384m
     logging: *logging
 
-  neo4j:
-    image: neo4j:5
-    restart: unless-stopped
-    environment:
-      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
-      # The graph is ~230 topics: it needs very little. Without these, Neo4j sizes itself
-      # for the whole machine and starves everything else. Java also needs a few hundred
-      # MB OUTSIDE the heap (class metadata, threads, network buffers): with a 384 MB heap
-      # and 128 MB page cache it went over its 768 MB limit and was killed in a loop on
-      # the first day (14 Nov 2026). 256 + 64 leaves that room.
-      NEO4J_server_memory_heap_initial__size: 256m
-      NEO4J_server_memory_heap_max__size: 256m
-      NEO4J_server_memory_pagecache_size: 64m
-    volumes:
-      - neo4j_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1' || exit 1"]
-      interval: 10s
-      timeout: 10s
-      retries: 12
-      start_period: 30s
-    mem_limit: 768m
-    # At most one of the two cores. A Java start uses every core it sees for a minute;
-    # on 14 Nov 2026 a restart loop did that and the API stopped answering. With this the
-    # API, Next and Caddy always keep a core, and Java, seeing one CPU, starts fewer
-    # threads and uses less memory.
-    cpus: 1.0
-    logging: *logging
-
   # One-shot: the database migrations, then the content seed. Runs on every `up` and exits;
   # both are safe to run twice. The API waits for it to finish successfully.
   migrate:
@@ -113,22 +84,6 @@ services:
     restart: "no"
     logging: *logging
 
-  # One-shot: loads the topic graph into Neo4j (MERGE, safe to rerun). Nothing waits for
-  # it: the site runs without Neo4j (backend-design.md §2).
-  seed-graph:
-    image: *backend-image
-    command: ["node", "dist/db/seed-graph.js"]
-    environment:
-      <<: *db-env
-      NEO4J_URL: bolt://neo4j:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
-    depends_on:
-      neo4j:
-        condition: service_healthy
-    restart: "no"
-    logging: *logging
-
   api:
     image: *backend-image
     restart: unless-stopped
@@ -138,9 +93,6 @@ services:
       PUBLIC_URL: https://trellis.niteshkumar.xyz
       # CloudFront, then Caddy (backend-design.md §8, aws.md §4).
       TRUST_PROXY_HOPS: "2"
-      NEO4J_URL: bolt://neo4j:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       # The helper's AI. No AWS keys: the SDK gets the server role's credentials from the
@@ -161,7 +113,6 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-      # NOT neo4j: the API starts without it and answers 503 on the graph routes only.
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8000/api/health || exit 1"]
       interval: 10s
@@ -181,6 +132,5 @@ services:
 
 volumes:
   postgres_data:
-  neo4j_data:
   caddy_data:
   caddy_config:

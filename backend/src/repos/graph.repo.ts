@@ -1,17 +1,22 @@
-// Reads the topic graph from Neo4j. Nothing outside src/repos/ and src/db/ knows which
-// database holds the graph, or writes Cypher.
+// Reads the topic graph: the subjects, their topics, links and goals.
 //
-// driver.executeQuery() is the driver's simple API: it borrows a connection, runs one query
-// in its own transaction, retries on a passing failure, and returns { records }. For more
-// than one query in a transaction you'd use a session, as graph-seed.ts does.
-// routing: "READ" says this query only reads; on a cluster it could go to any copy.
+// The graph lives in the reviewed files in shared/data, the same files the frontend and
+// shared/graph.ts read, so the API can't serve a map that disagrees with the answers they
+// compute. It's under 500 topics: held in memory it costs well under a megabyte, and every
+// read is a lookup. There is no database to run, seed or keep in step with the files.
+//
+// Why not a graph database: one was used until 21 Nov 2026 and dropped. It took 768 MB of
+// the server's 2 GB, needed a seed on every release and a check that its copy still matched
+// the files, and the one query it was there for (findPath below) is a breadth-first search
+// of a few lines over data this small. The trade-off: the graph changes only with a
+// release, which was already true.
+//
+// The functions are synchronous because nothing waits on I/O. If the graph ever moves to
+// a database (students editing it, say), they become async and the controllers add an
+// `await`; nothing else changes.
 
-import type { Edge, Goal, Subject, Topic } from "@shared/types";
-// Renamed on import: getSubjectGraph has local variables called topics, edges and goals.
-import { edges as fileEdges, goals as fileGoals, topics as fileTopics } from "@shared/data";
-import driver from "../db/neo4j.js";
-import { findDrift } from "../utils/graph-drift.js";
-import { TOPIC_FIELDS } from "./topic-fields.js";
+import type { Edge, Goal, Subject, SubjectId, Topic } from "@shared/types";
+import { edges, goalsOf, subjectById, subjects, topicById, topics, topicsOf } from "@shared/data";
 
 export interface SubjectGraph {
   topics: Topic[];
@@ -19,97 +24,66 @@ export interface SubjectGraph {
   goals: Goal[];
 }
 
-export async function getSubjects(): Promise<Subject[]> {
-  const { records } = await driver.executeQuery(
-    `MATCH (s:Subject)
-     RETURN s { .id, .name, .shortName, .blurb } AS subject
-     ORDER BY s.position`,
-    {},
-    { routing: "READ" },
-  );
-  return records.map((r) => r.get("subject") as Subject);
+export function getSubjects(): Subject[] {
+  return subjects;
 }
 
 /** One subject's whole map, in the order the files list it. Null if there's no such subject. */
-export async function getSubjectGraph(subjectId: string): Promise<SubjectGraph | null> {
-  const { records } = await driver.executeQuery(
-    `MATCH (t:Topic)-[:OF]->(:Subject {id: $subjectId})
-     RETURN ${TOPIC_FIELDS} AS topic
-     ORDER BY t.position`,
-    { subjectId },
-    { routing: "READ" },
-  );
-  const topics = records.map((r) => r.get("topic") as Topic);
-
-  // Every subject has topics, so none means no such subject.
-  if (topics.length === 0) return null;
-
-  // Edges: tied to the subject through the `from` topic's :OF line, or every request would
-  // get every subject's edges. type(r) is "NEEDS" or "HELPS"; the API uses lowercase.
-  const edgeResult = await driver.executeQuery(
-    `MATCH (a:Topic)-[:OF]->(:Subject {id: $subjectId})
-     MATCH (a)-[r:NEEDS|HELPS]->(b:Topic)
-     RETURN a.id AS from, b.id AS to, toLower(type(r)) AS kind
-     ORDER BY r.position`,
-    { subjectId },
-    { routing: "READ" },
-  );
-  const edges = edgeResult.records.map((r) => r.toObject() as Edge);
-
-  // Goals: sort the TARGETS rows BEFORE collect(), so each list is built in file order.
-  // Cypher has no GROUP BY: returning g next to collect() makes one row per goal.
-  const goalResult = await driver.executeQuery(
-    `MATCH (g:Goal)-[:FOR]->(:Subject {id: $subjectId})
-     MATCH (g)-[r:TARGETS]->(t:Topic)
-     WITH g, t ORDER BY r.position
-     WITH g, collect(t.id) AS targets
-     RETURN g { .id, subjectId: $subjectId, .name, .blurb, targets: targets } AS goal
-     ORDER BY g.position`,
-    { subjectId },
-    { routing: "READ" },
-  );
-  const goals = goalResult.records.map((r) => r.get("goal") as Goal);
-
-  return { topics, edges, goals };
+export function getSubjectGraph(subjectId: string): SubjectGraph | null {
+  if (!subjectById.has(subjectId as SubjectId)) return null;
+  const id = subjectId as SubjectId;
+  return {
+    topics: topicsOf(id),
+    // Links never cross subjects (shared/data checks that), so the `from` end decides.
+    edges: edges.filter((e) => topicById.get(e.from)?.subjectId === id),
+    goals: goalsOf(id),
+  };
 }
 
-// ---------------------------------------------------------------- the health check
+// ---------------------------------------------------------------- the path query
 
-/** Every subject's graph in one, as Neo4j holds it. */
-export async function loadGraphSnapshot(): Promise<SubjectGraph> {
-  const subjects = await getSubjects();
-  const graphs = await Promise.all(subjects.map((s) => getSubjectGraph(s.id)));
-  const snapshot: SubjectGraph = { topics: [], edges: [], goals: [] };
-  for (const g of graphs) {
-    if (!g) continue;
-    snapshot.topics.push(...g.topics);
-    snapshot.edges.push(...g.edges);
-    snapshot.goals.push(...g.goals);
-  }
-  return snapshot;
+// "needs" links by their dependent end, in file order: needsFrom.get(a) = what a needs.
+const needsFrom = new Map<string, string[]>();
+for (const e of edges) {
+  if (e.kind === "needs") needsFrom.set(e.from, [...(needsFrom.get(e.from) ?? []), e.to]);
 }
+// A topic's place in the files, to break ties the same way every time.
+const position = new Map(topics.map((t, i) => [t.id, i]));
+const byPosition = (a: string, b: string) => position.get(a)! - position.get(b)!;
 
 /**
- * "ok": reachable and the same as shared/data.
- * "down": can't be reached (not running, wrong password, ...).
- * "drift": reachable, but different from the files: someone changed shared/data and
- *   didn't run `npm run seed:graph`. Serving it would show a map that disagrees with the
- *   answers shared/graph.ts computes from the files.
+ * The chain of prerequisites from one topic up to another, in learning order:
+ * findPath("rn-jsx", "rn-state") → [JSX, Components, State], because State needs
+ * Components, which needs JSX.
+ *
+ *   null  either topic doesn't exist
+ *   []    both exist, but `toId` doesn't stand on `fromId` (other way round, or another
+ *         subject)
+ *
+ * A breadth-first search from the target down its "needs" links, so the first time it
+ * reaches `fromId` is by a shortest chain. When two chains are equally short, it takes the
+ * one whose topics come first in the files: each topic's prerequisites are visited in file
+ * order and a topic keeps the first route that reached it. Without that rule the answer
+ * could change from one run to the next.
  */
-export type GraphState = "ok" | "down" | "drift";
+export function findPath(fromId: string, toId: string): Topic[] | null {
+  if (!topicById.has(fromId) || !topicById.has(toId)) return null;
 
-/** Never throws: the answer is the state, plus lines saying what is wrong, for the log. */
-export async function checkGraph(): Promise<{ state: GraphState; problems: string[] }> {
-  let snapshot: SubjectGraph;
-  try {
-    await driver.verifyConnectivity();
-    snapshot = await loadGraphSnapshot();
-  } catch (err) {
-    return { state: "down", problems: [err instanceof Error ? err.message : String(err)] };
+  // cameFrom.get(x) = the topic one step closer to the target. Doubles as "seen".
+  const cameFrom = new Map<string, string | null>([[toId, null]]);
+  const queue = [toId];
+  while (queue.length > 0 && !cameFrom.has(fromId)) {
+    const current = queue.shift()!;
+    for (const next of [...(needsFrom.get(current) ?? [])].sort(byPosition)) {
+      if (cameFrom.has(next)) continue;
+      cameFrom.set(next, current);
+      queue.push(next);
+    }
   }
-  const drift = findDrift(snapshot, { topics: fileTopics, edges: fileEdges, goals: fileGoals });
-  if (drift.length > 0) {
-    return { state: "drift", problems: ["Run `npm run seed:graph`.", ...drift] };
-  }
-  return { state: "ok", problems: [] };
+  if (!cameFrom.has(fromId)) return [];
+
+  // Walk back from fromId to the target: that is already learning order.
+  const chain: Topic[] = [];
+  for (let id: string | null = fromId; id !== null; id = cameFrom.get(id)!) chain.push(topicById.get(id)!);
+  return chain;
 }

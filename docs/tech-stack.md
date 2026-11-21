@@ -14,7 +14,7 @@ choice are in those files.
 | Backend | Node.js 24, Express 5, TypeScript (strict ESM), built with tsup; `tsx` in development |
 | Shared domain code | `shared/`, imported as `@shared/*` by both the frontend and the backend |
 | Database | PostgreSQL 18 (`pg`), plain SQL migrations (`backend/src/db/migrations/`) |
-| Topic graph | Neo4j 5 (`neo4j-driver`), content only, seeded from `shared/data`; the site runs without it |
+| Topic graph | No database: the files in `shared/data`, held in memory by the API (`backend/src/repos/graph.repo.ts`) |
 | Validation | zod 4 (request bodies, and the AI model's replies) |
 | Testing | Vitest + supertest (backend only; the frontend has no test runner) |
 | Auth | JWT access tokens (`jsonwebtoken`, HS256, 15 minutes) + database-backed refresh tokens in an httpOnly cookie (60 days, sliding), bcrypt (cost 12) |

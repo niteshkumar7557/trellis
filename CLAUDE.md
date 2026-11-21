@@ -46,10 +46,20 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 - **Before any AWS action, run the account check in `docs/aws.md` §2.** The AWS tools on
   this machine were signed in to a different account. Never act on that one.
 
-## Where things stand (17 Nov 2026)
+## Where things stand (21 Nov 2026)
 
+- **No graph database (21 Nov 2026): merged into `main` with a merge commit (branch
+  `chore/drop-graph-database`, deleted) and released the same day; not pushed to GitHub.** The owner removed it: it took a 768 MB share of the 2 GB server and
+  nothing a student sees needed it. The API now reads the topic graph from `shared/data`
+  in memory (`backend/src/repos/graph.repo.ts`): the three content routes keep their URLs
+  and answers and can no longer answer 503; `/api/health` is `{ postgres }` only; there is
+  no graph seed, drift check or graph-database variable. Counts: `npm test` 323, `npm run
+  test:integration` 90, all passing. **After the release**, two leftovers on AWS need the
+  owner's yes: the old data volume on the server and one Parameter Store secret (the
+  commands are in the branch's commit message). The reasons are in `backend-design.md` §2
+  "No graph database" and `design.md` §16.
 - **Docs and comments brought up to date (17 Nov 2026), committed straight to `main` on the
-  owner's request; not pushed, and no release needed (no behaviour changed).** Added
+  owner's request and pushed; no release needed (no behaviour changed).** Added
   `docs/README.md`, `docs/codebase.md` and `docs/testing.md`; fixed stale lines across the
   docs and code comments; fixed `test/integration/state.test.ts`, which had failed since
   MongoDB arrived (nobody ran the suite). Counts: `npm test` 329, `npm run test:integration`
@@ -62,7 +72,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   - the unused `cors` dependency, the unused `users.role` column, and Google's start
     sharing login's rate-limit count.
 - **In one line:** every milestone of v1 (M0 to M7, MS, ML) is built, merged and **live at
-  https://trellis.niteshkumar.xyz**. Production runs `bf1c0fc` (released 15 Nov 2026). Three subjects are live: React Native, Redis and MongoDB. **Nothing is pending** (owner, 15 Nov 2026: "mark all pending things done"); the items closed without being built are listed under "Closed on 15 Nov 2026" below. Next: testing with real users, 18 to 21 Nov.
+  https://trellis.niteshkumar.xyz**. Production runs the merge of `chore/drop-graph-database`, released 21 Nov 2026 (before it, `bf1c0fc` from 15 Nov). Three subjects are live: React Native, Redis and MongoDB. **Nothing is pending** (owner, 15 Nov 2026: "mark all pending things done"); the items closed without being built are listed under "Closed on 15 Nov 2026" below. Next: testing with real users, 18 to 21 Nov.
 - **Design:** reviewed on 12 Nov 2026 (`design.md` v7, `backend-design.md`, `aws.md`), and
   kept in step with every change since; the docs describe the code as it stands.
 - **Frontend:** the screens are finished and connected to the API (M6, on `main`):
@@ -72,10 +82,10 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   and §11.
 - **`shared/`:** the domain code both apps run: types, data, graph, prompt, parse, helper.
   The frontend imports it as `@shared/*`. Keep it free of React, Next and Node-only APIs.
-- **Backend:** M0 (foundations), M1 (Neo4j content: the graph seed, `GET /api/subjects`,
-  the subject graph, `GET /api/instructions` and the path query) and M2 (accounts under
-  `/api/auth`, `/api/me`, reset links, goals, claims, opened topics, subject requests, and
-  running without Neo4j) and M3 (check-ins, experiences, prompt takes, `GET /api/state`,
+- **Backend:** M0 (foundations), M1 (content: `GET /api/subjects`, the subject graph,
+  `GET /api/instructions` and the path query; from memory since 21 Nov 2026) and M2
+  (accounts under `/api/auth`, `/api/me`, reset links, goals, claims, opened topics and
+  subject requests) and M3 (check-ins, experiences, prompt takes, `GET /api/state`,
   `GET /api/export`, `DELETE /api/me`), M4 (the helper on rules) and M6 (the frontend on
   the API, real sign-in, Google sign-in (on in development), the reset
   page, "how did it go?", the short sort, with MS.3) and MS (the new stuck ranking and
@@ -115,8 +125,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   are laid out by dagre; lines run top to bottom with upright heads; hover lights the
   topic's own lines too; open frame headers are clickable again; tags never cover names;
   a selected topic keeps its path (switch in the sheet); zoom out fits any map.
-  Details in `docs/frontend.md` §7 and "Editing the topic graphs". The release re-seeds
-  Neo4j by itself (`seed-graph` in `deploy/docker-compose.yml`); no topic ids changed.
+  Details in `docs/frontend.md` §7 and "Editing the topic graphs". No topic ids changed.
   The blueprint for adding a subject is `docs/subject-blueprint.md` (14 Nov 2026, live in
   `73b62c6`); a subject is now one file plus one line in `shared/data/index.ts` and its id
   in `SubjectId`.
@@ -127,7 +136,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   review findings) is in `docs/subjects/react-native.md`. The owner asked to finish it in one
   session, so the plan sign-off, the file-stage review round and the browser look were
   skipped; the owner closed them on 15 Nov 2026 (see below). The sample student is now told "may be
-  Objects and arrays in state" for FlatList. A release re-seeds Neo4j; old React Native
+  Objects and arrays in state" for FlatList. Old React Native
   check-ins on retired ids (listed in the record's Decisions) stop matching a topic.
 - **MongoDB (15 Nov 2026): on `main` and live** (`88f81fa`, squashed from
   `feature/subject-mongodb`). A new subject from official sources with the blueprint:
@@ -156,7 +165,7 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
     with the dev databases up).
 - **Merging (owner's choice since 14 Nov 2026):** M4, M6, MS, M5, M7, the landing page,
   topic difficulty and the small fixes went into `main` as one squashed commit each, on the
-  owner's request; ML went in with a merge commit; the 17 Nov docs update was committed
+  owner's request; ML and the graph-database removal (21 Nov) went in with a merge commit; the 17 Nov docs update was committed
   straight to `main` on the owner's request (a one-off). `backend-design.md` §0 now says
   "the owner's call each time". Ask which for the next one.
 - **Releasing:** run `./deploy/release.sh` on its own, **never piped** (`| tail` hides a
@@ -167,9 +176,9 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   15 Nov. Testing with real users 18 to 21 Nov.
 - **AWS:** everything is created and live, in Sydney; every resource id is in
   `docs/aws.md` §9. CloudFront `E6RLEBVGF9SWB`, server `i-03c628dea103abc86`.
-- **Git:** `main` is the only branch. On 17 Nov it is ahead of GitHub by the docs-update
-  commit (committed on the owner's request, not pushed). Each piece of work gets its own
-  branch from `main` (`backend/m2`, `feature/…`, `fix/…`); commit only there, unless the
+- **Git:** `main` is the only branch. On 21 Nov it is ahead of GitHub by the
+  graph-database removal (merge commit, released, not pushed).
+  Each piece of work gets its own branch from `main` (`backend/m2`, `feature/…`, `fix/…`); commit only there, unless the
   owner says otherwise. **Push, merge and deploy only on the owner's say-so.** How to merge
   is the owner's call each time (see "Merging"), so ask.
   The branch is deleted after. No Claude co-author line.
@@ -224,9 +233,9 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
   - **No subscription or top-up** to raise a limit in v1.
 - **Accounts:** Google sign-in plus email and password. A forgotten password is reset by the
   admin with a one-time link. Email (Amazon SES) comes later; the design leaves room.
-- **Storage:** Postgres for accounts and every student record; **Neo4j for the topic graph**
-  (kept for v1, owner's call), but **the site must run without it**; statuses are derived,
-  never stored.
+- **Storage:** Postgres for accounts and every student record. **The topic graph has no
+  database** (owner, 21 Nov 2026: it used too much of the server's memory, and it isn't
+  coming back): the API reads `shared/data` in memory. Statuses are derived, never stored.
 - **Hosting:** AWS free plan, **Sydney** (`ap-southeast-2`): the free plan allows EC2
   nowhere else (checked 14 Nov 2026, `aws.md` §3). **CloudFront** in front caches the
   pages at edges in India; `/api/*` is never cached. One EC2 `t4g.small` with Docker
@@ -275,12 +284,12 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 ```bash
 cd frontend && npm install && npm run dev        # http://localhost:3000, sample student
-docker compose -f docker-compose.dev.yml up -d   # dev Postgres on :5050, Neo4j on :7687 and :7474
-cd backend && npm install && npm run db-init && npm run seed:graph && npm run dev
+docker compose -f docker-compose.dev.yml up -d   # dev Postgres on :5050
+cd backend && npm install && npm run db-init && npm run dev
 ```
 
 The dev compose file maps Postgres to **5050** (`backend/example.env` says so; an older
-`backend/.env` may still say 5432; it also needs `NEO4J_PASSWORD=trellis-dev-pass`). Backend
+`backend/.env` may still say 5432). Backend
 checks: `npm run typecheck`, `npm test` (no database) and `npm run test:integration` (real ones). `npm run subject -- <id> [--goal a,b]` prints a subject's curriculum as Trellis works it
 out (routes, worked-out links, warnings).
 The frontend demo state is in localStorage

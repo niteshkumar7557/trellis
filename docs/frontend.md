@@ -6,7 +6,7 @@ the code map, the rules each part follows, the gotchas, and the **data contract*
 backend must serve.
 
 **Status (17 Nov 2026):** the screens are finished, connected to the API and live
-(`bf1c0fc`). The code map in §5 was checked against the files on 17 Nov. A signed-in student is **live**: their record comes from the backend.
+(production runs the merge of `chore/drop-graph-database`, released 21 Nov 2026; the frontend is unchanged since `bf1c0fc`). The code map in §5 was checked against the files on 17 Nov. A signed-in student is **live**: their record comes from the backend.
 A visitor who isn't signed in sees a **demo** on the sample student, kept in this
 browser. How the two modes work is in §10 and §11.
 

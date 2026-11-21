@@ -13,7 +13,6 @@ export default defineConfig({
     // "migrations" folder next to itself (dist/db/migrations; the Dockerfile copies them).
     "db/migrate": "src/db/migrate.ts",
     "db/seed": "src/db/seed.ts",
-    "db/seed-graph": "src/db/seed-graph.ts",
     // The admin's forgotten-password tool: `node dist/db/reset-link.js <email>`.
     "db/reset-link": "src/db/reset-link.ts",
     // The operator's AI cost report: `node dist/db/ai-spend.js`.

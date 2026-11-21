@@ -8,7 +8,6 @@ import helmet from "helmet";
 import config from "./config/index.js";
 import pool from "./db/index.js";
 import { errorHandler, notFound } from "./middlewares/error.middleware.js";
-import { graphState } from "./middlewares/graph.middleware.js";
 import authRoutes from "./routes/auth.routes.js";
 import checkInRoutes from "./routes/check-ins.routes.js";
 import claimRoutes from "./routes/claims.routes.js";
@@ -46,7 +45,7 @@ app.use(helmet());
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 
-app.get("/api/health", makeHealthHandler(() => pool.query("SELECT 1"), () => graphState()));
+app.get("/api/health", makeHealthHandler(() => pool.query("SELECT 1")));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/me", meRoutes);

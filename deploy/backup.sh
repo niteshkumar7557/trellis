@@ -2,8 +2,8 @@
 # ON THE SERVER: one backup of Postgres to S3 (docs/aws.md §7). Run nightly by
 # trellis-backup.timer; by hand: sudo /opt/trellis/backup.sh
 #
-# What is backed up: Postgres, i.e. every account and every student's record. Not Neo4j
-# (rebuilt from git by seed-graph) and not Caddy's certificate (re-issued).
+# What is backed up: Postgres, i.e. every account and every student's record. Not Caddy's
+# certificate (re-issued). The topic graph is in git (shared/data), so it needs no backup.
 # The bucket deletes each backup after 14 days: the promise that "Delete everything" is
 # gone from backups within 14 days (design.md §11) depends on that rule.
 set -euo pipefail

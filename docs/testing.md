@@ -2,8 +2,9 @@
 
 How the tests are built, what each kind proves, how to write a new one and how to debug a
 failing one. The short version is in `docs/backend-design.md` §8 "Tests"; this is the full
-one. Checked on **17 Nov 2026**: `npm test` ran **329 tests in 34 files** (about 3 s) and
-`npm run test:integration` ran **112 tests in 16 files** (about 25 s), all passing.
+one. Checked on **21 Nov 2026**, after the graph database was removed: `npm test` ran
+**323 tests in 33 files** (about 3 s) and `npm run test:integration` ran **90 tests in 13
+files** (about 20 s), all passing.
 
 **Contents:** 1 The two suites · 2 How the configs set the stage · 3 Every test file ·
 4 Unit-test techniques · 5 Golden tests, snapshots and data checks · 6 Integration tests ·
@@ -17,7 +18,7 @@ a new test · 11 Debugging a failing test · 12 Gaps
 ```bash
 cd backend
 npm test                    # unit: no database, no network
-npm run test:integration    # real Postgres + Neo4j; needs the dev databases:
+npm run test:integration    # real Postgres; needs the dev database:
                             #   docker compose -f docker-compose.dev.yml up -d   (repo root)
                             #   npm run db-init                                  (once)
 npm run typecheck           # tsc --noEmit
@@ -31,7 +32,7 @@ npx vitest run test/helper.test.ts -u       # re-record that file's snapshots (�
 |---|---|---|
 | Config | `backend/vitest.config.ts` | `backend/vitest.integration.config.ts` |
 | Files | `test/**/*.test.ts` except `test/integration/` | `test/integration/**/*.test.ts` |
-| Needs | nothing | dev Postgres on :5050 and Neo4j on :7687, migrated |
+| Needs | nothing | dev Postgres on :5050, migrated |
 | A database is down | not affected | **fails**, on purpose: skipping would look like a pass |
 | Files run | in parallel | one at a time (they share one database) |
 | Real Bedrock | never | never |
@@ -55,27 +56,27 @@ map code (`frontend/components/map/layout.ts`, `focus.ts`) is tested from here
   up many users from one address, and the limits would fail them for unrelated reasons.
 
 `vitest.integration.config.ts` takes the real `DB_URL` from `backend/.env`, sets the same
-`JWT_SECRET` and `AI_PROVIDER=off`, runs `test/integration/global-setup.ts` once first
-(it seeds Neo4j from `shared/data`), and sets `fileParallelism: false`.
+`JWT_SECRET` and `AI_PROVIDER=off`, and sets `fileParallelism: false`.
 
 `test/auth-token.ts` exports `bearerToken(userId)`: a real signed access token for tests of
 routes behind `requireAuth`.
 
 ## 3. Every test file
 
-**Unit (34 files in `backend/test/`)**, by technique (§4):
+**Unit (33 files in `backend/test/`)**, by technique (§4):
 
 | Technique | Files |
 |---|---|
-| A. Pure functions | `limits`, `suspects`, `prompt`, `suggestions`, `coming-back`, `difficulty`, `big-links`, `map-layout`, `graph-drift`, `seed-counts`, `tokens` (first half) |
-| B. A route with its repos faked | `auth.routes`, `google.routes`, `me.routes`, `helper.routes`, `check-ins.routes`, `experiences.routes`, `prompt-takes.routes`, `record.routes`, `subjects.routes`, `topics.routes`, `instructions.routes`, `usage.routes` |
-| C. A tiny app built for the test | `errors`, `health`, `rate-limit`, `trust-proxy`, `tokens` (the `requireAuth` half), `graph.middleware` |
+| A. Pure functions | `limits`, `suspects`, `prompt`, `suggestions`, `coming-back`, `difficulty`, `big-links`, `map-layout`, `paths`, `graph-repo`, `tokens` (first half) |
+| B. A route with its repos faked | `auth.routes`, `google.routes`, `me.routes`, `helper.routes`, `check-ins.routes`, `experiences.routes`, `prompt-takes.routes`, `record.routes`, `instructions.routes`, `usage.routes` |
+| C. A tiny app built for the test | `errors`, `health`, `rate-limit`, `trust-proxy`, `tokens` (the `requireAuth` half) |
+| A route on the real data, nothing faked | `subjects.routes`, `topics.routes` (the content is in memory, so there is nothing to fake) |
 | D. Config and environment | `config` |
 | E. The AWS SDK faked | `bedrock`, `reader` |
 | Golden and snapshot (§5) | `golden`, `helper` (+ `__snapshots__/helper.test.ts.snap`, 52 snapshots) |
 | Data checks (§5) | `data-checks` |
 
-**Integration (16 files in `backend/test/integration/`)**:
+**Integration (13 files in `backend/test/integration/`)**:
 
 | Area | Files |
 |---|---|
@@ -83,8 +84,8 @@ routes behind `requireAuth`.
 | The student's record | `record`, `state`, `check-ins`, `experiences`, `prompt-takes` |
 | The helper | `helper`, `proposals` |
 | AI money | `ai-calls`, `ai-limits` |
-| Content | `seed`, `graph-repo`, `paths`, `instructions` |
-| Not tests | `helpers.ts` (shared set-up), `global-setup.ts` (seeds the graph) |
+| Content | `instructions` (the prompt instructions live in Postgres) |
+| Not tests | `helpers.ts` (shared set-up) |
 
 ## 4. Unit-test techniques
 
@@ -101,9 +102,9 @@ for (const token of [expired, forged, old, notANumber, "not-a-jwt"]) {
 
 The codebase keeps logic testable by putting it in pure functions: `src/ai/limits.ts` has no
 database in it so `limits.test.ts` can test every money rule directly;
-`makeHealthHandler(checkPostgres, checkNeo4j)` takes its checks as arguments;
-`graphState(now)` takes the time as an argument so `graph.middleware.test.ts` can say "at
-29,999 ms" without waiting.
+`makeHealthHandler(checkPostgres)` takes its check as an argument; the graph repo reads
+`shared/data` in memory, so `paths.test.ts` and `graph-repo.test.ts` test it on the real
+topic files with no fake at all.
 
 ### B. A route with its repos faked
 
@@ -214,7 +215,7 @@ Each test programs `send` (a good reply, a reasoning block first, malformed JSON
 
 ## 6. Integration tests
 
-They run the real app (`src/app.ts`) against the real dev databases, with Bedrock faked.
+They run the real app (`src/app.ts`) against the real dev Postgres, with Bedrock faked.
 
 - **Users per file, by email domain.** `registerStudent(domain)` in
   `test/integration/helpers.ts` signs a student up through the real API and returns their
@@ -266,7 +267,7 @@ Only a real database can test real locking; a fake would let everything through.
 | The helper | `helper` (snapshot), `helper.routes`, `suggestions`, `coming-back` | `helper`, `proposals` |
 | The AI and its money | `reader`, `bedrock`, `limits`, `usage.routes` | `ai-calls`, `ai-limits` |
 | Derived logic and prompts | `golden`, `suspects`, `prompt`, `difficulty`, `big-links` | |
-| Content and Neo4j | `subjects.routes`, `topics.routes`, `instructions.routes`, `graph.middleware`, `graph-drift`, `seed-counts`, `data-checks` | `seed`, `graph-repo`, `paths`, `instructions` |
+| Content | `subjects.routes`, `topics.routes`, `instructions.routes`, `graph-repo`, `paths`, `data-checks` | `instructions` |
 | The map's drawing (frontend code) | `map-layout` | |
 
 ## 9. Rules every test follows
@@ -342,7 +343,7 @@ An integration test starts from `registerStudent(DOMAIN)` and ends with
 4. Passes alone, fails with others: shared state (a fake not reset, a module-level
    variable, rows left by another test).
 5. `ECONNREFUSED` in integration: the containers aren't up (`docker ps`), or `DB_URL` in
-   `backend/.env` isn't on port **5050**, or `NEO4J_PASSWORD=trellis-dev-pass` is missing.
+   `backend/.env` isn't on port **5050**.
 6. A test that hardcodes the list of subjects breaks when a subject is added. Build such
    expectations from `subjects` in `@shared/data` (`integration/state.test.ts` does, since
    it broke this way when MongoDB arrived).
@@ -355,7 +356,7 @@ An integration test starts from `registerStudent(DOMAIN)` and ends with
   `deploy/release.sh` builds and deploys without running them. This is how the stale
   `state.test.ts` expectation went unnoticed from 15 to 17 Nov. The first thing to add: a
   GitHub Actions workflow for typecheck and unit tests on every push, then the integration
-  suite with `postgres:18` and `neo4j:5` service containers.
+  suite with a `postgres:18` service container.
 - **No frontend tests**: nothing covers `frontend/lib/api.ts` (refresh and retry, the shared
   refresh), the store's live/demo switch, or any component.
 - **No end-to-end tests** in a browser (Playwright would be the usual choice).

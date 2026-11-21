@@ -413,7 +413,7 @@ itself (`docs/aws.md`; the numbers and how they are counted are in
 |---|---|
 | Frontend | Next.js, GSAP for motion; the map is laid out with dagre and drawn in SVG |
 | Backend | Node.js, Express, TypeScript |
-| Graph | **Neo4j**: topics, links and goals, seeded from the reviewed files. The site keeps working when it is down (backend-design.md §2) |
+| Graph | **The reviewed files in `shared/data`**: topics, links and goals. Both apps read them; the API holds them in memory (backend-design.md §2) |
 | Accounts and history | **Postgres**: users, sign-in, goals, claims, check-ins, experiences, prompts taken and helper conversations |
 | AI | **GLM 5 on Amazon Bedrock**, one call per typed helper message (§12) |
 | Hosting | **AWS**, Sydney: one small EC2 server running Docker Compose behind CloudFront (pages cached in India), backups in S3, DNS in Route 53 (`docs/aws.md`) |
@@ -554,7 +554,7 @@ Each row is a choice we made, what else we could have done, and why we did not.
 |---|---|---|
 | AWS, Sydney region, behind CloudFront (14 Nov 2026; was Mumbai in v7) | Mumbai; upgrading to the paid plan to get Mumbai; Cloudflare Tunnel to a home machine | The free plan allows EC2 only in Sydney on this account (checked: Mumbai is denied by AWS's own policy). CloudFront caches the pages at edges in India and ends HTTPS there, which wins back most of the distance. Upgrading early would make every bill real money |
 | One EC2 server with Docker Compose (v7) | Lightsail; managed database (RDS); containers on ECS | It fits the credits, and EC2 is what production jobs use. RDS alone would use most of the budget |
-| Neo4j kept, but the site runs without it (v7) | Neo4j required at start; dropping Neo4j | It is kept for the course and for v2. Nothing a student sees needs it, so it must not be able to take the site down |
+| No graph database: the API reads the topic graph from `shared/data` in memory (21 Nov 2026; v7 kept one that the site could run without) | Keeping the graph database; copying the graph into Postgres tables | The graph database held a 768 MB share of the 2 GB server, the most of any container, and nothing a student sees needed it. Under 500 topics fit in memory, the one graph query is a short search, and a copy anywhere is a second source of truth that can drift from the files |
 | Only the subdomain's DNS moves to Route 53 (v7) | Move the whole domain; keep everything at GoDaddy | The parent domain is untouched, and every Trellis record lives next to the rest of the setup |
 
 ## 17. Open questions

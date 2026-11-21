@@ -36,7 +36,7 @@ tmp=$(mktemp .env.XXXX)
 if [[ -f .env ]] && grep -q '^TAG=' .env; then grep '^TAG=' .env >> "$tmp"; fi
 
 # Refuse to replace a working file with one that is missing a secret.
-for key in POSTGRES_PASSWORD JWT_SECRET NEO4J_PASSWORD ORIGIN_VERIFY; do
+for key in POSTGRES_PASSWORD JWT_SECRET ORIGIN_VERIFY; do
   grep -q "^${key}=." "$tmp" || { rm -f "$tmp"; echo "Missing /trellis/prod/${key} in Parameter Store." >&2; exit 1; }
 done
 mv "$tmp" .env
