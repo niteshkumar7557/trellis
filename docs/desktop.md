@@ -8,9 +8,9 @@ sign-in through the system browser, and an update check.
 It's a graded university elective (21 Nov 2026). The owner must explain every decision in
 a viva, so every choice below names the alternatives and the trade-off.
 
-Status: **1.0.1 released, 21 Nov 2026** (1.0.0 the same day; design approved by the owner
+Status: **1.0.2 released, 21 Nov 2026** (1.0.0 the same day; design approved by the owner
 that morning). Download: https://github.com/niteshkumar7557/trellis-desktop/releases/latest,
-linked from the landing page's footer and from Settings (§13 lists what 1.0.1 changed).
+linked from the landing page's footer and from Settings (§13 lists what changed after 1.0.0).
 
 ---
 
@@ -264,6 +264,8 @@ $99-a-year Developer Program; that's the production answer.
 | **Menu** | The standard Mac menus (Trellis, Edit, View, Window, Help) plus **Go**: Map ⌘1, Check-ins ⌘2, Settings ⌘3 (the site's sidebar; changed from "Start" while building, 21 Nov 2026: Start is the one-time setup page). View: Search…, reload, zoom. Trellis menu: **Check for Updates…** | `Menu`, `MenuItem` roles |
 | **Tray** (menu-bar icon) | Show Trellis, Search, Check for Updates, Quit | `Tray`, a template image |
 | **Notifications** | Only **"Trellis X is available"**, from the update check; clicking it opens the download page. (1.0.0 also had a daily study reminder; 1.0.1 removed it, see §13.) | `Notification` |
+| **Back and Forward** (1.0.2) | Go → **Back ⌘[** and **Forward ⌘]**, as in Safari and Chrome, greyed out when there's nowhere to go (updated on every navigation, including the site's client-side ones) | `webContents.navigationHistory`, `Menu.getMenuItemById` |
+| **Two-finger swipe** (1.0.2) | Swipe right for Back, left for Forward. The preload reports each real (`isTrusted`) scroll; `swipe.ts` in main decides: one burst of scroll events is one gesture, at least 150 px and twice as much sideways as up-down, at most one navigation per gesture. A gesture the page used is ignored: **on the map, two fingers still pan the canvas** (it calls `preventDefault`), and an element that can scroll sideways itself (a text field) keeps the scroll. No sliding-page animation as in Safari | preload `wheel` listener, IPC, `navigationHistory` |
 | **Global shortcut** | **⌃⌥T** from any app: bring Trellis to the front and open search (the site's ⌘K). Not ⌘⇧T, which every browser uses for "reopen tab". | `globalShortcut`, `webContents.sendInputEvent` |
 | **Deep links** | `trellis://auth?code=…` (sign-in, §5) and `trellis://open/map`. Anything else is ignored. | `open-url`, `CFBundleURLTypes` |
 | **Update check** | At start, once a day and from the menu: ask GitHub for the release repo's latest release, compare its version with `app.getVersion()`, and if newer, notify and offer to open the download page. | `net.fetch`, `shell.openExternal` |
@@ -310,12 +312,13 @@ desktop/
       menu-template.ts     the Go items, the shortcut, AppActions  (pure, unit-tested)
       menu.ts  tray.ts  shortcut.ts
       start-path.ts        the first page: map or Log in            (pure, unit-tested)
+      swipe.ts             two-finger swipe → back / forward        (pure, unit-tested)
       version.ts           version compare, GitHub's answer         (pure, unit-tested)
       updates.ts           the update check
       deeplink.ts          parse trellis:// links, the start-up queue (pure, unit-tested)
       pkce.ts              verifier and challenge                   (pure, unit-tested)
       auth.ts              Google sign-in: start in the browser, finish from the link
-    preload/index.ts       the bridge (§2): isDesktop, retry
+    preload/index.ts       the bridge (§2): isDesktop, retry; reports scrolls for the swipe
     offline.html           "Can't reach Trellis"
   scripts/icons.ts         SVG mark → app icon (.icns) and tray PNGs (§8)
   test/                    unit tests (vitest, plain Node)
@@ -344,8 +347,8 @@ directly).
 | `npm start` | Build and open the app from source, on the live site. |
 | `TRELLIS_URL=http://localhost:3000 npm start` | The same, on the local frontend (see CLAUDE.md "Run"). |
 | `npm run typecheck` | `tsc` with no output. |
-| `npm test` | Unit tests (26): the pure files. In CI too. |
-| `npm run test:e2e` | Playwright (8): launches the real app against a tiny fake site; checks the lockdown, permissions, offline page, menu, shortcut, update check and the first page (Log in, or the map with a session). |
+| `npm test` | Unit tests (33): the pure files. In CI too. |
+| `npm run test:e2e` | Playwright (11): launches the real app against a tiny fake site; checks the lockdown, permissions, offline page, menu, shortcut, update check, the first page (Log in, or the map with a session), Back/Forward, and the swipe (including that a swipe over a "map" that uses the scroll never navigates). |
 | `npm run test:e2e:stack` | Playwright (3): the real app against the **local stack** (dev Postgres, backend on :8000, frontend on :3000 must be running): the whole Google sign-in except Google itself, an unasked-for link ignored, `trellis://open/map`. |
 | `npm run dist` | Icons, build, and `release/Trellis-<version>-arm64.dmg`, ad-hoc signed with the Fuses set. |
 
@@ -416,6 +419,7 @@ on the owner's laptop.
 | 21 Nov 2026 | The `.dmg` has a plain background colour | electron-builder's default background is a bitmap; Trellis ships none |
 | 21 Nov 2026 | **No daily reminder** (removed in 1.0.1, owner) | It broke two written promises: `design.md` §14 puts "Reminders, notifications" outside v1, and the landing page says "No streaks, no reminders". It was proposed without checking the design. The update notification stays: it answers a check, it doesn't ask the student to study |
 | 21 Nov 2026 | The app opens Log in when signed out (1.0.1) | The app has no landing page; 1.0.0 opened the sample student with no way to log in |
+| 21 Nov 2026 | Back/Forward on ⌘[ ⌘] and a two-finger swipe (1.0.2, owner) | Electron has no browser interface, so neither existed. The swipe is decided in main, not the preload: a sandboxed preload can't import our files, and main is where the pure, tested code lives. It yields to the page (the map pans) |
 | 21 Nov 2026 | Download links in the landing footer and in Settings, hidden inside the app | Signed-in students never see the landing page; the links point at the latest release page, which never changes |
 
 ---
@@ -441,6 +445,10 @@ on the owner's laptop.
 - The global shortcut presses ⌘K, and the site's ⌘K toggles: pressing ⌃⌥T while search is
   already open closes it.
 - Signing in with Google needs the browser's "Open Trellis?" prompt allowed once.
+- The swipe has no sliding-page animation (the page just changes), and on the map page it
+  works only outside the canvas (over the sidebar or header), because two fingers pan the
+  map. A mouse's side buttons don't go back (Electron reports them only on Windows and
+  Linux); ⌘[ does.
 - The update check uses GitHub's unauthenticated API: 60 calls an hour **per public IP
   address**. On a network that shares one address among many people (college Wi-Fi, an
   ISP's carrier-grade NAT), the allowance can be used up by others. Seen on 21 Nov 2026
@@ -470,3 +478,13 @@ the sample student with no way to log in or out:
   `window.trellisDesktop` from the preload).
 - **App:** the daily study reminder is gone (§11, "No daily reminder"). The settings file
   keeps only the window's position; a 1.0.0 file's reminder field is ignored.
+
+**1.0.2 (21 Nov 2026), app only (no site release).** The owner asked why there was no
+two-finger back gesture and no way back to the previous page. Electron has no browser
+interface, so neither existed:
+
+- **Go → Back ⌘[ / Forward ⌘]**, greyed out when there's nowhere to go (`historyItems()`
+  in `menu-template.ts`, `goBack`/`goForward`/`updateHistoryItems` in `window.ts`).
+- **Two-finger swipe** (§7): the preload reports scrolls, `swipe.ts` decides. Checked
+  against the live site: the sidebar → Settings, Back, a swipe over the real map canvas
+  (stays), a swipe over the sidebar (forward).

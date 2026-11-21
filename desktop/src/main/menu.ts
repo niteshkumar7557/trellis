@@ -6,7 +6,7 @@
 // menu items, not something the web page handles.
 
 import { app, Menu, type MenuItemConstructorOptions } from "electron";
-import { goItems, type AppActions } from "./menu-template";
+import { goItems, historyItems, type AppActions } from "./menu-template";
 
 export function buildMenu(actions: AppActions): void {
   const template: MenuItemConstructorOptions[] = [
@@ -42,7 +42,18 @@ export function buildMenu(actions: AppActions): void {
     },
     {
       label: "Go",
-      submenu: goItems().map((item) => ({ label: item.label, accelerator: item.accelerator, click: () => actions.go(item.path) })),
+      submenu: [
+        // Back and Forward start greyed out; window.ts updates them on every navigation.
+        ...historyItems().map((item) => ({
+          id: item.id,
+          label: item.label,
+          accelerator: item.accelerator,
+          enabled: false,
+          click: () => (item.id === "back" ? actions.back() : actions.forward()),
+        })),
+        { type: "separator" as const },
+        ...goItems().map((item) => ({ label: item.label, accelerator: item.accelerator, click: () => actions.go(item.path) })),
+      ],
     },
     { role: "windowMenu" },
   ];

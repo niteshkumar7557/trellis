@@ -12,9 +12,21 @@ import { isAllowedUrl, isExternalSafe } from "./security";
 import { buildMenu } from "./menu";
 import type { AppActions } from "./menu-template";
 import { registerShortcut, unregisterShortcuts } from "./shortcut";
+import { createSwipeTracker } from "./swipe";
 import { createTray } from "./tray";
 import { checkForUpdates, startUpdateChecks } from "./updates";
-import { createMainWindow, isTrustedSender, openSearch, retry, setGoogleStartHandler, showPath, showWindow } from "./window";
+import {
+  createMainWindow,
+  goBack,
+  goForward,
+  isTrustedSender,
+  openSearch,
+  retry,
+  setGoogleStartHandler,
+  showPath,
+  showWindow,
+  updateHistoryItems,
+} from "./window";
 
 /** Everything the menu bar, the tray and the shortcut can do, in one place. */
 const actions: AppActions = {
@@ -22,7 +34,12 @@ const actions: AppActions = {
   go: showPath,
   openSearch,
   checkForUpdates: () => void checkForUpdates({ quiet: false }),
+  back: goBack,
+  forward: goForward,
 };
+
+/** Two-finger swipes reported by the preload become Back / Forward (swipe.ts decides). */
+const swipes = createSwipeTracker((direction) => (direction === "back" ? goBack() : goForward()));
 
 // The e2e tests run each launch with a throwaway data folder, so one test's saved window
 // position or cookies can't leak into the next. Ignored in the packaged app.
@@ -74,6 +91,13 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.on("trellis:retry", (event) => {
       if (isTrustedSender(event)) retry();
     });
+    // Every value from a renderer is checked: shapes and numbers only, nothing else used.
+    ipcMain.on("trellis:wheel", (event, report: unknown) => {
+      if (!isTrustedSender(event) || !report || typeof report !== "object") return;
+      const { dx, dy, blocked } = report as Record<string, unknown>;
+      if (!Number.isFinite(dx) || !Number.isFinite(dy) || typeof blocked !== "boolean") return;
+      swipes.wheel(dx as number, dy as number, blocked, Date.now());
+    });
 
     // Ask macOS to send trellis:// links to this app. The packaged app also declares the
     // scheme in Info.plist (electron-builder's "protocols"), which is what macOS reads.
@@ -86,6 +110,7 @@ if (!app.requestSingleInstanceLock()) {
     createMainWindow();
     links.ready();
     buildMenu(actions);
+    updateHistoryItems();
     createTray(actions);
     registerShortcut(actions.openSearch);
     startUpdateChecks();

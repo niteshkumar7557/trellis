@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { goItems, SEARCH_SHORTCUT } from "../src/main/menu-template";
+import { goItems, historyItems, SEARCH_SHORTCUT } from "../src/main/menu-template";
 
 describe("the Go menu", () => {
+  it("has Back and Forward on ⌘[ and ⌘], as in Safari and Chrome", () => {
+    expect(historyItems()).toEqual([
+      { id: "back", label: "Back", accelerator: "CmdOrCtrl+[" },
+      { id: "forward", label: "Forward", accelerator: "CmdOrCtrl+]" },
+    ]);
+  });
+
   it("has the sidebar's pages, Map, Check-ins and Settings, on ⌘1 to ⌘3", () => {
     expect(goItems()).toEqual([
       { label: "Map", path: "/map", accelerator: "CmdOrCtrl+1" },
