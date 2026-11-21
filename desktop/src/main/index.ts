@@ -10,7 +10,9 @@ import { isAllowedUrl, isExternalSafe } from "./security";
 import { buildMenu } from "./menu";
 import type { AppActions } from "./menu-template";
 import { registerShortcut, unregisterShortcuts } from "./shortcut";
+import { startReminder } from "./reminder";
 import { createTray } from "./tray";
+import { checkForUpdates, startUpdateChecks } from "./updates";
 import { createMainWindow, isTrustedSender, openSearch, retry, showPath, showWindow } from "./window";
 
 /** Everything the menu bar, the tray and the shortcut can do, in one place. */
@@ -18,7 +20,7 @@ const actions: AppActions = {
   show: showWindow,
   go: showPath,
   openSearch,
-  checkForUpdates: () => {}, // Task 3
+  checkForUpdates: () => void checkForUpdates({ quiet: false }),
 };
 
 // The e2e tests run each launch with a throwaway data folder, so one test's saved window
@@ -64,6 +66,8 @@ if (!app.requestSingleInstanceLock()) {
     buildMenu(actions);
     createTray(actions);
     registerShortcut(actions.openSearch);
+    startReminder(() => showPath("/map"));
+    startUpdateChecks();
   });
 
   // Global shortcuts belong to the whole system: give them back when the app quits.

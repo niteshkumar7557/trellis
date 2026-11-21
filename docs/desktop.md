@@ -330,7 +330,7 @@ desktop/
 |---|---|
 | 1. The secure window | done |
 | 2. Menu, tray, shortcut | done (icons script too) |
-| 3. Notifications, update check | not started |
+| 3. Notifications, update check | done |
 | 4. Deep links | not started |
 | 5. Backend hand-off + `/auth/desktop` + tests | not started |
 | 6. Icons, packaging, `.dmg` | not started |

@@ -2,7 +2,7 @@
 // prove the page can't do what docs/desktop.md §4 says it can't.
 
 import { _electron as electron, expect, test, type ElectronApplication } from "@playwright/test";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,10 +23,16 @@ test.beforeAll(async () => {
 });
 test.afterAll(() => site.close());
 
-async function launch(url: string): Promise<ElectronApplication> {
+async function launch(url: string, opts: { userData?: string; env?: Record<string, string> } = {}): Promise<ElectronApplication> {
   return electron.launch({
     args: [join(__dirname, "..", "..")],
-    env: { ...process.env, TRELLIS_URL: url, TRELLIS_USER_DATA: mkdtempSync(join(tmpdir(), "trellis-e2e-")) },
+    env: {
+      ...process.env,
+      TRELLIS_UPDATES: "off",
+      TRELLIS_URL: url,
+      TRELLIS_USER_DATA: opts.userData ?? mkdtempSync(join(tmpdir(), "trellis-e2e-")),
+      ...opts.env,
+    },
   });
 }
 
@@ -120,5 +126,58 @@ test("⌃⌥T is registered, and it opens the site's search", async () => {
     view.submenu!.items.find((i) => i.label === "Search…")!.click();
   });
   await expect(page).toHaveTitle("Search open");
+  await app.close();
+});
+
+test("Check for Updates… always answers, even when GitHub can't be asked", async () => {
+  const app = await launch(siteUrl);
+  await app.firstWindow();
+  // Record the dialog instead of showing it (a real one would wait for a click).
+  await app.evaluate(({ dialog }) => {
+    (globalThis as any).dialogs = [];
+    dialog.showMessageBox = (async (opts: any) => {
+      (globalThis as any).dialogs.push(opts.message);
+      return { response: 1, checkboxChecked: false };
+    }) as any;
+  });
+  await app.evaluate(({ Menu }) => {
+    const appMenu = Menu.getApplicationMenu()!.items[0]!;
+    appMenu.submenu!.items.find((i) => i.label === "Check for Updates…")!.click();
+  });
+  // Whatever GitHub says (no release repo yet → 404; offline → error; a release → newer
+  // or not), the student gets one of the three answers, never silence.
+  await expect
+    .poll(() => app.evaluate(() => (globalThis as any).dialogs[0]), { timeout: 10_000 })
+    .toMatch(/^(Couldn't check for updates|You're up to date|Trellis \d+\.\d+\.\d+ is available)$/);
+  await app.close();
+});
+
+test("the daily reminder fires a notification, and clicking it opens the map", async () => {
+  // A data folder whose settings already have the reminder on.
+  const userData = mkdtempSync(join(tmpdir(), "trellis-e2e-"));
+  writeFileSync(join(userData, "settings.json"), JSON.stringify({ reminder: { on: true, time: "19:00" } }));
+  // TRELLIS_REMINDER_TEST: fire 10 seconds after start instead of at 19:00 (dev only).
+  const app = await launch(siteUrl, { userData, env: { TRELLIS_REMINDER_TEST: "1" } });
+  const page = await app.firstWindow();
+  await expect(page).toHaveTitle("Fake Trellis");
+  await page.evaluate(() => history.replaceState(null, "", "/somewhere-else"));
+
+  // Catch notifications instead of showing them. (Electron's exports are read-only, so the
+  // class can't be swapped; its prototype's show() can.) The real Notification is built.
+  await app.evaluate(({ Notification }) => {
+    (globalThis as any).notes = [];
+    Notification.prototype.show = function (this: Electron.Notification) {
+      (globalThis as any).notes.push(this);
+    };
+  });
+
+  await expect.poll(() => app.evaluate(() => (globalThis as any).notes.length), { timeout: 15_000 }).toBe(1);
+  const note = await app.evaluate(() => {
+    const n = (globalThis as any).notes[0] as Electron.Notification;
+    return { title: n.title, body: n.body };
+  });
+  expect(note).toEqual({ title: "Time to study", body: "Your map is waiting." });
+  await app.evaluate(() => (globalThis as any).notes[0].emit("click")); // as if the student clicked it
+  await expect(page).toHaveURL(`${siteUrl}/map`);
   await app.close();
 });
