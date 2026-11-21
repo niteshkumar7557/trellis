@@ -8,9 +8,8 @@ sign-in through the system browser, and an update check.
 It's a graded university elective (21 Nov 2026). The owner must explain every decision in
 a viva, so every choice below names the alternatives and the trade-off.
 
-Status: **built on `feature/desktop`, 21 Nov 2026** (design approved by the owner the same
-day). Version 1.0.0 is built and checked locally; the "Progress" table at the end says what's
-left before students can download it.
+Status: **1.0.0 released, 21 Nov 2026** (design approved by the owner the same day; merged
+into `main` with a merge commit). Download: https://github.com/niteshkumar7557/trellis-desktop/releases/latest
 
 ---
 
@@ -380,9 +379,15 @@ tool's list of names. It isn't one of ours.
 
 1. Raise `version` in `desktop/package.json` (the update check compares it).
 2. `npm run dist`.
-3. On GitHub, in the public `trellis-desktop` repo, create a release tagged `v<version>`
-   and attach `release/Trellis-<version>-arm64.dmg`. Running copies see it within a day,
-   or at once from "Check for Updates…".
+3. Publish it (the tag must be `v<version>`; the app strips the `v` and compares):
+   ```bash
+   gh release create v<version> release/Trellis-<version>-arm64.dmg \
+     --repo niteshkumar7557/trellis-desktop --title "Trellis <version>" --notes "…"
+   ```
+   Or on github.com: the repo → **Releases** (right-hand sidebar) → **Draft a new
+   release**. A brand-new empty repo shows no Releases section at all: a release points at
+   a tag and a tag needs a commit, so the repo got a README first. Running copies see the
+   new version within a day, or at once from "Check for Updates…".
 
 **CI:** the `desktop` job in `.github/workflows/ci.yml` runs `npm run typecheck` and
 `npm test` on every push. The Playwright tests need a display and the `.dmg` needs
@@ -423,7 +428,8 @@ on the owner's laptop.
 | 5. Backend hand-off + `/auth/desktop` + tests | done; **needs a production release** before Google sign-in works in the app |
 | 6. Icons, packaging, `.dmg` | done: `Trellis-1.0.0-arm64.dmg` built and checked locally |
 | 7. Docs in step | done |
-| Not yet | push; CI; release the backend; create the public `trellis-desktop` repo and its v1.0.0 release; a download link on the site (not in this design) |
+| Shipped (21 Nov 2026) | merged into `main` with a merge commit and released (the backend hand-off is live); the public repo https://github.com/niteshkumar7557/trellis-desktop has release **v1.0.0** with the `.dmg` |
+| Not yet | a download link on the site (not in this design) |
 
 **Known limits** (honest, for the viva):
 
@@ -434,3 +440,9 @@ on the owner's laptop.
 - The global shortcut presses ⌘K, and the site's ⌘K toggles: pressing ⌃⌥T while search is
   already open closes it.
 - Signing in with Google needs the browser's "Open Trellis?" prompt allowed once.
+- The update check uses GitHub's unauthenticated API: 60 calls an hour **per public IP
+  address**. On a network that shares one address among many people (college Wi-Fi, an
+  ISP's carrier-grade NAT), the allowance can be used up by others. Seen on 21 Nov 2026
+  (HTTP 403 "rate limit exceeded"). The app then stays quiet (background) or says
+  "Couldn't check for updates" (menu); it never breaks. The fix, if it matters: a small
+  `latest.json` served by the site (CloudFront), checked first.
