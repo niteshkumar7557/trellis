@@ -1,0 +1,15 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "types": ["jest"],
+    // The same alias the frontend and backend use for the domain code, plus "@/" for this
+    // app's own src/ folder (Expo's convention).
+    "paths": {
+      "@shared/*": ["../shared/*"],
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "../shared/**/*.ts"],
+  "exclude": ["node_modules", "android", "scripts", "test"]
+}

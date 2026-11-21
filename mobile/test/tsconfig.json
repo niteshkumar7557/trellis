@@ -1,0 +1,8 @@
+{
+  // The tests run in Node (Jest), so they may use Node's APIs (reading globals.css); the app
+  // can't, so Node's types are switched on only here, never for src/.
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "types": ["jest", "node"] },
+  "include": ["**/*.ts", "**/*.tsx", "../src/**/*.ts", "../src/**/*.tsx", "../shared/**/*.ts", "../expo-env.d.ts"],
+  "exclude": []
+}
