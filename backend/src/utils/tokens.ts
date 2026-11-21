@@ -55,3 +55,14 @@ export function newRandomToken(): string {
 export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
+
+/**
+ * The PKCE challenge for a verifier (RFC 7636, method "S256"): base64url(SHA-256(verifier)).
+ *
+ * Used by the desktop app's Google hand-off (docs/desktop.md §5). The app sends only the
+ * challenge at the start and keeps the verifier; at the exchange it sends the verifier and
+ * we recompute the challenge here. Only the app that started the sign-in knows it.
+ */
+export function pkceChallenge(verifier: string): string {
+  return crypto.createHash("sha256").update(verifier).digest("base64url");
+}

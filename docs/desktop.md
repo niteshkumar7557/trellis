@@ -332,6 +332,6 @@ desktop/
 | 2. Menu, tray, shortcut | done (icons script too) |
 | 3. Notifications, update check | done |
 | 4. Deep links | not started |
-| 5. Backend hand-off + `/auth/desktop` + tests | not started |
+| 5. Backend hand-off + `/auth/desktop` + tests | done (not released yet) |
 | 6. Icons, packaging, `.dmg` | not started |
 | 7. Docs in step (README, docs/README.md, tech-stack.md, CLAUDE.md) | not started |

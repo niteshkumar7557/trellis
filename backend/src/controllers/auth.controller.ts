@@ -9,10 +9,11 @@ import type { CookieOptions, Request, Response } from "express";
 import { z } from "zod";
 import config from "../config/index.js";
 import { deleteRefreshToken, saveRefreshToken, usePasswordReset, useRefreshToken } from "../repos/auth.repo.js";
+import { createHandoff, useHandoff } from "../repos/desktop-handoffs.repo.js";
 import { createPasswordUser, findLoginByEmail, getStudent, signInWithGoogle } from "../repos/users.repo.js";
 import { googleEnabled, googleProfile, googleSignInUrl } from "../utils/google.js";
 import { HttpError } from "../utils/http-error.js";
-import { hashToken, newRandomToken, signAccessToken } from "../utils/tokens.js";
+import { hashToken, newRandomToken, pkceChallenge, signAccessToken } from "../utils/tokens.js";
 
 // ------------------------------------------------------------------ the body schemas
 
@@ -171,6 +172,10 @@ export async function resetPassword(req: Request, res: Response) {
 // ------------------------------------------------------------------ Sign in with Google
 
 const STATE_COOKIE = "google_state";
+/** Set only when the desktop app started the sign-in: its PKCE challenge (docs/desktop.md §5). */
+const DESKTOP_COOKIE = "google_desktop";
+/** base64url(SHA-256(...)) is always 43 characters from this alphabet. */
+const PKCE_CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
 
 /**
  * The `state` cookie proves Google's reply belongs to a sign-in THIS browser started.
@@ -185,9 +190,22 @@ function stateCookieOptions(): CookieOptions {
   return { httpOnly: true, secure: config.is_production, sameSite: "lax", path: "/api/auth/google", maxAge: 10 * 60 * 1000 };
 }
 
-/** GET /api/auth/google → 302 to Google. 404 while Google sign-in isn't configured. */
-export function googleStart(_req: Request, res: Response) {
+/**
+ * GET /api/auth/google → 302 to Google. 404 while Google sign-in isn't configured.
+ *
+ * GET /api/auth/google?desktop=<challenge> is the same, started by the desktop app in the
+ * student's own browser: the app's PKCE challenge rides along in a second cookie, next to
+ * `state`, so the callback knows to hand the sign-in to the app instead of this browser.
+ */
+export function googleStart(req: Request, res: Response) {
   if (!googleEnabled()) throw new HttpError(404, "not_found", "Google sign-in is not set up.");
+  const { desktop } = req.query;
+  if (desktop !== undefined) {
+    if (typeof desktop !== "string" || !PKCE_CHALLENGE.test(desktop)) {
+      throw new HttpError(400, "invalid_request", "The desktop app's sign-in challenge is not valid.");
+    }
+    res.cookie(DESKTOP_COOKIE, desktop, stateCookieOptions());
+  }
   const state = newRandomToken();
   res.cookie(STATE_COOKIE, state, stateCookieOptions());
   res.redirect(googleSignInUrl(state));
@@ -204,7 +222,9 @@ export async function googleCallback(req: Request, res: Response) {
   const fail = (reason: string) => res.redirect(`${config.public_url}/login?error=${reason}`);
 
   const expected: unknown = req.cookies?.[STATE_COOKIE];
+  const challenge: unknown = req.cookies?.[DESKTOP_COOKIE];
   res.clearCookie(STATE_COOKIE, { ...stateCookieOptions(), maxAge: undefined });
+  if (challenge !== undefined) res.clearCookie(DESKTOP_COOKIE, { ...stateCookieOptions(), maxAge: undefined });
   const { code, state } = req.query;
   if (typeof code !== "string" || typeof state !== "string" || typeof expected !== "string" || state !== expected) {
     return fail("google");
@@ -222,7 +242,43 @@ export async function googleCallback(req: Request, res: Response) {
   if (!profile.emailVerified) return fail("google_unverified");
 
   const userId = await signInWithGoogle(profile);
+
+  // Started by the desktop app: this browser gets no session. A one-time code goes to the
+  // app instead, by way of /auth/desktop and a trellis:// link (docs/desktop.md §5).
+  if (typeof challenge === "string" && PKCE_CHALLENGE.test(challenge)) {
+    const code = newRandomToken();
+    await createHandoff(userId, hashToken(code), challenge);
+    return res.redirect(`${config.public_url}/auth/desktop?code=${code}`);
+  }
+
   await startSession(res, userId);
   // The frontend's /auth/done page turns the new refresh cookie into an access token.
   res.redirect(`${config.public_url}/auth/done`);
+}
+
+// ------------------------------------------------------------------ the desktop app
+
+/**
+ * The code is newRandomToken() (64 hex characters). The verifier follows RFC 7636: 43 to
+ * 128 characters from its "unreserved" alphabet; the app sends 43 (32 random bytes).
+ */
+export const DesktopExchangeBody = z.object({
+  code: z.string().regex(/^[0-9a-f]{64}$/),
+  verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/),
+});
+
+/**
+ * POST /api/auth/desktop/exchange {code, verifier} → 200 {accessToken, student}, signed in.
+ *
+ * The desktop app's last step of Google sign-in: it swaps the one-time code from the
+ * trellis:// link, plus the verifier only it knows, for a session. The answer is the same
+ * as login's, and the refresh cookie lands in the app's own cookie store.
+ */
+export async function desktopExchange(req: Request, res: Response) {
+  const { code, verifier } = req.body as z.infer<typeof DesktopExchangeBody>;
+  const userId = await useHandoff(hashToken(code), pkceChallenge(verifier));
+  if (userId === null) {
+    throw new HttpError(400, "handoff_invalid", "This sign-in has expired or was already used. Try signing in again.");
+  }
+  await sendSignedIn(res, userId, 200);
 }
