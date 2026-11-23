@@ -85,10 +85,11 @@ Things that are easy to break:
 - **Below 1100px the hero map is a miniature** (names hidden by CSS, boxes filled with the
   status colour). **Below 900px the stuck scene is not pinned** and its drawing is replaced
   by a ranked list (`.traceList`), because the drawing's text would be 6px tall.
-- **The hero map is always the app's dark map** (class `.night`, the dark tokens copied
-  from `globals.css`; keep them in step), because the hero's wall is charcoal in both
-  themes and a light sheet glared against it. The trace, the prompt slip and the espalier
-  follow the visitor's theme through the app's tokens.
+- **The whole page follows the theme (23 Nov 2026).** The wall behind the hero and the
+  footer (`--l-wall`) is near-white in light mode and charcoal in dark mode. Until then it
+  was charcoal in both, and the hero map was pinned to the app's dark tokens (a `.night`
+  class) so it didn't glare on it. Both are gone: the hero map, the trace, the prompt slip
+  and the espalier all take the app's own tokens for the visitor's theme.
 - **The hero map shares the app map's CSS classes.** Changing `.closed`, `.edge` or
   `.arrowHead` in `map.module.css` changes the landing page too. That is on purpose.
 - **Type (owner's call, 14 Nov 2026):** headings are **Fraunces** (a soft serif, loaded in
