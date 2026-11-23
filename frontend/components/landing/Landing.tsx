@@ -18,7 +18,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Espalier } from "@/components/art/Espalier";
 import { Logo } from "@/components/brand/Logo";
-import { BRAND } from "@/components/brand/brand";
 import { MiniMap } from "@/components/map/MiniMap";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { MAC_APP_URL, useIsDesktopApp } from "@/lib/desktop";
@@ -108,7 +107,7 @@ function Hero() {
     <section className={styles.hero} data-hero aria-labelledby="hero-title">
       <header className={styles.nav}>
         <Link href="/" className={styles.navBrand} aria-label="Trellis, home">
-          <Logo size={22} color={BRAND.leafOnDark} />
+          <Logo size={22} />
         </Link>
         <nav className={styles.navLinks} aria-label="Site">
           <a href="#stuck-title">How it works</a>

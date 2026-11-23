@@ -49,6 +49,11 @@ the docs in step. If a day slips, cut M5 first, then M6.3.
 
 ## Where things stand (21 Nov 2026)
 
+- **Landing page follows the theme (23 Nov 2026): merged into `main` with a merge commit
+  and pushed; not released yet** (run `./deploy/release.sh` once CI is green). The wall
+  behind the hero and the footer is near-white in light mode and charcoal in dark mode
+  (it was charcoal in both), and the hero map uses the app's tokens for the visitor's
+  theme (the `.night` class is gone). Details in `docs/frontend.md` §3a.
 - **Android app (21 Nov 2026): merged into `main` with a merge commit (`d7e48b6`), backend
   released, 1.0.0 published at https://github.com/niteshkumar7557/trellis-android (linked
   from the landing footer and Settings); checked on the owner's Android 17 phone.** `mobile/` is a React Native 0.88 + Expo SDK 58 app with native screens

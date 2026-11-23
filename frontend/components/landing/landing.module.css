@@ -1,6 +1,7 @@
 /*
   Landing: the page is the map. One typeface (IBM Plex Sans) and the app's palette: a
-  charcoal wall, paper grounds, one leaf-green accent, and the topic-status colours on data.
+  wall (near-white by day, charcoal at night), paper grounds, one leaf-green accent, and
+  the topic-status colours on data.
 
   Grid: 12 columns, 32px outer margins (16px on a phone), one gutter.
   Type: two faces. Headings are Fraunces (--display, loaded in fonts.ts); everything else
@@ -20,9 +21,11 @@
 .page {
   --l-margin: 32px;
   --l-gutter: 24px;
-  --l-charcoal: #141813;
-  --l-on-charcoal: #eef0e9;
-  --l-on-charcoal-soft: #b3bab0;
+  /* The wall the hero and the footer stand on. It follows the theme like the rest of the
+     page (23 Nov 2026): until then it was charcoal in light mode too. */
+  --l-wall: #fbfcf9;
+  --l-on-wall: #151714;
+  --l-on-wall-soft: #4c524a;
   --l-paper: #eef0e9;
   --l-ink: #151714;
   --l-soft: #4c524a;
@@ -39,7 +42,7 @@
   --t-body: 17px;
   --t-small: 14px;
 
-  background: var(--l-charcoal);
+  background: var(--l-wall);
   color: var(--l-ink);
   font-size: var(--t-body);
   line-height: 1.55;
@@ -47,7 +50,9 @@
 }
 
 :global([data-theme="dark"]) .page {
-  --l-charcoal: #050605;
+  --l-wall: #050605;
+  --l-on-wall: #eef0e9;
+  --l-on-wall-soft: #b3bab0;
   --l-paper: #10120f;
   --l-ink: #edf0ea;
   --l-soft: #adb4a9;
@@ -82,33 +87,11 @@
 }
 
 /*
-  The hero stands on a charcoal wall in both themes, so its map is always the app's map as
-  it looks at night: this class pins the app's dark tokens (copied from app/globals.css;
-  keep the two in step). A light sheet there glared against the wall.
-  Everything else on the page (the trace, the prompt slip, the espalier) just follows the
-  visitor's theme through the app's tokens.
+  The hero's map is the app's map in whichever theme the visitor is in: the app's own tokens
+  (app/globals.css) reach it unchanged. It used to pin the dark tokens (a class called
+  .night), because the wall was charcoal in both themes; the wall follows the theme now.
 */
-.night {
-  --ground: #0b0c0b;
-  --surface: #141614;
-  --raised: #1a1c1a;
-  --active: #252825;
-  --border: #262926;
-  --control: #40443f;
-  --text: #f1f2f0;
-  --muted: #b3b7b1;
-  --faint: #959a93;
-  --primary: #f1f2f0;
-  --on-primary: #111311;
-  --accent: #63b77e;
-  --done: #63b77e;      --done-bg: #1a2b1f;      --done-ink: #8fd3a5;
-  --learning: #6fa4e4;  --learning-bg: #18243a;  --learning-ink: #a6c8f2;
-  --stuck: #ee6b72;     --stuck-bg: #33191c;     --stuck-ink: #f7a5aa;
-  --shaky: #d9a64c;     --shaky-bg: #2f2512;     --shaky-ink: #ecc983;
-  --know: #f1f2f0;
-  --edge: #4b4f4a;
-  --edge-soft: #343733;
-
+.sheet {
   background: var(--raised);
   color: var(--text);
 }
@@ -124,18 +107,18 @@
   text-decoration: none;
   transition: background-color 150ms ease, transform 150ms ease;
 }
-.button[data-tone="paper"] { background: var(--l-on-charcoal); color: #141813; }
-.button[data-tone="paper"]:hover { background: #ffffff; }
+.button[data-tone="paper"] { background: var(--l-on-wall); color: var(--l-wall); }
+.button[data-tone="paper"]:hover { opacity: 0.86; }
 .button:active { transform: translateY(1px); }
 
 /* ------------------------------------------------------------ hero: the map on the wall */
 
 .hero {
   padding: 0 var(--l-margin) 40px;
-  background: var(--l-charcoal);
-  color: var(--l-on-charcoal);
+  background: var(--l-wall);
+  color: var(--l-on-wall);
 }
-.hero :focus-visible { outline-color: var(--l-on-charcoal); }
+.hero :focus-visible { outline-color: var(--l-on-wall); }
 
 .nav {
   display: flex;
@@ -145,7 +128,7 @@
 }
 
 .navBrand {
-  color: var(--l-on-charcoal);
+  color: var(--l-on-wall);
   text-decoration: none;
 }
 
@@ -155,7 +138,7 @@
   gap: 28px;
 }
 .navLinks a:not(.button) {
-  color: var(--l-on-charcoal);
+  color: var(--l-on-wall);
   text-decoration: none;
   transition: opacity 150ms ease;
 }
@@ -194,19 +177,19 @@
 .heroSub {
   text-wrap: pretty;
   margin: 0;
-  color: var(--l-on-charcoal);
+  color: var(--l-on-wall);
   font-size: var(--t-lead);
   line-height: 1.45;
 }
 
 .heroFacts {
   margin: 10px 0 0;
-  color: var(--l-on-charcoal-soft);
+  color: var(--l-on-wall-soft);
 }
 
 .heroCaption {
   margin: 14px 0 0;
-  color: var(--l-on-charcoal-soft);
+  color: var(--l-on-wall-soft);
   font-size: var(--t-small);
 }
 
@@ -782,10 +765,10 @@
   display: grid;
   gap: 56px;
   padding: 56px var(--l-margin) 20px;
-  background: var(--l-charcoal);
-  color: var(--l-on-charcoal);
+  background: var(--l-wall);
+  color: var(--l-on-wall);
 }
-.footer :focus-visible { outline-color: var(--l-on-charcoal); }
+.footer :focus-visible { outline-color: var(--l-on-wall); }
 
 .footCols {
   display: grid;
@@ -796,10 +779,10 @@
    it; the items are softer and one step smaller. They were the same size and nearly the
    same weight until 15 Nov 2026, so the headings didn't stand out. */
 .footCols > div { display: grid; align-content: start; gap: 6px; }
-.footCols p { margin: 0; color: var(--l-on-charcoal-soft); font-size: var(--t-small); }
-.footCols a { color: var(--l-on-charcoal-soft); font-size: var(--t-small); text-decoration: none; }
-.footCols a:hover { color: var(--l-on-charcoal); }
-.footCols .footHead { margin-bottom: 6px; color: var(--l-on-charcoal); font-size: var(--t-body); font-weight: 600; }
+.footCols p { margin: 0; color: var(--l-on-wall-soft); font-size: var(--t-small); }
+.footCols a { color: var(--l-on-wall-soft); font-size: var(--t-small); text-decoration: none; }
+.footCols a:hover { color: var(--l-on-wall); }
+.footCols .footHead { margin-bottom: 6px; color: var(--l-on-wall); font-size: var(--t-body); font-weight: 600; }
 
 .footBottom {
   display: grid;
@@ -812,7 +795,7 @@
   display: block;
 }
 .footWord text {
-  fill: var(--l-on-charcoal);
+  fill: var(--l-on-wall);
   font-family: var(--font);
   font-size: 200px;
   font-weight: 700;
@@ -821,7 +804,7 @@
 
 .legal {
   margin: 0;
-  color: var(--l-on-charcoal-soft);
+  color: var(--l-on-wall-soft);
   font-size: var(--t-small);
 }
 

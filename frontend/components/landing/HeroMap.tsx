@@ -84,7 +84,7 @@ export function HeroMap() {
   );
 
   return (
-    <div ref={root} className={`${styles.sheet} ${styles.night}`} data-ui>
+    <div ref={root} className={styles.sheet} data-ui>
       <div ref={fit} className={styles.mapFit} style={{ aspectRatio: `${layout.width} / ${layout.height}` }}>
         <div
           className={styles.mapWorld}
